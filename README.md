@@ -66,6 +66,12 @@ Jump limits to design around: ~128px high (a bit under 2 tiles), ~256px far
 Change `CHARACTER` in `scripts/player/player_sprite.gd` to `adventurer`, `female`,
 `soldier` or `zombie`.
 
+## License
+
+Code and generated art are released under the [MIT License](LICENSE): use and modify
+them freely, with no warranty and no liability. Third-party art in `assets/kenney/`
+is CC0 by Kenney (license files included alongside it).
+
 ## Credits
 
 Art by [Kenney](https://kenney.nl) (CC0): Platformer Pack: Industrial, Platformer Characters 1.
