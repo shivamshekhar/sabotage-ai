@@ -16,7 +16,6 @@ func _ready() -> void:
 	add_child(player)
 
 	var cam := Camera2D.new()
-	cam.offset = Vector2(0, -120)
 	cam.position_smoothing_enabled = true
 	cam.limit_left = 0
 	cam.limit_right = LevelScript.WORLD_W
