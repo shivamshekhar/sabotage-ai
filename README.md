@@ -10,8 +10,14 @@ godot --path .                       # play
 SABOTAGE_PREVIEW=1 godot --path .    # zoomed-out view of the whole level
 ```
 
-Controls: A/D or arrows to move, W/S or Up/Down to climb ladders, Space to jump.
-On-screen touch buttons drive the same input actions.
+Controls: A/D or Left/Right to move, W or Up to jump, S or Down to go down.
+On-screen touch buttons (< > UP DOWN) drive the same input actions.
+
+Up is both jump and climb, since you never do both at once. Ladders: when at least 75%
+of the character overlaps a ladder, Up grabs it (from the floor at its bottom, or by
+catching it mid-jump) and Down grabs it from the top deck. You then snap onto the
+ladder's centre line and can only move up/down, with no jumping, until you reach the
+top deck or the floor. At the top deck, Up jumps and Down climbs back down.
 
 ## Project layout
 
@@ -23,8 +29,9 @@ scripts/
     main.gd                 Wires level, player, camera, touch UI, win banner
     input_setup.gd          Registers keyboard input actions (touch uses the same ones)
   player/
-    player.gd               Movement: run, jump, ladders, respawn on hazards
+    player.gd               Movement, ladders, health/damage, respawn
     player_sprite.gd        Picks the character pose from the movement state
+    health_bar.gd           Bar above the player (green = health left, red = damage taken)
   level/
     level.gd                Builds a level from an ASCII map (sprites, colliders, hazards)
     level_data.gd           The level maps themselves (edit these to design levels)
@@ -37,15 +44,24 @@ assets/
     platformer-pack-industrial/sprites/   Level art (see NAMES.md for the old numeric IDs)
     platformer-characters/<name>/         Character poses (player, adventurer, female, soldier, zombie)
   backgrounds/data_center/  Generated parallax layers (far, mid_base, mid_leds_a/b, cables)
+  tiles/data_center/        Themed foreground tiles (same names as the Kenney sprites)
+  machines/data_center/     GPU rack, supercomputer, monitoring station, server tower (+ LED overlays)
 tools/
   art/generate_background.py   Regenerates the background layers (needs Pillow)
+  art/generate_tiles.py        Regenerates the themed foreground tiles (needs Pillow)
+  art/generate_machines.py     Regenerates the machines and their blinking LED layers (needs Pillow)
 ```
 
-## Regenerating the background
+`SpriteLibrary` uses a sprite from `assets/tiles/data_center/` when one exists with the
+requested name, and falls back to the Kenney original otherwise.
+
+## Regenerating the art
 
 ```bash
 pip install pillow
 python tools/art/generate_background.py assets/backgrounds/data_center
+python tools/art/generate_tiles.py assets/kenney/platformer-pack-industrial/sprites assets/tiles/data_center
+python tools/art/generate_machines.py assets/machines/data_center
 ```
 
 Tweak colours, rack layout or cable runs in the script, rerun, and Godot re-imports

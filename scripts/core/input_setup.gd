@@ -7,9 +7,9 @@ extends RefCounted
 static func register() -> void:
 	_add_action("move_left", [KEY_A, KEY_LEFT])
 	_add_action("move_right", [KEY_D, KEY_RIGHT])
+	# Up is both jump and climb (you're never doing both at once), so there's no separate jump key.
 	_add_action("move_up", [KEY_W, KEY_UP])
 	_add_action("move_down", [KEY_S, KEY_DOWN])
-	_add_action("jump", [KEY_SPACE])
 
 
 static func _add_action(action: StringName, keys: Array) -> void:

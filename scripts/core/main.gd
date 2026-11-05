@@ -11,6 +11,7 @@ func _ready() -> void:
 
 	var player := Player.new()
 	player.spawn = level.spawn
+	player.ladders = level.ladders
 	player.position = level.spawn
 	add_child(player)
 
@@ -31,6 +32,7 @@ func _setup_camera(level: Level, player: Player) -> void:
 		cam.limit_right = level.world_w
 		cam.limit_bottom = level.world_h
 		player.add_child(cam)
+		add_child(Vignette.new())
 		add_child(TouchControls.new())
 	cam.make_current()
 

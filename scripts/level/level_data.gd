@@ -8,7 +8,11 @@ extends RefCounted
 ##   ^  floor spikes       v  ceiling spikes
 ##   X  metal crate        O  orange crate
 ##   P  player spawn       E  exit terminal
-## Background decor
+## Machines (decor). The letter marks the BOTTOM-LEFT tile; the rest of the footprint
+## (to the right and up) must be left as '.'.
+##   G  GPU rack 2x3        S  supercomputer 3x3
+##   M  monitoring station 3x2     R  server tower 1x3
+## Other background decor
 ##   k controls panel   w dark panel   r ceiling rail   m monitor   t tv monitor
 ##   g gear   i siren   l lamp   c canister   ~ slime
 ##
@@ -34,9 +38,9 @@ static func level_1() -> Array[String]:
 	m.append("#" + _d(27) + "H" + "#".repeat(19) + _d(11) + "#")                         # 6  ladder top + upper slab
 	m.append("#" + _d(27) + "H" + _d(17) + "O" + _d(9) + "E" + _d(2) + "#")              # 7  exit
 	m.append("#" + _d(27) + "H" + _d(17) + "O" + _d(8) + "===" + "." + "#")              # 8
-	m.append("#" + _d(4) + "kkk" + _d(4) + "." + _d(14) + "." + "H" + _d(2) + "kkk" + _d(2) + "kkk" + _d(2) + "kkk" + _d(2) + "O" + _d(6) + "==" + _d(4) + "#")  # 9
-	m.append("#" + _d(4) + "www" + _d(2) + "X" + _d(17) + "H" + _d(2) + "www" + _d(2) + "www" + _d(2) + "www" + _d(2) + "O" + _d(4) + "==" + _d(6) + "#")  # 10
-	m.append("#" + ".lP." + "kkk" + "." + "XX" + _d(4) + "===" + _d(3) + "cc" + "." + "i" + _d(3) + "H" + _d(2) + "kkk" + _d(2) + "kkk" + _d(2) + "kkk" + _d(2) + "O" + _d(2) + "==" + "~".repeat(7) + "." + "#")  # 11
+	m.append("#" + _d(27) + "H" + _d(17) + "O" + _d(6) + "==" + _d(4) + "#")                # 9
+	m.append("#" + _d(9) + "X" + _d(17) + "H" + _d(17) + "O" + _d(4) + "==" + _d(6) + "#")  # 10
+	m.append("#" + ".lP." + "S.." + "." + "XX" + _d(4) + "===" + _d(3) + "cc" + "." + "i" + _d(3) + "H" + _d(2) + "M.." + _d(2) + "G.R" + _d(2) + "S.." + _d(2) + "O" + _d(2) + "==" + "~".repeat(7) + "." + "#")  # 11  machines
 	m.append("#".repeat(14) + "^".repeat(5) + "#".repeat(41))                           # 12 floor + spike pit
 	m.append("#".repeat(60))                                                            # 13 floor fill
 	return m

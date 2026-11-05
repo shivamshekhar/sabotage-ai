@@ -8,12 +8,40 @@ signal goal_reached
 const T := 70  # tile size in px
 const SOLID := "#XO"
 
+# Machines: map char -> sprite name and footprint in tiles. The char marks the bottom-left tile.
+const MACHINES := {
+	"G": {"sprite": "machine_gpu_rack", "w": 2, "h": 3},
+	"S": {"sprite": "machine_supercomputer", "w": 3, "h": 3},
+	"M": {"sprite": "machine_monitoring_station", "w": 3, "h": 2},
+	"R": {"sprite": "machine_server_tower", "w": 1, "h": 3},
+}
+const MACHINE_TINT := Color.WHITE
+const MACHINE_SHADOW_PAD := 20                 # padding baked into the *_shadow.png images
+const MACHINE_SHADOW_OFFSET := Vector2(10, 6)  # shadow falls down-right onto the wall
+const MACHINE_BLINK_PERIOD := 1.7
+const MACHINE_BLINK_LOW := 0.25
+
+# Sirens and lamps glow and pulse slowly. LENS = where the lit part sits inside the 70px tile.
+const SIREN_LENS := Vector2(35, 46)
+const LAMP_LENS := Vector2(35, 24)
+const LIGHT_ORANGE := Color(1.0, 0.54, 0.14)
+const LIGHT_BLUE := Color(0.23, 0.62, 1.0)
+const LIGHT_GREEN := Color(0.18, 0.9, 0.42)
+const LIGHT_PERIOD := 2.4      # seconds for one full glow-up-and-down cycle (slow)
+const GLOW_MIN := 0.12         # halo opacity at the dim point
+const GLOW_MAX := 0.85         # halo opacity at the bright point
+const LAMP_DIM := 0.5          # how dark the lamp itself gets at the dim point (1 = no change)
+
 var world_w := 0
 var world_h := 0
 var spawn := Vector2.ZERO
+## Ladder columns in world space (from the top tile down to the floor); the Player climbs these.
+var ladders: Array[Rect2] = []
 
 var _map: Array[String] = []
 var _goal_fired := false
+var _glow_tex: GradientTexture2D
+var _glow_mat: CanvasItemMaterial
 
 
 func _ready() -> void:
@@ -73,10 +101,24 @@ func _run_name(prefix: String, ch: String, c: int, r: int, has_single: bool) -> 
 	return prefix + ("_single" if has_single else "_start")
 
 
+## Ground, or the deck on top of a ladder (which continues the ground line).
+func _joins_ground(c: int, r: int) -> bool:
+	var ch := _cell(c, r)
+	return ch == "#" or (ch == "H" and _cell(c, r - 1) != "H")
+
+
 func _ground_name(c: int, r: int) -> String:
 	if _cell(c, r - 1) == "#":
 		return "ground_fill"
-	return _run_name("ground", "#", c, r, true)
+	var l := _joins_ground(c - 1, r)
+	var rt := _joins_ground(c + 1, r)
+	if l and rt:
+		return "ground_middle"
+	if rt:
+		return "ground_start"
+	if l:
+		return "ground_end"
+	return "ground_single"
 
 
 # ---------- building ----------
@@ -102,12 +144,109 @@ func _build_tiles() -> void:
 				"m": _decor("monitor_text", c, r)
 				"t": _decor("monitor_tv_text", c, r)
 				"g": _decor("gear_full", c, r, -6)
-				"i": _decor("siren_orange" if c % 2 == 0 else "siren_blue", c, r, -3, Color.WHITE)
-				"l": _decor("lamp_pole_green", c, r, -3, Color.WHITE)
+				"i":
+					var orange := int(c / 2.0) % 2 == 0
+					var siren := _decor("siren_orange" if orange else "siren_blue", c, r, -3, Color.WHITE)
+					_add_light(siren, c, SIREN_LENS, LIGHT_ORANGE if orange else LIGHT_BLUE, 90.0)
+				"l":
+					var lamp := _decor("lamp_pole_green", c, r, -3, Color.WHITE)
+					_add_light(lamp, c, LAMP_LENS, LIGHT_GREEN, 70.0)
 				"c": _decor("canister_blue_vertical" if c % 2 == 0 else "canister_yellow_vertical", c, r, -3)
 				"~": _place(_run_name("slime_floor", "~", c, r, true), c, r, -1)
 				"P": spawn = Vector2((c + 0.5) * T, (r + 1) * T)
 				"E": _build_exit(c, r)
+				_:
+					if MACHINES.has(_map[r][c]):
+						_build_machine(MACHINES[_map[r][c]], c, r)
+
+
+## Soft additive halo on a lamp, pulsing slowly. Each light starts at its own phase
+## (from its column) so a row of them doesn't blink in unison.
+func _add_light(lamp: Sprite2D, c: int, lens: Vector2, color: Color, radius: float) -> void:
+	var glow := Sprite2D.new()
+	glow.texture = _glow_texture()
+	glow.material = _glow_material()
+	glow.position = lamp.position + lens
+	glow.scale = Vector2.ONE * (radius * 2.0 / float(_glow_texture().width))
+	glow.modulate = Color(color, GLOW_MIN)
+	glow.z_index = -2  # above the lamp, below the player
+	add_child(glow)
+	lamp.modulate = Color(LAMP_DIM, LAMP_DIM, LAMP_DIM)
+	_pulse_light(lamp, glow, color, fmod(c * 0.37, LIGHT_PERIOD))
+
+
+func _pulse_light(lamp: Sprite2D, glow: Sprite2D, color: Color, delay: float) -> void:
+	await get_tree().create_timer(delay).timeout
+	var half := LIGHT_PERIOD / 2.0
+	var tw := create_tween().set_loops()
+	tw.set_trans(Tween.TRANS_SINE)
+	tw.tween_property(glow, "modulate", Color(color, GLOW_MAX), half)
+	tw.parallel().tween_property(lamp, "modulate", Color.WHITE, half)
+	tw.tween_property(glow, "modulate", Color(color, GLOW_MIN), half)
+	tw.parallel().tween_property(lamp, "modulate", Color(LAMP_DIM, LAMP_DIM, LAMP_DIM), half)
+
+
+func _glow_texture() -> GradientTexture2D:
+	if _glow_tex == null:
+		var grad := Gradient.new()
+		grad.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
+		grad.colors = PackedColorArray([Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.35), Color(1, 1, 1, 0.0)])
+		_glow_tex = GradientTexture2D.new()
+		_glow_tex.gradient = grad
+		_glow_tex.fill = GradientTexture2D.FILL_RADIAL
+		_glow_tex.fill_from = Vector2(0.5, 0.5)
+		_glow_tex.fill_to = Vector2(1.0, 0.5)
+		_glow_tex.width = 128
+		_glow_tex.height = 128
+	return _glow_tex
+
+
+func _glow_material() -> CanvasItemMaterial:
+	if _glow_mat == null:
+		_glow_mat = CanvasItemMaterial.new()
+		_glow_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return _glow_mat
+
+
+## Place a machine so its bottom edge sits on the floor line of tile (c, r), growing
+## right and up. Its LED/screen overlays blink in two alternating groups.
+func _build_machine(def: Dictionary, c: int, r: int) -> void:
+	var pos := Vector2(c * T, (r + 1 - int(def["h"])) * T)
+	var sprite_name: String = def["sprite"]
+	# Soft shadow cast onto the wall behind: separates the machine from the background.
+	var shadow := Sprite2D.new()
+	shadow.texture = SpriteLibrary.machine(sprite_name + "_shadow")
+	shadow.centered = false
+	shadow.position = pos - Vector2(MACHINE_SHADOW_PAD, MACHINE_SHADOW_PAD) + MACHINE_SHADOW_OFFSET
+	shadow.z_index = -6
+	add_child(shadow)
+	var base := Sprite2D.new()
+	base.texture = SpriteLibrary.machine(sprite_name)
+	base.centered = false
+	base.position = pos
+	base.z_index = -5
+	base.modulate = MACHINE_TINT
+	add_child(base)
+	var half := MACHINE_BLINK_PERIOD / 2.0
+	for i in 2:
+		var leds := Sprite2D.new()
+		leds.texture = SpriteLibrary.machine("%s_leds_%s" % [sprite_name, "ab"[i]])
+		leds.centered = false
+		leds.position = pos
+		leds.z_index = -4
+		leds.modulate = Color(MACHINE_TINT, MACHINE_BLINK_LOW)
+		add_child(leds)
+		# Group B runs half a cycle behind A; each machine gets its own offset from its column.
+		_blink_machine(leds, fmod(c * 0.29 + i * half, MACHINE_BLINK_PERIOD))
+
+
+func _blink_machine(leds: Sprite2D, delay: float) -> void:
+	await get_tree().create_timer(delay).timeout
+	var half := MACHINE_BLINK_PERIOD / 2.0
+	var tw := create_tween().set_loops()
+	tw.set_trans(Tween.TRANS_SINE)
+	tw.tween_property(leds, "modulate:a", 1.0, half)
+	tw.tween_property(leds, "modulate:a", MACHINE_BLINK_LOW, half)
 
 
 func _build_exit(c: int, r: int) -> void:
@@ -138,14 +277,19 @@ func _make_area(rect: Rect2) -> Area2D:
 
 
 func _add_hazard(rect: Rect2) -> void:
+	# Player tracks how many hazards it overlaps and takes damage while inside one.
 	var area := _make_area(rect)
 	area.body_entered.connect(func(body: Node) -> void:
 		if body is Player:
-			body.die())
+			body.hazard_count += 1)
+	area.body_exited.connect(func(body: Node) -> void:
+		if body is Player:
+			body.hazard_count -= 1)
 
 
-func _add_solid(rect: Rect2, one_way: bool = false) -> void:
+func _add_solid(rect: Rect2, one_way: bool = false, layer: int = Player.LAYER_WORLD) -> void:
 	var body := StaticBody2D.new()
+	body.collision_layer = layer
 	body.position = rect.get_center()
 	var shape := CollisionShape2D.new()
 	var rs := RectangleShape2D.new()
@@ -205,15 +349,10 @@ func _build_ladders() -> void:
 				var top := r
 				while _cell(c, r) == "H":
 					r += 1
-				var area := _make_area(Rect2(c * T + 15, top * T, 40, (r - top) * T))
-				area.body_entered.connect(func(body: Node) -> void:
-					if body is Player:
-						body.ladder_count += 1)
-				area.body_exited.connect(func(body: Node) -> void:
-					if body is Player:
-						body.ladder_count -= 1)
-				# Stand on top of the ladder; climb up through it from below.
-				_add_solid(Rect2(c * T, top * T, T, 12), true)
+				ladders.append(Rect2(c * T, top * T, T, (r - top) * T))
+				# Deck on top of the ladder: stand on it, climb up through it from below.
+				# Own physics layer so the climbing player can ignore it (to climb back down).
+				_add_solid(Rect2(c * T, top * T, T, 12), true, Player.LAYER_LADDER_DECK)
 			else:
 				r += 1
 

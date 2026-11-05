@@ -10,8 +10,7 @@ func _ready() -> void:
 	layer = 10
 	_add_button("<", "move_left", Vector2(40, 540))
 	_add_button(">", "move_right", Vector2(200, 540))
-	_add_button("JUMP", "jump", Vector2(1110, 540))
-	_add_button("UP", "move_up", Vector2(1110, 390))
+	_add_button("UP", "move_up", Vector2(1110, 540))      # jump / climb up
 	_add_button("DOWN", "move_down", Vector2(950, 540))
 
 
