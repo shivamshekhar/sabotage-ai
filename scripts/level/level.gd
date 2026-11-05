@@ -106,8 +106,6 @@ func _build_tiles() -> void:
 				"l": _decor("lamp_pole_green", c, r, -3, Color.WHITE)
 				"c": _decor("canister_blue_vertical" if c % 2 == 0 else "canister_yellow_vertical", c, r, -3)
 				"~": _place(_run_name("slime_floor", "~", c, r, true), c, r, -1)
-				">": _decor("arrow_green_right", c, r, -3, Color.WHITE)
-				"A": _decor("arrow_green_up", c, r, -3, Color.WHITE)
 				"P": spawn = Vector2((c + 0.5) * T, (r + 1) * T)
 				"E": _build_exit(c, r)
 
@@ -223,15 +221,14 @@ func _build_ladders() -> void:
 # ---------- backdrop ----------
 
 func _build_backdrop() -> void:
+	add_child(LevelBackground.new())
+
+	# Light tint over the parallax art so gameplay tiles stay readable, plus the title.
 	var bd := Node2D.new()
 	bd.z_index = -20
 	add_child(bd)
 	bd.draw.connect(func() -> void:
-		bd.draw_rect(Rect2(0, 0, world_w, world_h), Color("#151a28"))
-		for x in range(0, world_w, 140):
-			bd.draw_line(Vector2(x, 0), Vector2(x, world_h), Color("#1d2436"), 4.0)
-		for y in range(0, world_h, 140):
-			bd.draw_line(Vector2(0, y), Vector2(world_w, y), Color("#1d2436"), 2.0)
+		bd.draw_rect(Rect2(0, 0, world_w, world_h), Color(0.04, 0.06, 0.11, 0.30))
 		bd.draw_string(ThemeDB.fallback_font, Vector2(150, 260), "DATA CENTER 01",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(1, 1, 1, 0.3)))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(1, 1, 1, 0.35)))
 	bd.queue_redraw()

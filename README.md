@@ -28,6 +28,7 @@ scripts/
   level/
     level.gd                Builds a level from an ASCII map (sprites, colliders, hazards)
     level_data.gd           The level maps themselves (edit these to design levels)
+    background.gd           Parallax data-center background (3 depth layers, blinking LEDs)
     sprite_library.gd       The only place that knows where art lives on disk
   ui/
     touch_controls.gd       On-screen buttons for phones
@@ -35,7 +36,21 @@ assets/
   kenney/
     platformer-pack-industrial/sprites/   Level art (see NAMES.md for the old numeric IDs)
     platformer-characters/<name>/         Character poses (player, adventurer, female, soldier, zombie)
+  backgrounds/data_center/  Generated parallax layers (far, mid_base, mid_leds_a/b, cables)
+tools/
+  art/generate_background.py   Regenerates the background layers (needs Pillow)
 ```
+
+## Regenerating the background
+
+```bash
+pip install pillow
+python tools/art/generate_background.py assets/backgrounds/data_center
+```
+
+Tweak colours, rack layout or cable runs in the script, rerun, and Godot re-imports
+the PNGs. Each layer is 1280px wide and tiles seamlessly; scroll speeds are set in
+`scripts/level/background.gd` (lower = further away).
 
 ## Designing levels
 

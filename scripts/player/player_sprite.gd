@@ -4,7 +4,7 @@ extends Sprite2D
 ## Swap the hero by changing CHARACTER to "adventurer", "female", "soldier" or "zombie".
 
 const CHARACTER := "player"
-const SCALE := 0.6       # 80x110 source art -> ~48x66 px, matching the 44x64 collider
+const SCALE := 1.2       # 80x110 source art -> ~96x132 px, matching Player.BODY_SIZE
 const WALK_FRAME_TIME := 0.12
 const CLIMB_FRAME_TIME := 0.15
 

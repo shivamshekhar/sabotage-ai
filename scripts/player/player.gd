@@ -5,10 +5,12 @@ extends CharacterBody2D
 
 const SPEED := 320.0
 const ACCEL := 2600.0
-const JUMP_VELOCITY := -640.0
+const JUMP_VELOCITY := -660.0
 const GRAVITY := 1600.0
 const CLIMB_SPEED := 190.0
 const HURT_TIME := 0.4
+# Hitbox is a bit narrower than the ~96px-wide art so tight jumps stay fair.
+const BODY_SIZE := Vector2(60, 128)
 
 var spawn := Vector2.ZERO
 var ladder_count := 0  # how many ladder areas currently overlap the player
@@ -23,9 +25,9 @@ func _ready() -> void:
 	z_index = 2
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(44, 64)
+	rect.size = BODY_SIZE
 	shape.shape = rect
-	shape.position = Vector2(0, -32)
+	shape.position = Vector2(0, -BODY_SIZE.y / 2.0)
 	add_child(shape)
 
 	_visuals = PlayerSprite.new()
