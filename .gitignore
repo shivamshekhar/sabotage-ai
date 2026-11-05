@@ -1,0 +1,13 @@
+# Godot 4
+.godot/
+*.translation
+export_presets.cfg
+
+# Android build / signing (never commit keystores)
+android/build/
+*.keystore
+*.jks
+
+# Misc
+.DS_Store
+Thumbs.db
