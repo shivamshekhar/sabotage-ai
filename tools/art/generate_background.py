@@ -14,6 +14,11 @@ import sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 W, H = 1280, 900
+# Depth of field: blur radius (px) per layer. The further the layer, the blurrier, so the
+# gameplay plane in front stays crisp and the background recedes.
+BLUR_FAR = 1.8
+BLUR_MID = 2.4
+BLUR_NEAR = 1.0
 OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/backgrounds/data_center"
 os.makedirs(OUT, exist_ok=True)
 
@@ -35,6 +40,20 @@ def vgrad(top, bottom, size=(W, H)):
     for y in range(size[1]):
         d.line([(0, y), (size[0], y)], fill=lerp(top, bottom, y / (size[1] - 1)) + (255,))
     return im
+
+
+def wrap_blur(im, radius):
+    """Gaussian blur that wraps on X (so the layer still tiles seamlessly) and is
+    alpha-aware (premultiplied) so transparent edges don't get dark fringes.
+    Used for depth-of-field: the further a layer, the blurrier."""
+    mode = im.mode
+    w, h = im.size
+    work = im.convert("RGBa") if mode == "RGBA" else im
+    tiled = Image.new(work.mode, (w * 3, h))
+    for i in range(3):
+        tiled.paste(work, (i * w, 0))
+    tiled = tiled.filter(ImageFilter.GaussianBlur(radius)).crop((w, 0, 2 * w, h))
+    return tiled.convert("RGBA") if mode == "RGBA" else tiled
 
 
 def pick_led(rng):
@@ -110,7 +129,7 @@ def make_far():
     for k in range(4):
         x0 = 60 + 320 * k
         d.rectangle([x0, 0, x0 + 199, 12], fill=(205, 225, 255, 255))
-    im.convert("RGB").save(os.path.join(OUT, "far.png"))
+    wrap_blur(im.convert("RGB"), BLUR_FAR).save(os.path.join(OUT, "far.png"))
 
 
 # ---------------------------------------------------------------- mid layer
@@ -156,7 +175,7 @@ def make_mid():
         for rx in (0, 160, 480):  # rack, rack, gap, rack
             draw_rack(period + rx)
 
-    base.save(os.path.join(OUT, "mid_base.png"))
+    wrap_blur(base, BLUR_MID).save(os.path.join(OUT, "mid_base.png"))
 
     for key, leds in bright.items():
         core = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -167,7 +186,7 @@ def make_mid():
             cd.rectangle([x - 3, y - 3, x + 3, y + 3], fill=c + (255,))
             hd.ellipse([x - 11, y - 11, x + 11, y + 11], fill=c + (110,))
         halo = halo.filter(ImageFilter.GaussianBlur(5))
-        Image.alpha_composite(halo, core).save(os.path.join(OUT, f"mid_leds_{key}.png"))
+        wrap_blur(Image.alpha_composite(halo, core), BLUR_MID).save(os.path.join(OUT, f"mid_leds_{key}.png"))
 
 
 # -------------------------------------------------------------- cables layer
@@ -206,7 +225,7 @@ def make_cables():
             d.rectangle([x0, y, x0 + 17, y + 14], fill=(245, 197, 24, 255))
             for s in range(0, 18, 8):
                 d.polygon([(x0 + s, y), (x0 + s + 4, y), (x0 + s + 8, y + 14), (x0 + s + 4, y + 14)], fill=(20, 20, 24, 255))
-    im.save(os.path.join(OUT, "cables.png"))
+    wrap_blur(im, BLUR_NEAR).save(os.path.join(OUT, "cables.png"))
 
 
 if __name__ == "__main__":
