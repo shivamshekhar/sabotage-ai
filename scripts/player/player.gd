@@ -29,7 +29,7 @@ const LAYER_LADDER_DECK := 2
 #     jump distance = SPEED * air time          (air time: see JUMP_VELOCITY and GRAVITY)
 # Higher: a faster runner whose jumps cover more ground, so gaps that were hard get easy.
 # Lower: slower and more deliberate; wide gaps can become impossible to cross.
-const SPEED := 360.0
+const SPEED := 370.0
 
 # ACCEL: how fast velocity.x chases its target, in pixels per second per second. It is the
 # step size of the move_toward() call above, so it governs speeding up, braking and turning
@@ -144,6 +144,19 @@ const STUN_TIME := 0.25
 # BODY_SIZE); make y more negative if the bar overlaps the head.
 const HEALTH_BAR_OFFSET := Vector2(0, -142)
 
+# FALL_DEATH_HEIGHT: how far in pixels you can fall, measured from the highest point of the fall
+# (the top of a jump counts) down to where you land, before the landing kills you. Landing
+# from further than this is instant death and you respawn (see die()). Grabbing a ladder or
+# landing safely restarts the measurement.
+#     fall = landing y - highest y reached while airborne
+# It must exceed the biggest drop a level expects you to survive: the longest legitimate drop plus
+# your jump height (JUMP_VELOCITY^2 / (2 * GRAVITY)). Tiles are Level.T pixels tall.
+# Higher: forgiving, tall drops are safe. Lower: even moderate drops are lethal.
+const FALL_DEATH_HEIGHT := 700.0
+
+## Emitted when the player dies. cause is "health" (ran out of health) or "fall".
+signal died(cause: String)
+
 var spawn := Vector2.ZERO
 var health := MAX_HEALTH
 var hazard_count := 0   # how many hazard areas (spikes) currently overlap the player
@@ -151,6 +164,7 @@ var climbing := false
 ## Ladder columns in world space (top-left of the top tile, down to the floor). Set by main from the Level.
 var ladders: Array[Rect2] = []
 
+var _peak_y := 0.0      # highest point (smallest y) reached since last standing/climbing
 var _ladder := Rect2()  # the ladder being climbed (valid while climbing)
 var _facing := 1
 var _hurt_timer := 0.0
@@ -162,6 +176,7 @@ var _health_bar: HealthBar
 
 func _ready() -> void:
 	z_index = 2
+	_peak_y = global_position.y
 	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -190,7 +205,7 @@ func take_damage(amount: int) -> bool:
 	health = maxi(0, health - amount)
 	health_changed.emit(health, MAX_HEALTH)
 	if health == 0:
-		die()
+		die("health")
 	else:
 		_invuln_timer = INVULN_TIME
 		_hurt_timer = HURT_TIME
@@ -217,8 +232,10 @@ func attack_heavy() -> void:
 	pass
 
 
-## Out of health: back to the start with a full bar.
-func die() -> void:
+## Out of health or a deadly fall: back to the last checkpoint with a full bar.
+func die(cause: String = "health") -> void:
+	died.emit(cause)
+	_peak_y = spawn.y
 	health = MAX_HEALTH
 	health_changed.emit(health, MAX_HEALTH)
 	global_position = spawn
@@ -276,9 +293,24 @@ func _physics_process(delta: float) -> void:
 	if climbing:
 		_keep_on_ladder(vdir)
 
+	_track_fall()
+
 	if dir != 0.0 and not climbing:
 		_facing = 1 if dir > 0.0 else -1
 	_visuals.update_pose(_pose_state(vdir), _facing, delta)
+
+
+## Track the highest point of the current fall and die if we land too far below it.
+func _track_fall() -> void:
+	if climbing:
+		_peak_y = global_position.y
+	elif is_on_floor():
+		if global_position.y - _peak_y > FALL_DEATH_HEIGHT:
+			die("fall")
+		else:
+			_peak_y = global_position.y
+	else:
+		_peak_y = minf(_peak_y, global_position.y)
 
 
 # ---------- ladders ----------

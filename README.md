@@ -63,8 +63,11 @@ Stick to Godot 4.7.x. The project files and the export templates must be the sam
 5. Run the game:
    ```bash
    godot --path .                       # play
+   SABOTAGE_LEVEL=test godot --path .   # the test level (a small sandbox) instead of Level 1
    SABOTAGE_PREVIEW=1 godot --path .    # zoomed-out view of the whole level (debug aid)
    ```
+   With no `SABOTAGE_LEVEL`, the game starts on Level 1. In PowerShell set the variable first:
+   `$env:SABOTAGE_LEVEL = "test"; godot --path .`
    Or open the folder in the Godot editor (Project Manager > Import > pick `project.godot`) and press F5.
 
 ### Editing in VS Code (optional)
@@ -316,10 +319,16 @@ godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fans
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/screens_test.gd  # live monitors: layout, text fit, the AI job
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/assets_test.gd   # every image is where the layout rules say
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/hud_clearance_test.gd # player never hidden behind the controls
-godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_bot.gd     # bot beats level 1
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_bot.gd     # bot beats the test level
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fall_test.gd     # fall death, level selection
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level1_test.gd   # Level 1: finishable, no dead ends, pits not skippable (~1 min)
 ```
 
-`level_bot.gd` is specific to level 1's layout; it will need updating if the map changes.
+Most tests pin the **test level** (they set `SABOTAGE_LEVEL=test` themselves), because they rely on its
+exact layout. `level_bot.gd` is specific to the test level's layout. `level1_test.gd` checks Level 1
+with `tools/tests/lib/level_solver.gd`, which simulates the player's jumps from every spot to build a
+map of where you can get to. To inspect a level while designing it:
+`SABOTAGE_LEVEL=1 godot_console --headless --path . --script res://tools/solve_level.gd`.
 `--fixed-fps 60` makes the simulation deterministic and fast.
 
 Two traps if you write your own headless tests:
@@ -418,7 +427,12 @@ each constant has the formulas; in short:
 
 Work them out from the current values (tile size is `Level.T`) and keep steps and gaps
 comfortably inside them, so levels stay fair. After retuning, run `tools/run_tests.sh`: the
-level-1 bot test will tell you if the level became unbeatable.
+Level 1 test will tell you if the level became unbeatable or has a dead end.
+
+There are two levels: **Level 1** (`level_1()`, drawn with the `LevelGrid` helpers in
+`scripts/level/level_grid.gd`: `slab`, `ledge`, `ladder`, `spikes`, `crate_stack`...) and the **test
+level** (`test_level()`), a sandbox that must not be changed. Checkpoints (`K`) set where you respawn.
+Falling further than `Player.FALL_DEATH_HEIGHT` kills you, measured from the top of the fall.
 
 To swap the hero, change `CHARACTER` in `scripts/player/player_sprite.gd` to `adventurer`,
 `female`, `soldier` or `zombie`.

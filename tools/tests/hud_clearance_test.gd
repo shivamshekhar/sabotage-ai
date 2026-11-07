@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Headless test (phone mode): the player is never hidden behind the on-screen controls. At the
 ## spawn, in the middle, near the exit and at both ends of the level it checks that the player's
 ## body doesn't overlap the D-pad or any of the four buttons. Exits non-zero on failure.
@@ -20,6 +20,7 @@ var ok := true
 
 func _initialize() -> void:
 	OS.set_environment("SABOTAGE_TOUCH", "1")   # phone mode: main creates the controls + side padding
+	OS.set_environment("SABOTAGE_LEVEL", "test")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 

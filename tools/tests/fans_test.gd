@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Headless test of the spinning machine fans: one blade sprite per fan housing, each one turning
 ## every frame, at different speeds, and each sitting on its housing. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fans_test.gd
@@ -10,6 +10,7 @@ var ok := true
 
 
 func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 
@@ -51,7 +52,7 @@ func _main() -> void:
 			level = n
 
 	var expected := 0
-	for row in LevelData.level_1():
+	for row in LevelData.test_level():
 		for ch in row:
 			if ch == "G":
 				expected += MachineFans.centres("machine_gpu_rack").size()
@@ -86,7 +87,7 @@ func _main() -> void:
 
 	# each blade sits exactly on a housing centre of the rack
 	var rack_pos := Vector2.ZERO
-	var rows := LevelData.level_1()
+	var rows := LevelData.test_level()
 	for r in rows.size():
 		for c in rows[r].length():
 			if rows[r][c] == "G":

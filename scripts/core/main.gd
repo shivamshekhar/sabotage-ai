@@ -19,6 +19,7 @@ func _ready() -> void:
 	InputSetup.register()
 
 	var level := Level.new()
+	level.level_id = _chosen_level_id()
 	if TouchControls.should_show():
 		# Let the camera scroll a little past each end so the player isn't hidden behind the
 		# D-pad (left) or the buttons (right) near the level's edges.
@@ -35,11 +36,26 @@ func _ready() -> void:
 	level.goal_reached.connect(_on_goal_reached)
 
 
+## Which level to load: the environment variable SABOTAGE_LEVEL ("test" for the test level),
+## otherwise the default level. An unknown value warns and falls back to the default.
+func _chosen_level_id() -> String:
+	var wanted := OS.get_environment("SABOTAGE_LEVEL")
+	if wanted == "":
+		return LevelData.DEFAULT_ID
+	if not LevelData.has_level(wanted):
+		push_warning("Unknown SABOTAGE_LEVEL '%s'; using level %s" % [wanted, LevelData.DEFAULT_ID])
+		return LevelData.DEFAULT_ID
+	return wanted
+
+
 func _setup_camera(level: Level, player: Player) -> void:
 	var cam := Camera2D.new()
 	if OS.get_environment("SABOTAGE_PREVIEW") != "":
 		cam.position = Vector2(level.world_w, level.world_h) / 2.0
-		cam.zoom = Vector2(0.3, 0.3)
+		# Fit the whole level in the window (with a small margin).
+		var view := Vector2(get_viewport().get_visible_rect().size)
+		var fit := minf(view.x / level.world_w, view.y / level.world_h) * 0.95
+		cam.zoom = Vector2(fit, fit)
 		add_child(cam)
 	else:
 		cam.position_smoothing_enabled = true

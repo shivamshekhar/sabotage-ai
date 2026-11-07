@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Headless test of the ladder and jump rules (Up is both jump and climb). Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/ladder_test.gd
 ## Throwaway: verifies the ladder + jump rules (Up is both jump and climb).
@@ -18,6 +18,7 @@ var mark_y := 0.0
 
 
 func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 

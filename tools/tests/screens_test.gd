@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Headless test of the live monitor screens: the three monitors exist and sit on the machine's blank
 ## screens, the graph and oscilloscope keep moving, and the terminal runs its whole "AI job": funny
 ## quips, a progress bar that goes 0 to 100 (stalling at 99), the results page with the water
@@ -12,6 +12,7 @@ var ok := true
 
 
 func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 

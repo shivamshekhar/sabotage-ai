@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Headless playtest: a simple bot plays level 1 with simulated key presses and reports WIN or TIMEOUT.
 ## Level-1 specific (it knows where the pit, ladder and exit stairs are); update it if the map changes.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_bot.gd
@@ -21,6 +21,7 @@ var log_every := 120
 
 
 func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 

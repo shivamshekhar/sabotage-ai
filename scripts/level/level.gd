@@ -5,6 +5,10 @@ extends Node2D
 
 signal goal_reached
 
+## Emitted when the player touches a checkpoint beacon for the first time; `position` is where they
+## will respawn from now on (the feet position on the floor in front of it).
+signal checkpoint_reached(position: Vector2)
+
 # MAP BASICS.
 
 # T: size of one map tile in pixels (tiles are square). The art, the colliders, the player's
@@ -126,6 +130,13 @@ const GLOW_MAX := 0.85
 # (1 = no change, lower = darker). Lower: a bigger on/off contrast between lit and unlit.
 const LAMP_DIM := 0.5
 
+# CHECKPOINT_DIM: brightness of a checkpoint beacon before the player has touched it, as a colour
+# multiplier (1 = fully bright, lower = darker). Once touched it switches to the pulsing green glow
+# used by the lamps (see LAMP_DIM, GLOW_MIN, GLOW_MAX). Lower: a more obvious "off" beacon.
+const CHECKPOINT_DIM := 0.4
+
+## Which level to build (see LevelData.ids()). Set it before adding the Level to the tree.
+var level_id := LevelData.DEFAULT_ID
 var world_w := 0
 var world_h := 0
 var spawn := Vector2.ZERO
@@ -144,7 +155,7 @@ var _glow_mat: CanvasItemMaterial
 
 
 func _ready() -> void:
-	_map = LevelData.level_1()
+	_map = LevelData.map(level_id)
 	var cols := _map[0].length()
 	for r in _map.size():
 		if _map[r].length() != cols:
@@ -255,6 +266,7 @@ func _build_tiles() -> void:
 				"~": _place(_run_name("slime_floor", "~", c, r, true), c, r, -1)
 				"P": spawn = Vector2((c + 0.5) * T, (r + 1) * T)
 				"E": _build_exit(c, r)
+				"K": _build_checkpoint(c, r)
 				_:
 					if MACHINES.has(_map[r][c]):
 						_build_machine(MACHINES[_map[r][c]], c, r)
@@ -409,6 +421,23 @@ func _build_exit(c: int, r: int) -> void:
 	area.body_entered.connect(_on_goal_body)
 
 
+## A checkpoint: a green beacon that stays dim until the player touches it. Touching it makes it the
+## player's new respawn point (Player.spawn) and switches it on (a pulsing green glow, like the lamps).
+func _build_checkpoint(c: int, r: int) -> void:
+	var beacon := _decor("siren_green", c, r, -3, Color.WHITE)
+	beacon.modulate = Color(CHECKPOINT_DIM, CHECKPOINT_DIM, CHECKPOINT_DIM)
+	# the player's body overlaps this area whenever they stand on the floor in front of the beacon
+	var area := _make_area(Rect2(c * T, (r - 1) * T, T, 2 * T))
+	var lit := [false]   # an array so the closure below can change it
+	area.body_entered.connect(func(body: Node) -> void:
+		if body is Player and not lit[0]:
+			lit[0] = true
+			var respawn := Vector2((c + 0.5) * T, (r + 1) * T)
+			body.spawn = respawn
+			_add_light(beacon, c, SIREN_LENS, LIGHT_GREEN, 90.0)
+			checkpoint_reached.emit(respawn))
+
+
 func _on_goal_body(body: Node) -> void:
 	if body is Player and not _goal_fired:
 		_goal_fired = true
@@ -519,6 +548,6 @@ func _build_backdrop() -> void:
 	add_child(bd)
 	bd.draw.connect(func() -> void:
 		bd.draw_rect(Rect2(0, 0, world_w, world_h), Color(0.04, 0.06, 0.11, 0.30))
-		bd.draw_string(ThemeDB.fallback_font, Vector2(150, 260), "DATA CENTER 01",
+		bd.draw_string(ThemeDB.fallback_font, LevelData.title_position(level_id), LevelData.title(level_id),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(1, 1, 1, 0.35)))
 	bd.queue_redraw()
