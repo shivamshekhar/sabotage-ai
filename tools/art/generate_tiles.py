@@ -1,23 +1,25 @@
 """Generates the data-center themed foreground tiles.
 
 Usage (needs Pillow):
-    python tools/art/generate_tiles.py <kenney_sprites_dir> <out_dir>
-    e.g. python tools/art/generate_tiles.py assets/kenney/platformer-pack-industrial/sprites assets/tiles/data_center
+    python tools/art/generate_tiles.py <kenney_tiles_dir> <out_dir>
+    e.g. python tools/art/generate_tiles.py assets/tiles/kenney_industrial assets/tiles/data_center
 
 - Structural pieces (ground, ledges, ladders, crates, spikes) are drawn from scratch
   in the same palette as the background: dark steel, cyan edge lights, orange accents.
 - Props (monitors, panels, gear, sirens, canisters, slime...) are Kenney sprites regraded
   into the palette: neutral greys become navy steel, saturated accents stay bright.
 
-Output files keep the Kenney names (see assets/kenney/.../sprites/NAMES.md), so the game
-(SpriteLibrary) can use them as drop-in replacements.
+Output files keep the Kenney names (see assets/tiles/kenney_industrial/NAMES.md), so the game
+(SpriteLibrary) can use them as drop-in replacements. Like the Kenney set they are stored in category
+folders (terrain/, structure/, equipment/, hazards/, lights/, signage/), chosen from the first word of
+the sprite's name.
 """
 import os
 import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else "assets/kenney/platformer-pack-industrial/sprites"
+SRC = sys.argv[1] if len(sys.argv) > 1 else "assets/tiles/kenney_industrial"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "assets/tiles/data_center"
 os.makedirs(OUT, exist_ok=True)
 
@@ -313,8 +315,28 @@ GRADED_PROPS = [
 ]
 
 
+# Category folder for a tile, from the first word of its name. This MUST match
+# SpriteLibrary.TILE_CATEGORIES in scripts/level/sprite_library.gd (tools/tests/assets_test.gd checks
+# that the files on disk agree with that table).
+TILE_CATEGORIES = {
+    "ground": "terrain", "ledge": "terrain", "slime": "terrain",
+    "block": "structure", "ladder": "structure", "scaffold": "structure",
+    "pipe": "structure", "rail": "structure", "glass": "structure",
+    "monitor": "equipment", "panel": "equipment", "gear": "equipment", "canister": "equipment",
+    "spikes": "hazards", "hazard": "hazards", "barrier": "hazards",
+    "siren": "lights", "lamp": "lights",
+    "arrow": "signage", "sign": "signage",
+}
+
+
+def category(name):
+    return TILE_CATEGORIES[name.split("_")[0]]
+
+
 def save(img, name):
-    img.save(os.path.join(OUT, name + ".png"))
+    folder = os.path.join(OUT, category(name))
+    os.makedirs(folder, exist_ok=True)
+    img.save(os.path.join(folder, name + ".png"))
 
 
 if __name__ == "__main__":
@@ -329,7 +351,7 @@ if __name__ == "__main__":
     save(crate(False), "block_metal_x")
     save(crate(True), "block_metal_orange")
     for name in GRADED_PROPS:
-        src = os.path.join(SRC, name + ".png")
+        src = os.path.join(SRC, category(name), name + ".png")
         if os.path.exists(src):
             save(grade(Image.open(src)), name)
     print("wrote tiles to", OUT)

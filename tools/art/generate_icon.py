@@ -12,7 +12,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "icon.png"
-HERO = "assets/kenney/platformer-characters/player/player_idle.png"
+HERO = "assets/characters/kenney_platformer/player/player_idle.png"
 S = 512
 
 
