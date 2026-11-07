@@ -5,28 +5,143 @@ extends CharacterBody2D
 
 signal health_changed(current: int, maximum: int)
 
-# Physics layers. Ladder top decks are one-way and live on their own layer so the
-# player can ignore them while climbing (needed to climb back down through the deck).
+# PHYSICS LAYERS. Godot collision layers are bit flags, so each layer needs its own bit.
+
+# LAYER_WORLD: ground, walls, crates and ledges. Level colliders use it as their
+# collision_layer, and the player always includes it in its collision_mask.
 const LAYER_WORLD := 1
+
+# LAYER_LADDER_DECK: the one-way deck on top of each ladder. It has its own layer so
+# climbing can switch it off: the player's collision_mask is WORLD | DECK normally and just
+# WORLD while climbing (see _start_climb / _stop_climb), which lets you climb down through
+# the deck you are standing on. A new layer must use a different bit, and the player's
+# mask must include it for the player to collide with it.
 const LAYER_LADDER_DECK := 2
 
-const SPEED := 320.0
-const ACCEL := 2600.0
-const JUMP_VELOCITY := -660.0
-const GRAVITY := 1600.0
-const CLIMB_SPEED := 190.0
-const LADDER_OVERLAP := 0.75   # fraction of the hitbox that must overlap a ladder to grab it
-const LADDER_SLACK := 6.0      # vertical tolerance (px) when grabbing at the top/bottom
+# MOVEMENT TUNING. Units are pixels and seconds. Godot's Y axis points DOWN, so "up" is a
+# NEGATIVE velocity. Every formula is multiplied by delta (the physics step), so the feel
+# does not depend on frame rate.
+
+# SPEED: top running speed, in pixels per second. It is the target of the horizontal
+# movement in _physics_process():
+#     velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)   (dir is -1, 0 or 1)
+# It also sets how far a jump carries:
+#     jump distance = SPEED * air time          (air time: see JUMP_VELOCITY and GRAVITY)
+# Higher: a faster runner whose jumps cover more ground, so gaps that were hard get easy.
+# Lower: slower and more deliberate; wide gaps can become impossible to cross.
+const SPEED := 360.0
+
+# ACCEL: how fast velocity.x chases its target, in pixels per second per second. It is the
+# step size of the move_toward() call above, so it governs speeding up, braking and turning
+# around, on the ground and in the air alike:
+#     time to full speed = SPEED / ACCEL
+#     distance covered while getting there = 0.5 * ACCEL * time^2
+# Higher: snappy, near-instant starts and stops.
+# Lower: slidey, ice-like, and harder to land on small ledges.
+# (While stunned after a hit a separate, weaker braking value is used so knockback carries.)
+const ACCEL := 1600.0
+
+# JUMP_VELOCITY: upward speed given at the moment of a jump, in pixels per second. It is
+# negative because the Y axis points down. Set once, when jumping on the floor:
+#     velocity.y = JUMP_VELOCITY
+# and gravity then slows it, which gives:
+#     jump height = JUMP_VELOCITY^2 / (2 * GRAVITY)
+#     time to the top = |JUMP_VELOCITY| / GRAVITY
+#     air time (landing at the same height) = 2 * |JUMP_VELOCITY| / GRAVITY
+# Height grows with the SQUARE of the speed, so small changes are very noticeable.
+# Higher: reaches higher platforms and hangs in the air longer. Lower: lower hops.
+# After changing it, re-check the level's step heights (README.md, "Designing levels").
+const JUMP_VELOCITY := -760.0
+
+# GRAVITY: downward acceleration, in pixels per second per second, added every physics step
+# while airborne:
+#     velocity.y += GRAVITY * delta
+# There is no maximum fall speed, so long drops keep speeding up. It also shapes the arc of
+# knockback hops.
+# Higher: heavy, snappy jumps (lower and shorter for the same JUMP_VELOCITY).
+# Lower: floaty, moon-like jumps.
+# Jump height and air time are both proportional to 1 / GRAVITY.
+const GRAVITY := 2000.0
+
+# CLIMB_SPEED: vertical speed on a ladder, in pixels per second, up or down:
+#     velocity = Vector2(0, vdir * CLIMB_SPEED)        (vdir: -1 up, 0 still, +1 down)
+# Time to climb a ladder = ladder height / CLIMB_SPEED.
+# Higher: quicker climbing. Lower: slower, more laborious ladders.
+# (The tests compare against this constant rather than a fixed number.)
+const CLIMB_SPEED := 250.0
+
+# LADDER_OVERLAP: how much of the player's hitbox must overlap a ladder, sideways, before
+# Up/Down grabs it. A fraction from 0 to 1 of the hitbox width (BODY_SIZE.x), checked in
+# _find_ladder():
+#     overlap / BODY_SIZE.x >= LADDER_OVERLAP
+# where overlap is how many pixels of the hitbox's width lie inside the ladder's width.
+# Higher (towards 1): you must line up almost exactly. Lower: forgiving, grabs from further
+# to the side. Because a ladder is wider than the hitbox, even 1 leaves a small window.
+const LADDER_OVERLAP := 0.75
+
+# LADDER_SLACK: vertical forgiveness, in pixels, when grabbing near a ladder's ends. Your
+# feet must be between (ladder top - LADDER_SLACK) and (ladder bottom + LADDER_SLACK),
+# checked in _find_ladder(). It also decides how far above the top deck you can still catch
+# the ladder mid-jump.
+# Higher: easier catches, but you can grab from slightly too far away.
+# Lower: you must be at exactly the ladder's height.
+const LADDER_SLACK := 6.0
+
+# HURT_TIME: how long, in seconds, the hurt pose is shown after a hit. Visual only: it does
+# not stop you moving (STUN_TIME does) and does not change invulnerability (INVULN_TIME).
 const HURT_TIME := 0.4
-# Hitbox is a bit narrower than the ~96px-wide art so tight jumps stay fair.
+
+# BODY_SIZE: the collision rectangle in pixels (width, height). Its origin is at the feet,
+# so the shape is centred half its height above the player's position. It is used for:
+#   - the CollisionShape2D (what you bump into),
+#   - the ladder grab test (the width, see LADDER_OVERLAP),
+#   - the health bar's position (see HEALTH_BAR_OFFSET).
+# It is deliberately narrower than the drawn sprite, so tight jumps and spikes feel fair
+# instead of pixel-exact.
+# Wider: harder to fit through gaps and onto narrow ledges. Taller: needs more headroom.
+# If you change it, update PlayerSprite.SCALE, the PlayerShadow sizes and HEALTH_BAR_OFFSET.
 const BODY_SIZE := Vector2(60, 128)
 
+# MAX_HEALTH: health at spawn and after dying, and the "full" mark of the health bar
+# (bar fill = health / MAX_HEALTH).
+#     hits you can take = MAX_HEALTH / HAZARD_DAMAGE, rounded up
+# Higher: a sturdier player. Lower: a more fragile one.
 const MAX_HEALTH := 100
+
+# HAZARD_DAMAGE: health lost per hit from a hazard such as spikes (see take_damage()).
+# Standing in a hazard hurts you again every INVULN_TIME seconds.
+# Higher: deadlier hazards. Lower: more forgiving ones.
 const HAZARD_DAMAGE := 25
-const INVULN_TIME := 1.0       # seconds of blinking invulnerability after a hit
+
+# INVULN_TIME: seconds after a hit during which further damage is ignored. The sprite
+# blinks for this long. While standing in spikes it is also the gap between hits:
+#     time to die in a hazard = hits you can take * INVULN_TIME
+# Higher: more time to escape, but hazards hurt less often.
+# Lower: rapid repeated damage.
+const INVULN_TIME := 1.0
+
+# KNOCKBACK_UP: upward speed given by a hit, in pixels per second (negative = up, as with
+# JUMP_VELOCITY). On a hit, in take_damage():
+#     velocity = Vector2(-facing * KNOCKBACK_X, KNOCKBACK_UP)
+# The hop height follows the jump formula: KNOCKBACK_UP^2 / (2 * GRAVITY).
+# Higher: a bigger hop out of danger. Lower: a small bump.
 const KNOCKBACK_UP := -420.0
-const KNOCKBACK_X := 260.0     # pushed backwards (away from facing) on a hit
-const STUN_TIME := 0.25        # input is ignored briefly after a hit
+
+# KNOCKBACK_X: sideways push from a hit, in pixels per second, opposite to the direction you
+# face. It fades quickly during the stun (braking is reduced, not removed), so it carries
+# you a short way before control returns.
+# Higher: thrown further back. Lower: barely pushed.
+const KNOCKBACK_X := 260.0
+
+# STUN_TIME: seconds after a hit during which steering input is ignored and ladders cannot
+# be grabbed, so the knockback plays out.
+# Higher: more "ouch", less control. Lower: you can steer almost immediately and the
+# knockback feels weaker.
+const STUN_TIME := 0.25
+
+# HEALTH_BAR_OFFSET: where the health bar's centre sits relative to the player's feet, in
+# pixels (negative y = above). It should clear the top of the sprite and hitbox (see
+# BODY_SIZE); make y more negative if the bar overlaps the head.
 const HEALTH_BAR_OFFSET := Vector2(0, -142)
 
 var spawn := Vector2.ZERO
@@ -87,6 +202,21 @@ func take_damage(amount: int) -> bool:
 	return true
 
 
+## Interact with whatever is in reach (terminals, doors, levers...). Not implemented yet.
+func interact() -> void:
+	pass
+
+
+## Quick, weak attack. Not implemented yet.
+func attack_light() -> void:
+	pass
+
+
+## Slow, strong attack. Not implemented yet.
+func attack_heavy() -> void:
+	pass
+
+
 ## Out of health: back to the start with a full bar.
 func die() -> void:
 	health = MAX_HEALTH
@@ -108,6 +238,13 @@ func _physics_process(delta: float) -> void:
 	if _stun_timer > 0.0:
 		dir = 0.0  # knocked back: no steering for a moment
 
+	if Input.is_action_just_pressed("interact"):
+		interact()
+	if Input.is_action_just_pressed("attack_light"):
+		attack_light()
+	if Input.is_action_just_pressed("attack_heavy"):
+		attack_heavy()
+
 	if hazard_count > 0:
 		take_damage(HAZARD_DAMAGE)  # ignored while invulnerable
 
@@ -128,9 +265,10 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)
 		if not is_on_floor():
 			velocity.y += GRAVITY * delta
-		elif Input.is_action_just_pressed("move_up"):
-			# Up is both jump and climb. A ladder in reach was already grabbed above
-			# (so we'd be climbing, not here); otherwise up jumps.
+		elif Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("move_up"):
+			# "jump" (Space / the JUMP button) always jumps. "move_up" (W / Up / D-pad up) is
+			# both jump and climb: a ladder in reach was already grabbed above (so we'd be
+			# climbing, not here); otherwise it jumps.
 			velocity.y = JUMP_VELOCITY
 
 	move_and_slide()

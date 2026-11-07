@@ -80,14 +80,44 @@ The repo's [.vscode/settings.json](.vscode/settings.json) makes Git Bash the def
 
 ### Controls
 
-A/D or Left/Right to move, W or Up to jump, S or Down to go down.
-On-screen touch buttons (`<  >  UP  DOWN`) drive the same input actions on a phone.
+| Action | Keyboard (PC) | Phone |
+|---|---|---|
+| Move | A / D or Left / Right | D-pad left / right |
+| Jump | **Space**, or W / Up | **JUMP** button, or D-pad up |
+| Climb up / down a ladder | W / Up, S / Down | D-pad up / down |
+| Interact | E | **USE** button |
+| Light attack | J | **LIGHT** button |
+| Heavy attack | K | **HEAVY** button |
 
-Up is both jump and climb, since you never do both at once. Ladders: when at least 75% of the
-character overlaps a ladder, Up grabs it (from the floor at its bottom, or by catching it
-mid-jump) and Down grabs it from the top deck. You then snap onto the ladder's centre line and
-can only move up/down, with no jumping, until you reach the top deck or the floor. At the top
-deck, Up jumps and Down climbs back down.
+Interact, light attack and heavy attack are placeholders for now: the keys and buttons work but
+the player's `interact()`, `attack_light()` and `attack_heavy()` functions in
+[scripts/player/player.gd](scripts/player/player.gd) are empty, ready to be filled in.
+
+**Phone layout** ([scripts/ui/touch_controls.gd](scripts/ui/touch_controls.gd)): an 8-way D-pad at
+the bottom-left (slide your thumb around it; up+right together makes a diagonal), and the four
+buttons in a diamond at the bottom-right. Several fingers work at once (steer with the D-pad while
+tapping JUMP), you can slide a thumb between the buttons without lifting it, and the controls stick
+to the real screen corners on wide phones.
+
+The controls are deliberately faint so they don't distract (they brighten while pressed). Tune
+`IDLE_ALPHA` / `ACTIVE_ALPHA` at the top of `touch_controls.gd`. On phones the camera also scrolls
+`TOUCH_SIDE_PADDING` (in `scripts/core/main.gd`) past each end of the level, over some
+decorative wall, so the player is never hidden behind the D-pad or the buttons.
+
+**The overlay only appears on phones.** On PC it is not created at all. To try the phone controls
+on a PC, set an environment variable first; the left mouse button then acts as a finger:
+
+```bash
+SABOTAGE_TOUCH=1 godot --path .        # Git Bash
+$env:SABOTAGE_TOUCH = "1"; godot --path .    # PowerShell
+```
+
+**Jump vs. climb.** Space / the JUMP button always jump. Up (W / Up arrow / D-pad up) is both jump and
+climb, since you never do both at once: when at least 75% of the character overlaps a ladder, Up
+grabs it (from the floor at its bottom, or by catching it mid-jump) and Down grabs it from the top
+deck. You then snap onto the ladder's centre line and can only move up/down, with no jumping (Space
+is ignored), until you reach the top deck or the floor. At the top deck, Up jumps and Down climbs
+back down.
 
 ## 3. Build an Android APK
 
@@ -147,9 +177,16 @@ export/android/android_sdk_path = "C:/Users/<you>/AppData/Local/Android/Sdk"
 export/android/debug_keystore = "C:/Users/<you>/AppData/Roaming/Godot/keystores/debug.keystore"
 export/android/debug_keystore_user = "androiddebugkey"
 export/android/debug_keystore_pass = "android"
+export/android/shutdown_adb_on_exit = false
 ```
 (The environment variables `JAVA_HOME` and `ANDROID_HOME` fill in the SDK path, but Godot still
 needs `java_sdk_path` set in editor settings, or it fails with "A valid Java SDK path is required".)
+
+**`shutdown_adb_on_exit = false` is important.** In the editor this is
+Editor Settings > Export > Android > *Shutdown ADB on Exit*. With it on (the default), Godot runs
+`adb kill-server` as it quits, and on Windows that call can block forever. Once the Android SDK
+is configured, **every** headless Godot command (`--import`, `--export-debug`, `--script ...`)
+then hangs instead of exiting. With it off, they exit normally in a few seconds.
 
 **f) Texture compression (already done in this repo).** Android export requires ETC2/ASTC
 textures. `project.godot` already has `textures/vram_compression/import_etc2_astc=true`; if you
@@ -162,17 +199,15 @@ texture and takes noticeably longer.
 ```bash
 tools/build_apk.sh        # run in Git Bash from the repo root; writes build/sabotage-debug.apk
 ```
-This takes about 1 minute (longer the very first time). Use the script rather than calling Godot
-directly, because **Godot 4.7.2's headless export never exits**, not after success and not after
-an error, so a plain `godot --headless --export-debug ...` leaves your terminal stuck forever.
-The script runs Godot in the background, waits for the "export DONE" line (or an error), stops
-Godot, and prints `OK: build/sabotage-debug.apk (29M)` or the tail of `build/export.log`.
+This takes about 1 minute (longer the very first time). It runs Godot in the background, waits for
+the "export DONE" line (or an error), makes sure Godot has stopped, and prints
+`OK: build/sabotage-debug.apk (29M)` or the tail of `build/export.log`.
 
-Doing it by hand, if you prefer: run
-`godot_console --headless --path . --export-debug "Android Debug (APK)" build/sabotage-debug.apk > build/export.log 2>&1`
-in the background, watch the log for `[ DONE ] export`, then stop the Godot process yourself.
-Or use the editor: Project > Export > "Android Debug (APK)" > Export Project (this one is fine,
-the hang only affects headless runs).
+Why a script and not just `godot --headless --export-debug ...`? If the
+`shutdown_adb_on_exit = false` setting from 3.1e is missing, Godot never exits after a headless
+export (success or failure) and your terminal sticks. With the setting in place a plain command
+works too, but the script also protects you from that and from a half-configured machine.
+You can also export from the editor: Project > Export > "Android Debug (APK)" > Export Project.
 
 The warning `Could not find version of build tools that matches Target SDK, using 35.0.1` is harmless.
 
@@ -239,7 +274,7 @@ Most art is generated by scripts so you can restyle it. They need Python 3 and P
 
 ```bash
 python tools/art/generate_background.py assets/backgrounds/data_center
-python tools/art/generate_tiles.py assets/kenney/platformer-pack-industrial/sprites assets/tiles/data_center
+python tools/art/generate_tiles.py assets/tiles/kenney_industrial assets/tiles/data_center
 python tools/art/generate_machines.py assets/machines/data_center
 python tools/art/generate_icon.py icon.png
 ```
@@ -250,29 +285,48 @@ After regenerating, run `godot --headless --path . --import` so Godot re-imports
 |---|---|---|
 | `generate_background.py` | 3 parallax layers + 2 LED layers, blurred for depth of field | `BLUR_*`, colours, rack layout |
 | `generate_tiles.py` | themed ground, ledges, ladders, crates, spikes + regraded props | palette constants at the top |
-| `generate_machines.py` | GPU rack, supercomputer, monitoring station, server tower + LED layers + shadows | the per-machine functions |
+| `generate_machines.py` | GPU rack, supercomputer, monitoring station, server tower + LED layers + shadows + the spinning fan blades (`machine_fan.png`). Also **writes `scripts/level/machine_fans.gd` and `scripts/level/machine_screens.gd`** (where each machine's fans and monitor screens sit), so commit those files after regenerating | the per-machine functions |
 | `generate_icon.py` | the 512x512 app icon (`icon.png`) | colours, hero pose |
 
 Brightness of the background layers is set at run time in
 [scripts/level/background.gd](scripts/level/background.gd) (`*_TINT` constants), not in the images.
 
-The third-party art in `assets/kenney/` (Kenney, CC0) is the source for the character poses and
-the base sprites; `assets/kenney/.../sprites/NAMES.md` maps the pack's numeric file names to the
-descriptive names used here.
+The third-party art by Kenney (CC0) is the source for the character poses
+(`assets/characters/kenney_platformer/`) and the base tile sprites (`assets/tiles/kenney_industrial/`);
+`assets/tiles/kenney_industrial/NAMES.md` maps the pack's numeric file names to the descriptive names
+used here. Each folder keeps its `License.txt`.
 
 ## 6. Automated checks
 
-Headless scripts in [tools/tests/](tools/tests/) play the real game with simulated key presses.
-Run them from the repo root (they exit non-zero on failure):
+Headless scripts in [tools/tests/](tools/tests/) play the real game with simulated input.
+Run all of them (about 5 seconds; each has a hard time limit; logs go to `build/test_*.log`):
 
 ```bash
-godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/ladder_test.gd   # ladder + jump rules
+tools/run_tests.sh        # Git Bash, from the repo root; exit code 0 = everything passed
+```
+
+Or one at a time (they exit non-zero on failure):
+
+```bash
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/controls_test.gd # key bindings, Space vs Up, no-op actions
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/ladder_test.gd   # ladder rules
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/health_test.gd   # damage, death, respawn
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/touch_test.gd    # D-pad + 4 buttons
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fans_test.gd     # machine fans spin, on their housings
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/screens_test.gd  # live monitors: layout, text fit, the AI job
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/assets_test.gd   # every image is where the layout rules say
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/hud_clearance_test.gd # player never hidden behind the controls
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_bot.gd     # bot beats level 1
 ```
 
 `level_bot.gd` is specific to level 1's layout; it will need updating if the map changes.
 `--fixed-fps 60` makes the simulation deterministic and fast.
+
+Two traps if you write your own headless tests:
+- Don't put `await` inside `_process`: a coroutine's return value makes Godot quit silently with
+  exit code 0 (looks like a pass, ran nothing). Start the async work from a separate function.
+- Headless has no real window, so feed simulated touches with `root.push_input(event, true)`;
+  `Input.parse_input_event` delivers nothing there.
 
 ## 7. Project layout
 
@@ -294,35 +348,77 @@ scripts/
     level.gd                Builds a level from an ASCII map (sprites, colliders, hazards, lights)
     level_data.gd           The level maps themselves (edit these to design levels)
     background.gd           Parallax data-center background (3 depth layers, blinking LEDs)
+    machine_fans.gd         GENERATED (by generate_machines.py): where each machine's spinning fans sit
+    machine_screens.gd      GENERATED (by generate_machines.py): where each machine's monitor screens sit
+    monitor_screen.gd       The live monitor displays (graph, "AI job" terminal, oscilloscope); all its strings and
+                            timings are documented constants at the top, and it shrinks text that wouldn't fit
     sprite_library.gd       The only place that knows where art lives on disk
   ui/
     touch_controls.gd       On-screen buttons for phones
     vignette.gd             Darkened screen edges
-assets/
-  kenney/
-    platformer-pack-industrial/sprites/   Level art (see NAMES.md for the old numeric IDs)
-    platformer-characters/<name>/         Character poses (player, adventurer, female, soldier, zombie)
-  backgrounds/data_center/  Generated parallax layers
-  tiles/data_center/        Themed foreground tiles (same names as the Kenney sprites)
-  machines/data_center/     GPU rack, supercomputer, monitoring station, server tower (+ LED layers)
+assets/                     Art, nested as  component / style / group / file  (see "Asset layout" below)
 tools/
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
+  run_tests.sh              Runs every headless test in tools/tests/ with time limits
   art/                      Art generators (section 5)
   tests/                    Headless playtests (section 6)
 build/                      Export output (git-ignored): APK, AAB, export.log
 ```
 
-`SpriteLibrary` uses a tile from `assets/tiles/data_center/` when one exists with the requested
-name, and falls back to the Kenney original otherwise.
+### Asset layout
+
+Art is nested as `assets/<component>/<style>/<group>/<file>.png`. File names are never changed by
+the layout, so a sprite's name is enough to find it, and `SpriteLibrary` is the only code that
+knows the folders.
+
+```
+assets/
+  characters/
+    kenney_platformer/             Kenney's cartoon characters (style)
+      player/ adventurer/ female/ soldier/ zombie/    24 poses each: <character>_<pose>.png
+  tiles/                           level tiles and props
+    kenney_industrial/             the original Kenney set (CC0); NAMES.md maps its old numeric ids
+      terrain/ structure/ equipment/ hazards/ lights/ signage/
+    data_center/                   our themed replacements, same names and same category folders
+      terrain/ structure/ equipment/ hazards/ lights/ signage/
+  machines/
+    data_center/                   generated machines (style)
+      gpu_rack/ supercomputer/ monitoring_station/ server_tower/    image + _leds_a/_leds_b + _shadow
+      parts/                       shared moving parts (the fan blades)
+  backgrounds/
+    data_center/                   the five parallax layers
+```
+
+How a name becomes a folder:
+
+- **Tiles:** the first word of the name picks the category, for example `ground_start` -> terrain,
+  `siren_blue` -> lights. The word-to-category table is `SpriteLibrary.TILE_CATEGORIES`.
+- **Machines:** the machine is the name without the `machine_` prefix and without
+  `_leds_a`, `_leds_b` or `_shadow`: `machine_gpu_rack_shadow` -> `gpu_rack/`.
+- **Themed over original:** `SpriteLibrary.tile()` uses the sprite from `tiles/data_center/` when one
+  exists with the requested name, and falls back to `tiles/kenney_industrial/` otherwise.
+
+To add art: put the file in the right folder with the right name (a new kind of tile also needs its
+first word added to `TILE_CATEGORIES`). `tools/tests/assets_test.gd` checks that every file is
+where the rules say and that everything loads, so a misplaced file fails `tools/run_tests.sh`.
+Godot creates the `.import` file next to each image the first time you import.
 
 ## 8. Designing levels
 
-Levels are ASCII grids in `scripts/level/level_data.gd`, one character per 70px tile (legend at
+Levels are ASCII grids in `scripts/level/level_data.gd`, one character per tile (tile size is `Level.T`; legend at
 the top of that file, including how to place multi-tile machines). Ground/ledge/slime tiles pick
 their start/middle/end variant automatically from neighbouring tiles.
 
-Jump limits to design around (physics in `player.gd`): about 136px high (a bit under 2 tiles) and
-about 264px far (about 3.7 tiles) at full speed. Keep steps to 1 tile and gaps to 3 tiles or less.
+The jump limits you design around come from the movement constants in
+`scripts/player/player.gd`, so they change whenever you retune the controls. The comment above
+each constant has the formulas; in short:
+
+- maximum step height = `JUMP_VELOCITY`² / (2 · `GRAVITY`)
+- maximum gap you can jump = `SPEED` · air time, where air time = 2 · |`JUMP_VELOCITY`| / `GRAVITY`
+
+Work them out from the current values (tile size is `Level.T`) and keep steps and gaps
+comfortably inside them, so levels stay fair. After retuning, run `tools/run_tests.sh`: the
+level-1 bot test will tell you if the level became unbeatable.
 
 To swap the hero, change `CHARACTER` in `scripts/player/player_sprite.gd` to `adventurer`,
 `female`, `soldier` or `zombie`.
@@ -336,8 +432,9 @@ To swap the hero, change `CHARACTER` in `scripts/player/player_sprite.gd` to `ad
 | `Could not find type "Player" (or Level, ...) in the current scope` | The script class cache is missing. Run `godot --headless --path . --import` twice. |
 | Export: `A valid Java SDK path is required in Editor Settings` | Set `export/android/java_sdk_path` (section 3.1e). |
 | Export: missing templates / `No export template found` | Install templates for exactly 4.7.2.stable (section 3.1c). |
-| A headless Godot command (export, sometimes `--import`) never returns | Godot 4.7.2 does not exit after a headless export, even a successful one. Use `tools/build_apk.sh`. If something is stuck, stop it by process id (`Stop-Process -Id <pid>` in PowerShell, or `taskkill //F //T //PID <pid>` in Git Bash). Also don't pipe export output through a filter such as `Select-String`: it hides all progress until the process exits. |
-| Two Godot instances on the same project (for example a stuck one plus a new one) | Stop the stuck one first. Chained commands (`import; import; export`) keep launching the next step when you kill one. |
+| A headless Godot command (`--import`, `--export-debug`, `--script`) never returns once Android is set up | Godot's "Shutdown ADB on Exit" runs `adb kill-server`, which blocks on Windows. Set `export/android/shutdown_adb_on_exit = false` (section 3.1e). You can recognise it: Godot sits at near-zero CPU, and Task Manager shows an `adb.exe kill-server` child that never ends. |
+| A command is stuck right now | Stop it by process id (`Stop-Process -Id <pid>` in PowerShell, or `taskkill //F //T //PID <pid>` in Git Bash), including its `adb.exe` child. Don't pipe Godot's output through a filter such as `Select-String`: it hides all progress until the process exits. |
+| Two Godot instances on the same project | Stop the stuck one first. Chained commands (`import; import; export`) keep launching the next step each time you kill one. |
 | Export: `ETC2/ASTC texture compression is required` | Enable `import_etc2_astc` (section 3.1f). Already on in this repo. |
 | `sdkmanager` says licences are not accepted | `yes \| sdkmanager --licenses` in Git Bash (piping from PowerShell does not answer the prompts). |
 | Unzipping the SDK tools fails on a long path | Extract directly into the SDK folder with a short path (use `unzip` in Git Bash). |

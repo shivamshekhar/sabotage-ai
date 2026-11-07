@@ -2,11 +2,27 @@ extends Node2D
 ## Entry point: wires input, level, player, camera, touch controls and the win banner.
 ## Set env var SABOTAGE_PREVIEW=1 to render a zoomed-out view of the whole level.
 
+# TOUCH_SIDE_PADDING: on phones only, how far in pixels the camera may scroll past each end
+# of the level. The level draws that much decorative wall beyond its edges
+# (Level.side_padding) and the camera limits are widened by the same amount:
+#     limit_left = -padding,   limit_right = world width + padding
+# Without it the camera stops at the level edge, which can leave the player hidden behind
+# the D-pad at the start or the buttons at the end. It must be at least the D-pad's right
+# edge plus its grab padding plus half the player's width (see TouchControls: MARGIN,
+# DPAD_RADIUS, DPAD_GRAB_PADDING and Player.BODY_SIZE).
+# Higher: more empty wall visible at the level's ends. Lower: the player can disappear
+# behind the controls. tools/tests/hud_clearance_test.gd checks this.
+const TOUCH_SIDE_PADDING := 400
+
 
 func _ready() -> void:
 	InputSetup.register()
 
 	var level := Level.new()
+	if TouchControls.should_show():
+		# Let the camera scroll a little past each end so the player isn't hidden behind the
+		# D-pad (left) or the buttons (right) near the level's edges.
+		level.side_padding = TOUCH_SIDE_PADDING
 	add_child(level)
 
 	var player := Player.new()
@@ -27,13 +43,14 @@ func _setup_camera(level: Level, player: Player) -> void:
 		add_child(cam)
 	else:
 		cam.position_smoothing_enabled = true
-		cam.limit_left = 0
+		cam.limit_left = -level.side_padding
 		cam.limit_top = 0
-		cam.limit_right = level.world_w
+		cam.limit_right = level.world_w + level.side_padding
 		cam.limit_bottom = level.world_h
 		player.add_child(cam)
 		add_child(Vignette.new())
-		add_child(TouchControls.new())
+		if TouchControls.should_show():  # phones only; hidden on PC
+			add_child(TouchControls.new())
 	cam.make_current()
 
 

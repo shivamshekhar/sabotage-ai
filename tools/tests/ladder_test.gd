@@ -3,7 +3,9 @@ extends SceneTree
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/ladder_test.gd
 ## Throwaway: verifies the ladder + jump rules (Up is both jump and climb).
 
-const LX := 1995.0  # centre of the ladder column (col 28)
+# LX: the x position of the centre of the ladder in level 1. If you move that ladder in the
+# map, update this (and the same constant in controls_test.gd and level_bot.gd).
+const LX := 1995.0
 
 var main: Node
 var player: Player
@@ -115,7 +117,7 @@ func _process(_d: float) -> bool:
 				Input.action_press("move_up")  # up on a ladder climbs; it must not launch the player
 			elif t == 52:
 				_check("Up while on a ladder climbs, doesn't jump",
-					player.climbing and player.velocity.y > -250.0 and player.global_position.y < mark_y,
+					player.climbing and absf(player.velocity.y) <= Player.CLIMB_SPEED + 1.0 and player.global_position.y < mark_y,
 					"vy=%s y=%s (was %s)" % [player.velocity.y, player.global_position.y, mark_y])
 				_release_all()
 				Input.action_press("move_down")

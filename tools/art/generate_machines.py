@@ -2,13 +2,15 @@
 
 Usage (needs Pillow):  python tools/art/generate_machines.py assets/machines/data_center
 
-Each machine writes three PNGs:
+Each machine writes three PNGs into its own folder (<out>/<machine>/, e.g. gpu_rack/):
   <name>.png          the machine
   <name>_leds_a.png   bright LEDs / screen glow (first half), pulsed by the game
   <name>_leds_b.png   bright LEDs / screen glow (second half), pulsed in the other phase
+  <name>_shadow.png   soft drop shadow
+Shared moving parts (the fan blades) go in <out>/parts/.
 Sizes are multiples of the 70px tile so they drop onto the level grid:
   machine_gpu_rack 140x210 (2x3), machine_supercomputer 210x210 (3x3),
-  machine_monitoring_station 210x140 (3x2), machine_server_tower 70x210 (1x3).
+  machine_monitoring_station 280x210 (4x3), machine_server_tower 70x210 (1x3).
 """
 import math
 import os
@@ -19,6 +21,23 @@ from PIL import Image, ImageDraw, ImageFilter
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/machines/data_center"
 os.makedirs(OUT, exist_ok=True)
+
+# Files are stored one folder per machine (gpu_rack/, supercomputer/, ...) with its image, LED layers and
+# shadow together; shared moving parts go in parts/. This MUST match SpriteLibrary.machine_folder() in
+# scripts/level/sprite_library.gd, which finds the files by name (tools/tests/assets_test.gd checks it).
+FILE_SUFFIXES = ("_leds_a", "_leds_b", "_shadow")
+SHARED_PARTS = ("machine_fan",)
+
+
+def machine_dir(file_name):
+    base = file_name
+    for suffix in FILE_SUFFIXES:
+        if base.endswith(suffix):
+            base = base[: -len(suffix)]
+    folder = "parts" if base in SHARED_PARTS else base[len("machine_"):]
+    path = os.path.join(OUT, folder)
+    os.makedirs(path, exist_ok=True)
+    return path
 SS = 3
 
 EDGE = (12, 15, 24)
@@ -104,12 +123,12 @@ def overlays(name, size, leds, panels, seed):
             R(cd, x0, y0, x1, y1, c + (a,))
             R(hd, x0 - 2, y0 - 2, x1 + 2, y1 + 2, c + (a // 2,))
         halo = halo.filter(ImageFilter.GaussianBlur(5 * SS / 2))
-        Image.alpha_composite(halo, core).resize((w, h), Image.LANCZOS).save(os.path.join(OUT, f"{name}_leds_{key}.png"))
+        Image.alpha_composite(halo, core).resize((w, h), Image.LANCZOS).save(os.path.join(machine_dir(f"{name}_leds_{key}"), f"{name}_leds_{key}.png"))
 
 
 def save(name, im):
     base = fin(im)
-    base.save(os.path.join(OUT, f"{name}.png"))
+    base.save(os.path.join(machine_dir(name), f"{name}.png"))
     shadow(name, base)
 
 
@@ -123,7 +142,7 @@ def shadow(name, base, pad=20, blur=7, strength=0.75):
     layer.paste(black, (pad, pad), black)
     layer = layer.filter(ImageFilter.GaussianBlur(blur))
     layer.putalpha(layer.getchannel("A").point(lambda v: int(v * strength)))
-    layer.save(os.path.join(OUT, f"{name}_shadow.png"))
+    layer.save(os.path.join(machine_dir(f"{name}_shadow"), f"{name}_shadow.png"))
 
 
 # ------------------------------------------------------------------ GPU rack (140x210)
@@ -133,6 +152,7 @@ def gpu_rack():
     d = ImageDraw.Draw(im)
     rng = random.Random(3)
     leds = []
+    fan_centers = []   # where the game places the spinning blade sprite (machine_fan.png)
     cabinet(d, W, H)
     # Top vent panel + accent
     R(d, 9, 7, 131, 17, (20, 26, 40, 255))
@@ -145,14 +165,11 @@ def gpu_rack():
         R(d, 9, y, 131, y + 23, (14, 18, 28, 255))
         R(d, 10, y + 1, 130, y + 22, (29, 37, 57, 255))
         R(d, 10, y + 1, 130, y + 2.6, (50, 63, 92, 255))
-        for fx in (27, 55):  # fans
+        for fx in (27, 55):  # fan housings; the blades are a separate sprite so the game can spin them
             cy = y + 12
             C(d, fx, cy, 9.8, (10, 13, 22, 255))
             C(d, fx, cy, 8.4, (22, 28, 44, 255))
-            for k in range(6):
-                a = math.radians(k * 60 + i * 11)
-                LN(d, [(fx, cy), (fx + 7.2 * math.cos(a), cy + 7.2 * math.sin(a))], (74, 92, 128, 255), 2.0)
-            C(d, fx, cy, 2.2, (104, 124, 162, 255))
+            fan_centers.append((fx, cy))
         for gx in range(80, 118, 3):  # heatsink grille
             R(d, gx, y + 4, gx + 1.4, y + 19, (18, 23, 36, 255))
         leds.append((124, y + 7, pick_led(rng)))
@@ -167,6 +184,110 @@ def gpu_rack():
         R(d, x, H - 5.2, x + 7, H - 2.4, (8, 10, 18, 255))
     save("machine_gpu_rack", im)
     overlays("machine_gpu_rack", (W, H), leds, [], 11)
+    write_fan_data({"machine_gpu_rack": fan_centers})
+
+
+# ------------------------------------------------------------------ spinning fan blades
+FAN_SIZE = 24  # px; the blades are drawn centred in a square this size
+
+
+def fan_blades():
+    """The rotating part of a fan: blades and hub on a transparent square. The game places one of
+    these over each fan housing in the machine sprite and rotates it around its centre."""
+    c = FAN_SIZE / 2
+    im = new(FAN_SIZE, FAN_SIZE)
+    d = ImageDraw.Draw(im)
+    for k in range(6):
+        a = math.radians(k * 60)
+        tip = (c + 7.8 * math.cos(a), c + 7.8 * math.sin(a))
+        LN(d, [(c, c), tip], (74, 92, 128, 255), 2.6)
+        # a lighter leading edge so the rotation reads
+        side = (c + 7.8 * math.cos(a + 0.35) * 0.9, c + 7.8 * math.sin(a + 0.35) * 0.9)
+        LN(d, [(c, c), side], (112, 134, 176, 255), 1.0)
+    C(d, c, c, 2.6, (104, 124, 162, 255))
+    C(d, c, c, 1.2, (150, 170, 206, 255))
+    save_raw("machine_fan", fin(im))
+
+
+def save_raw(name, img):
+    img.save(os.path.join(machine_dir(name), f"{name}.png"))
+
+
+def write_screen_data(machines):
+    """Writes scripts/level/machine_screens.gd: the screen rectangles of machines whose screens
+    show live content, in pixels from the top-left of the machine sprite."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "level", "machine_screens.gd")
+    out = [
+        "class_name MachineScreens",
+        "extends RefCounted",
+        "## GENERATED by tools/art/generate_machines.py. Do not edit by hand; re-run the generator.",
+        "## Screens on machines whose content is drawn live by the game (see monitor_screen.gd), as",
+        "## rectangles in pixels from the top-left corner of the machine sprite.",
+        "",
+    ]
+    for name, rects in machines.items():
+        const = name.replace("machine_", "").upper()
+        out.append(f"# {const}: screens of the sprite \"{name}\", by position (left, center, right).")
+        out.append(f"const {const}: Dictionary = {{")
+        for key, (x, y, w, h) in rects.items():
+            out.append(f'\t"{key}": Rect2({x:.1f}, {y:.1f}, {w:.1f}, {h:.1f}),')
+        out.append("}")
+        out.append("")
+    out += [
+        "",
+        "## Screen rectangles for a machine sprite name (empty if it has no live screens).",
+        "static func rects(sprite_name: String) -> Dictionary:",
+        "\tmatch sprite_name:",
+    ]
+    for name in machines:
+        out.append(f'\t\t"{name}":')
+        out.append(f"\t\t\treturn {name.replace('machine_', '').upper()}")
+    out += ["\t\t_:", "\t\t\treturn {}", ""]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(out))
+    print("wrote", os.path.normpath(path))
+
+
+def write_fan_data(machines):
+    """Writes scripts/level/machine_fans.gd: where each machine's fans are, in pixels from the
+    top-left of the machine sprite. Generated here so the positions always match the art."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "level", "machine_fans.gd")
+    out = [
+        "class_name MachineFans",
+        "extends RefCounted",
+        "## GENERATED by tools/art/generate_machines.py. Do not edit by hand; re-run the generator.",
+        "## Where the spinning fans sit on each machine sprite, in pixels from its top-left corner.",
+        "",
+        "# FAN_SPRITE: name of the sprite (in the machines folder) that is placed on each fan and rotated.",
+        'const FAN_SPRITE := "machine_fan"',
+        "",
+    ]
+    for name, centers in machines.items():
+        const = name.replace("machine_", "").upper()
+        out.append(f"# {const}: fan centres for the sprite \"{name}\".")
+        out.append(f"const {const}: Array[Vector2] = [")
+        for x, y in centers:
+            out.append(f"\tVector2({x:.1f}, {y:.1f}),")
+        out.append("]")
+        out.append("")
+    out += [
+        "",
+        "## Fan centres for a machine sprite name (empty if that machine has no fans).",
+        "static func centres(sprite_name: String) -> Array[Vector2]:",
+        "\tmatch sprite_name:",
+    ]
+    for name in machines:
+        out.append(f'\t\t"{name}":')
+        out.append(f"\t\t\treturn {name.replace('machine_', '').upper()}")
+    out += [
+        "\t\t_:",
+        "\t\t\tvar none: Array[Vector2] = []",
+        "\t\t\treturn none",
+        "",
+    ]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(out))
+    print("wrote", os.path.normpath(path))
 
 
 # ------------------------------------------------------------------ Supercomputer (210x210)
@@ -218,82 +339,60 @@ def supercomputer():
 
 # ------------------------------------------------------------------ Monitoring station (210x140)
 def monitoring_station():
-    W, H = 210, 140
+    W, H = 280, 210
     im = new(W, H)
     d = ImageDraw.Draw(im)
     rng = random.Random(9)
     leds, panels = [], []
+    screens = {}   # screen rectangles (px from the sprite's top-left); the game draws live content there
 
-    def monitor(x0, y0, x1, y1, kind):
+    def monitor(x0, y0, x1, y1, name):
+        # Bezel and a blank screen. What is shown on the screen is drawn live by the game
+        # (see scripts/level/monitor_screen.gd), so nothing is painted on it here.
         R(d, x0, y0, x1, y1, (12, 16, 26, 255))
         R(d, x0 + 1, y0 + 1, x1 - 1, y1 - 1, (54, 68, 100, 255))
         sx0, sy0, sx1, sy1 = x0 + 4, y0 + 4, x1 - 4, y1 - 4
         R(d, sx0, sy0, sx1, sy1, (8, 15, 30, 255))
-        for gy in range(int(sy0) + 8, int(sy1), 10):
-            R(d, sx0, gy, sx1, gy + 0.6, (22, 36, 62, 255))
-        w, h = sx1 - sx0, sy1 - sy0
-        if kind == "line":
-            y, pts = h * 0.5, []
-            for i in range(16):
-                y = max(4, min(h - 4, y + rng.uniform(-8, 8)))
-                pts.append((sx0 + i * w / 15, sy0 + y))
-            LN(d, pts, CYAN + (255,), 1.6)
-            panels.append((sx0, sy0, sx1, sy1, CYAN, 42))
-        elif kind == "heat":
-            cols, rows = 7, 5
-            for cx in range(cols):
-                for cy in range(rows):
-                    c = rng.choice([(36, 120, 70), (46, 190, 96), (176, 108, 28), (30, 90, 56), (150, 56, 56)])
-                    cw, ch = w / cols, h / rows
-                    R(d, sx0 + cx * cw + 1, sy0 + cy * ch + 1, sx0 + (cx + 1) * cw - 1, sy0 + (cy + 1) * ch - 1, c + (255,))
-            panels.append((sx0, sy0, sx1, sy1, GREEN, 36))
-        else:
-            pts = [(sx0 + i * w / 40, sy0 + h * 0.45 + math.sin(i * 0.9) * h * 0.22 * rng.uniform(0.6, 1.2)) for i in range(41)]
-            LN(d, pts, ORANGE + (255,), 1.6)
-            for i in range(10):
-                bh = rng.uniform(3, h * 0.25)
-                R(d, sx0 + 3 + i * (w - 6) / 10, sy1 - 2 - bh, sx0 + 3 + i * (w - 6) / 10 + 3, sy1 - 2, (200, 112, 28, 255))
-            panels.append((sx0, sy0, sx1, sy1, ORANGE, 38))
+        screens[name] = (sx0, sy0, sx1 - sx0, sy1 - sy0)
 
-    # Stands then monitors
-    for sx in (92, 118):
-        R(d, sx, 70, sx + 3, 84, (50, 62, 90, 255))
-    R(d, 28, 70, 40, 84, (50, 62, 90, 255))
-    R(d, 170, 70, 182, 84, (50, 62, 90, 255))
-    monitor(6, 20, 62, 72, "line")
-    monitor(148, 20, 204, 72, "wave")
-    monitor(66, 6, 144, 76, "heat")
+    # Monitor necks, then the three monitors: a tall centre one flanked by two smaller ones
+    for nx in (39, 134, 229):
+        R(d, nx, 126, nx + 12, 142, (50, 62, 90, 255))
+    monitor(6, 46, 84, 126, "left")
+    monitor(196, 46, 274, 126, "right")
+    monitor(90, 8, 190, 126, "center")
     # Desk
-    R(d, 0, 84, W, 94, (14, 18, 28, 255))
-    grad(d, 0, 85, W, 93, (84, 102, 140), (52, 64, 92))
-    R(d, 0, 85, W, 86.4, HI + (255,))
-    grad(d, 0, 94, W, H, (36, 45, 66), (22, 28, 42))
-    R(d, 0, 0 + H - 8, W, H, (14, 18, 28, 255))
+    R(d, 0, 142, W, 154, (14, 18, 28, 255))
+    grad(d, 0, 143, W, 153, (84, 102, 140), (52, 64, 92))
+    R(d, 0, 143, W, 144.6, HI + (255,))
+    grad(d, 0, 154, W, H, (36, 45, 66), (22, 28, 42))
+    R(d, 0, H - 10, W, H, (14, 18, 28, 255))
     # Keyboard
-    R(d, 66, 80, 144, 86, (20, 26, 40, 255))
-    for kx in range(68, 142, 4):
-        R(d, kx, 81.4, kx + 2.4, 83, (70, 86, 120, 255))
-        R(d, kx, 83.8, kx + 2.4, 84.8, (58, 72, 102, 255))
-    # Front panels: seams, buttons, knobs
-    for sx in (70, 140):
-        R(d, sx, 95, sx + 1.4, H - 8, EDGE + (255,))
+    R(d, 104, 134, 176, 142, (20, 26, 40, 255))
+    for kx in range(106, 174, 5):
+        R(d, kx, 135.6, kx + 3, 138, (70, 86, 120, 255))
+        R(d, kx, 139, kx + 3, 140.6, (58, 72, 102, 255))
+    # Front panels: seams, buttons, knobs, vents
+    for sx in (94, 186):
+        R(d, sx, 155, sx + 1.6, H - 10, EDGE + (255,))
     for i in range(10):
-        bx = 12 + i * 5.6
+        bx = 14 + i * 7.4
         c = pick_led(rng)
-        R(d, bx, 104, bx + 3.6, 108, lerp((30, 38, 58), c, 0.35) + (255,))
-        leds.append((bx + 1.8, 106, c))
-    for kx in (152, 172, 192):
-        C(d, kx, 108, 5.2, (14, 18, 28, 255))
-        C(d, kx, 108, 4, (86, 104, 140, 255))
-        LN(d, [(kx, 108), (kx + 2.4, 105.2)], (200, 220, 250, 255), 1.2)
-    for x in range(84, 126, 5):
-        R(d, x, 120, x + 3, 126, (10, 13, 22, 255))
+        R(d, bx, 168, bx + 4.6, 173, lerp((30, 38, 58), c, 0.35) + (255,))
+        leds.append((bx + 2.3, 170.5, c))
+    for kx in (212, 235, 258):
+        C(d, kx, 180, 6.5, (14, 18, 28, 255))
+        C(d, kx, 180, 5, (86, 104, 140, 255))
+        LN(d, [(kx, 180), (kx + 3, 176.5)], (200, 220, 250, 255), 1.4)
+    for x in range(112, 170, 6):
+        R(d, x, 186, x + 3.6, 194, (10, 13, 22, 255))
     for i in range(6):
         c = pick_led(rng)
-        R(d, 80 + i * 8, 100, 80 + i * 8 + 5, 103, lerp((30, 38, 58), c, 0.4) + (255,))
-        leds.append((82.5 + i * 8, 101.5, c))
+        R(d, 106 + i * 11, 166, 106 + i * 11 + 7, 170, lerp((30, 38, 58), c, 0.4) + (255,))
+        leds.append((109.5 + i * 11, 168, c))
     save("machine_monitoring_station", im)
     overlays("machine_monitoring_station", (W, H), leds, panels, 23)
+    write_screen_data({"machine_monitoring_station": screens})
 
 
 # ------------------------------------------------------------------ Server tower (70x210)
@@ -325,6 +424,7 @@ def server_tower():
 
 
 if __name__ == "__main__":
+    fan_blades()
     gpu_rack()
     supercomputer()
     monitoring_station()

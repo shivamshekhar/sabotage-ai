@@ -3,17 +3,51 @@ extends Sprite2D
 ## Visual for the player: picks a Kenney character pose from the movement state.
 ## Swap the hero by changing CHARACTER to "adventurer", "female", "soldier" or "zombie".
 
+# CHARACTER: which Kenney character to use. It is the folder and file prefix of the poses:
+# SpriteLibrary.character_pose(CHARACTER, pose) loads
+# assets/kenney/platformer-characters/<CHARACTER>/<CHARACTER>_<pose>.png.
+# Available: player, adventurer, female, soldier, zombie.
 const CHARACTER := "player"
-const SCALE := 1.2       # 80x110 source art -> ~96x132 px, matching Player.BODY_SIZE
+
+# SCALE: scale applied to the sprite: drawn size = source art size * SCALE. It also sets the
+# vertical offset that keeps the feet on the player's origin
+# (position.y = -art height * SCALE / 2). Visual only: the hitbox is Player.BODY_SIZE.
+# If you change it, update BODY_SIZE, the PlayerShadow sizes and HEALTH_BAR_OFFSET too.
+const SCALE := 1.2
+
+# WALK_FRAME_TIME: seconds each walk frame is shown. The walk alternates between two poses:
+#     frame = int(clock / WALK_FRAME_TIME) % 2
+#     steps per second = 1 / WALK_FRAME_TIME
+# Smaller: legs move faster. Larger: a slow shuffle. Match it to SPEED so feet don't look
+# like they slide.
 const WALK_FRAME_TIME := 0.12
+
+# CLIMB_FRAME_TIME: seconds each climbing frame is shown (two alternating poses, as with
+# WALK_FRAME_TIME). Match it to CLIMB_SPEED.
 const CLIMB_FRAME_TIME := 0.15
 
-const FLINCH_LEAN := 0.3        # radians the body tilts back on a hit
+# FLINCH_LEAN: how far the body tilts back when hit, in radians. At the instant of the hit:
+#     rotation = -facing * FLINCH_LEAN
+# and it then springs back to upright. 0 = no tilt. Higher: a more dramatic recoil.
+const FLINCH_LEAN := 0.3
+
+# FLINCH_TIME: seconds for the flinch (rotation, squash and tint) to settle, using an
+# elastic ease so it wobbles slightly. Higher: a longer, bouncier recoil. Lower: sharper.
 const FLINCH_TIME := 0.4
+
+# FLINCH_TINT: the colour flashed over the sprite at the moment of a hit, fading back to
+# normal over most of FLINCH_TIME. (The squash amount is fixed inside flinch().)
 const FLINCH_TINT := Color(1.0, 0.3, 0.3)
 
-const BLINK_HALF := 0.06        # seconds to fade out (and again to fade in)
-const BLINK_LOW := 0.2          # alpha at the dim point of each blink
+# BLINK_HALF: seconds for the sprite to fade down, and again to fade back up. One blink is
+# twice this, and the number of blinks is the requested duration / (2 * BLINK_HALF), where
+# the duration comes from the caller (for example Player.INVULN_TIME).
+# Smaller: a faster flicker. Larger: slower pulses.
+const BLINK_HALF := 0.06
+
+# BLINK_LOW: opacity at the dimmest point of each blink. 0 = fully invisible, 1 = no
+# visible blink.
+const BLINK_LOW := 0.2
 
 var _clock := 0.0
 var _flinch_tween: Tween

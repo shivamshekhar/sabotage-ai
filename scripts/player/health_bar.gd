@@ -3,9 +3,20 @@ extends Node2D
 ## Small bar drawn above the player: red is the full bar (damage taken),
 ## green on top is the health remaining.
 
+# SIZE: width and height of the bar in pixels. The green fill is SIZE.x * ratio wide, where
+# ratio is health / maximum health; the outline is the bar grown by a small fixed margin.
+# Larger: easier to read, but more clutter above the player.
 const SIZE := Vector2(76, 10)
+
+# OUTLINE: colour of the border around the bar. A dark colour keeps it readable on any
+# background.
 const OUTLINE := Color("#0b0d14")
+
+# GREEN: colour of the remaining health (the filled part).
 const GREEN := Color("#2ee66b")
+
+# RED: colour of the full bar behind the fill. Whatever the green doesn't cover shows as red,
+# which is the damage taken.
 const RED := Color("#e0334a")
 
 var ratio := 1.0

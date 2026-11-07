@@ -5,11 +5,29 @@ extends Node2D
 ##  - a contact shadow on the floor under the feet
 ## Origin is at the player's feet.
 
+# Two soft shadows, both radial gradients (opaque in the middle, fading to nothing at the
+# edge) drawn as black blobs. Positions are relative to the player's feet (negative y =
+# up). In _add_blob(): sprite scale = size / texture width, colour = black with the alpha.
+
+# HALO_CENTER: where the dark halo behind the body is centred; roughly the middle of the body.
 const HALO_CENTER := Vector2(0, -66)
+
+# HALO_SIZE: width and height of the halo, in pixels. Larger: darkens more of the background
+# around the player (easier to read, but a visible smudge). Smaller: tighter.
 const HALO_SIZE := Vector2(150, 190)
+
+# HALO_ALPHA: peak opacity of the halo at its centre. 0 = off. Higher: more contrast between
+# the player and a busy background. Lower: subtler.
 const HALO_ALPHA := 0.4
+
+# CONTACT_CENTER: where the contact shadow on the floor is centred, just around the feet.
 const CONTACT_CENTER := Vector2(0, -3)
+
+# CONTACT_SIZE: width and height of the contact shadow ellipse, in pixels. It is wide and
+# flat. Larger: the player looks heavier or higher above the floor.
 const CONTACT_SIZE := Vector2(100, 18)
+
+# CONTACT_ALPHA: peak opacity of the contact shadow at its centre. 0 = off.
 const CONTACT_ALPHA := 0.6
 
 static var _blob: GradientTexture2D

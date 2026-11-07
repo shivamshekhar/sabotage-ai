@@ -2,8 +2,17 @@ class_name Vignette
 extends CanvasLayer
 ## Darkens the screen edges so the eye stays on the action in the middle.
 
-const EDGE_ALPHA := 0.55   # darkness at the corners
-const CLEAR_UNTIL := 0.5   # fraction of the radius that stays untouched
+# EDGE_ALPHA: how dark the screen corners get, from 0 (no vignette) to 1 (black). The
+# darkness ramps up from nothing, starting at CLEAR_UNTIL, to this value at the corners.
+# Higher: a heavier, more cinematic frame. Lower: subtler.
+const EDGE_ALPHA := 0.55
+
+# CLEAR_UNTIL: fraction of the distance from the screen centre to the corners that stays
+# completely untouched (it is the middle stop of the gradient: transparent from the centre
+# out to here).
+# Higher: the clear area is larger and the darkening hugs the corners. Lower: darkening
+# starts closer to the middle.
+const CLEAR_UNTIL := 0.5
 
 
 func _ready() -> void:

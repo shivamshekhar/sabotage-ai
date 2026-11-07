@@ -4,10 +4,13 @@
 # Usage (Git Bash, from anywhere):  tools/build_apk.sh
 #   Optional env vars:  GODOT=/path/to/Godot_..._console.exe   (default: the winget install)
 #
-# Why this wrapper exists: Godot 4.7.2's headless export finishes (and signs the APK) but then
-# never exits, and it also hangs after a failed export. Running it directly leaves your terminal
-# stuck. This script runs Godot in the background, waits for the "export DONE" line (or an
-# error), then stops the Godot process tree so the script returns.
+# Why this wrapper exists: by default Godot runs `adb kill-server` when it quits ("Shutdown ADB
+# on Exit"), and on Windows that call can block forever, so *every* headless Godot command
+# (--import, --export-debug, --script ...) hangs instead of exiting once the Android SDK is
+# configured. The real fix is the editor setting export/android/shutdown_adb_on_exit = false
+# (see README.md, section 3.1e). This script is the safety net in case that setting is missing:
+# it runs Godot in the background, waits for the "export DONE" line (or an error), and stops the
+# Godot process tree if it still hasn't exited.
 #
 # Prerequisites: see README.md section 3 (JDK 17, Android SDK, export templates, debug keystore,
 # Godot editor settings).

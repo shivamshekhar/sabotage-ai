@@ -7,12 +7,32 @@ extends Node2D
 ## The tints dim and cool each layer so the background recedes and the gameplay plane
 ## in front (tiles, machines, player) stands out. Raise them for a brighter backdrop.
 
+# DIR: folder holding the generated layer images (far, mid_base, mid_leds_a, mid_leds_b,
+# cables). Change it to use a different theme's set of images.
 const DIR := "res://assets/backgrounds/data_center/"
-const TILE_W := 1280  # width of each (seamlessly tiling) layer image
 
+# TILE_W: width in pixels of each layer image. It is used as the parallax repeat size, so the
+# image repeats seamlessly sideways. It must equal the image width produced by
+# tools/art/generate_background.py, or you get gaps or overlaps at the seams.
+const TILE_W := 1280
+
+# TINTS: colours multiplied over each layer image (Sprite2D.modulate). White leaves the image
+# unchanged, lower values darken it, and uneven channels shift the colour (a blue bias makes
+# it cooler). Dimmer and cooler layers look further away, which keeps the background from
+# competing with the gameplay in front of it.
+
+# FAR_TINT: the farthest layer (the distant hall). Raise it to make the background brighter
+# and more prominent, lower it to push it back.
 const FAR_TINT := Color(0.50, 0.56, 0.74)
+
+# MID_TINT: the racks layer.
 const MID_TINT := Color(0.40, 0.45, 0.62)
-const MID_LEDS_TINT := Color(0.52, 0.58, 0.78)   # LEDs stay a touch brighter than the racks
+
+# MID_LEDS_TINT: the blinking LEDs on the racks. Kept slightly brighter than MID_TINT so
+# they still read as lights.
+const MID_LEDS_TINT := Color(0.52, 0.58, 0.78)
+
+# CABLES_TINT: the ceiling cables and support columns layer.
 const CABLES_TINT := Color(0.46, 0.50, 0.64)
 
 

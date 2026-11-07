@@ -3,6 +3,7 @@ extends SceneTree
 ## Level-1 specific (it knows where the pit, ladder and exit stairs are); update it if the map changes.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_bot.gd
 
+# T: the level's tile size in pixels. It must match Level.T.
 const T := 70
 var main: Node
 var player: Player
