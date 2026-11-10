@@ -134,6 +134,34 @@ func _process(_d: float) -> bool:
 				_check("catching the ladder mid-air starts climbing", player.climbing and is_equal_approx(player.global_position.x, LX),
 					"climbing=%s x=%s" % [player.climbing, player.global_position.x])
 				_release_all()
+				_tp(LX, 700.0)
+				player._start_climb(player.ladders[0])
+				_next(7)
+		7:  # Jump button while climbing leaps off the ladder
+			if t == 3:
+				mark_y = player.global_position.y
+				Input.action_press("jump")
+				Input.action_press("move_right")
+			if t == 4:
+				Input.action_release("jump")
+			if t == 8:
+				_check("jump leaves the ladder", not player.climbing)
+				_check("and goes up", player.global_position.y < mark_y, "y=%s was %s" % [player.global_position.y, mark_y])
+				_check("and sideways with the stick", player.global_position.x > LX + 5.0, "x=%s" % player.global_position.x)
+				_release_all()
+				_tp(300.0, 840.0)
+				_next(8)
+		8:  # On a phone the D-pad's up must not jump (keyboard up still does, tested above)
+			OS.set_environment("SABOTAGE_TOUCH", "1")
+			Input.action_press("move_up")
+			if t == 12:
+				_check("phone: D-pad up does not jump", player.global_position.y > 835.0, "y=%s" % player.global_position.y)
+				_release_all()
+				Input.action_press("jump")
+			if t == 16:
+				_check("phone: the JUMP button still jumps", player.global_position.y < 835.0, "y=%s" % player.global_position.y)
+				_release_all()
+				OS.set_environment("SABOTAGE_TOUCH", "")
 				print("ALL PASS" if ok else "SOME FAILED")
 				quit(0 if ok else 1)
 	return false

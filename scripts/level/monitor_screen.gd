@@ -7,11 +7,13 @@ extends Control
 ##             finishes, the same slot shows "Generated AI slop poster!" and then its costs, one at
 ##             a time, and the job starts over.
 ##   SCOPE     a made-up tokens-per-second number and an orange wave that drifts and changes shape
+##   LOCK      the screen of a gate computer: a red padlock and "ACCESS RESTRICTED" while its laser gate
+##             is on, a green open padlock and "ACCESS GRANTED" once it is off (see set_locked)
 ## Nothing here is a real measurement: it is all random, on purpose. The screens are tiny, so they are
 ## kept minimal and large: everything sits inside a margin, nothing overlaps, and any text that would
 ## not fit is shrunk until it does (see fitted_font_size).
 
-enum Kind { GRAPH, TERMINAL, SCOPE }
+enum Kind { GRAPH, TERMINAL, SCOPE, LOCK }
 enum Job { LOADING, STALLED, DONE }
 
 # ---------------------------------------------------------------------------------------------
@@ -26,6 +28,17 @@ const BG := Color(0.03, 0.06, 0.12)
 const CYAN := Color(0.23, 0.82, 1.0)
 const ORANGE := Color(0.94, 0.54, 0.14)
 const GREEN := Color(0.18, 0.9, 0.42)
+
+# RED: the locked state of a gate computer's screen (GREEN is its unlocked state).
+const RED := Color(1.0, 0.25, 0.25)
+
+# LOCK_PULSE_SPEED: radians per second of the slow throb of the locked screen's red glow.
+# Higher: a nervous flicker. Lower: a calm one.
+const LOCK_PULSE_SPEED := 3.0
+
+# LOCKED_TEXT / UNLOCKED_TEXT: the two lines under the padlock. Keep them short; they are shrunk to fit.
+const LOCKED_TEXT := "ACCESS\nRESTRICTED"
+const UNLOCKED_TEXT := "ACCESS\nGRANTED"
 
 # TEXT: main text colour. DIM: captions (low contrast on purpose, so they stay in the background).
 const TEXT := Color(0.85, 0.92, 1.0)
@@ -162,6 +175,8 @@ const STATS: Array[String] = [
 ]
 
 var kind := Kind.GRAPH
+## LOCK screens only: true while the gate is on (red), false once it has been switched off (green).
+var locked := true
 
 var _rng := RandomNumberGenerator.new()
 var _font: Font
@@ -212,7 +227,17 @@ func setup(screen_kind: Kind, screen_size: Vector2, seed_value: int) -> void:
 			_restart_job()
 
 
+## Show a gate computer's screen as locked (red) or unlocked (green).
+func set_locked(value: bool) -> void:
+	locked = value
+
+
 # ---------- state that tests (and the drawing code) read ----------
+
+## The text under the padlock on a LOCK screen.
+func lock_text() -> String:
+	return LOCKED_TEXT if locked else UNLOCKED_TEXT
+
 
 ## Which part of the job the terminal is in (LOADING, STALLED or DONE).
 func job_state() -> Job:
@@ -260,6 +285,12 @@ func scope_phase() -> float:
 ## message slot, STATUS_LINES lines) and "bar".
 func layout_rects() -> Dictionary:
 	var inner := Rect2(PADDING, PADDING, size.x - 2.0 * PADDING, size.y - 2.0 * PADDING)
+	if kind == Kind.LOCK:
+		var label_h := _font.get_height(FONT_BODY) * 2.0
+		return {
+			"icon": Rect2(inner.position, Vector2(inner.size.x, inner.size.y - label_h - BLOCK_GAP)),
+			"label": Rect2(inner.position.x, inner.end.y - label_h, inner.size.x, label_h),
+		}
 	if kind == Kind.TERMINAL:
 		var status_h := _font.get_height(FONT_BODY) * STATUS_LINES
 		return {
@@ -392,6 +423,8 @@ func _draw() -> void:
 			_draw_scope(rects)
 		Kind.TERMINAL:
 			_draw_terminal(rects)
+		Kind.LOCK:
+			_draw_lock(rects)
 
 
 ## Draw text inside `area`, top-left aligned, shrunk if needed so it never leaves the area.
@@ -441,3 +474,38 @@ func _draw_terminal(rects: Dictionary) -> void:
 	var label_at := Vector2(bar.position.x + (bar.size.x - label_w) / 2.0, baseline)
 	draw_string_outline(_font, label_at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, 3, Color(0.02, 0.05, 0.1))
 	draw_string(_font, label_at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Color.WHITE)
+
+
+func _draw_lock(rects: Dictionary) -> void:
+	var color := RED if locked else GREEN
+	# A background wash: throbbing red while locked, steady dim green when open.
+	var wash := 0.12 + 0.08 * sin(_t * LOCK_PULSE_SPEED) if locked else 0.1
+	draw_rect(Rect2(Vector2.ZERO, size), Color(color, wash))
+	# The padlock, scaled to fit the icon area: a body with a keyhole and a shackle on top
+	# (closed while locked, swung open to one side when unlocked).
+	var icon: Rect2 = rects["icon"]
+	var u := minf(icon.size.x / 3.0, icon.size.y / 3.4)   # one unit; the lock is 3 wide and 3.4 tall
+	var cx := icon.position.x + icon.size.x / 2.0
+	var top := icon.position.y + (icon.size.y - 3.4 * u) / 2.0
+	var body := Rect2(cx - 1.5 * u, top + 1.4 * u, 3.0 * u, 2.0 * u)
+	var shackle_c := Vector2(cx, top + 1.4 * u)
+	var width := maxf(2.0, 0.34 * u)
+	if locked:
+		draw_arc(shackle_c, 0.85 * u, PI, TAU, 24, color, width)
+		draw_line(shackle_c + Vector2(-0.85 * u, 0), shackle_c + Vector2(-0.85 * u, 0.25 * u), color, width)
+		draw_line(shackle_c + Vector2(0.85 * u, 0), shackle_c + Vector2(0.85 * u, 0.25 * u), color, width)
+	else:
+		var open_c := shackle_c + Vector2(1.0 * u, -0.45 * u)
+		draw_arc(open_c, 0.85 * u, PI, TAU, 24, color, width)
+		draw_line(open_c + Vector2(-0.85 * u, 0), open_c + Vector2(-0.85 * u, 0.6 * u), color, width)
+	draw_rect(body, color)
+	draw_circle(body.get_center() - Vector2(0, 0.15 * u), 0.3 * u, BG)
+	draw_rect(Rect2(body.get_center().x - 0.1 * u, body.get_center().y - 0.1 * u, 0.2 * u, 0.7 * u), BG)
+	_text_in_centered(rects["label"], lock_text(), FONT_BODY, color)
+
+
+## Like _text_in but each line is centred horizontally.
+func _text_in_centered(area: Rect2, text: String, wanted: int, color: Color) -> void:
+	var s := fitted_font_size(text, wanted, area.size.x, area.size.y)
+	var at := Vector2(area.position.x, area.position.y + _font.get_ascent(s))
+	draw_multiline_string(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, s, -1, color)

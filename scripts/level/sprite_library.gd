@@ -56,7 +56,27 @@ const MACHINE_PARTS := ["machine_fan"]
 # MACHINE_PARTS_FOLDER: name of the folder, inside MACHINE_DIR, that holds MACHINE_PARTS.
 const MACHINE_PARTS_FOLDER := "parts"
 
+# PROJECTILE_DIR: folder of the throwable pixel-art objects, one subfolder per group.
+# projectile() builds <PROJECTILE_DIR>/<group>/projectile_<name>.png.
+const PROJECTILE_DIR := "res://assets/projectiles/pixel_art/"
+
+# PROJECTILES: every throwable object and the group folder it lives in. The generator
+# (tools/art/generate_projectiles.py) writes these files. To add one, draw it there, then list it here.
+# The player picks a random one for each throw (see Projectile).
+const PROJECTILES := {
+	"mona_lisa": "paintings", "starry_night": "paintings", "great_wave": "paintings",
+	"pearl_earring": "paintings", "the_scream": "paintings", "vitruvian_man": "paintings",
+	"cat_photo": "cats",
+	"paintbrush": "everyday", "pencil": "everyday", "book": "everyday",
+	"vinyl_record": "everyday", "film_camera": "everyday",
+}
+
 static var _cache := {}
+
+
+## A throwable object's sprite by name, e.g. "mona_lisa" (see PROJECTILES).
+static func projectile(object_name: String) -> Texture2D:
+	return _load("%s%s/projectile_%s.png" % [PROJECTILE_DIR, PROJECTILES[object_name], object_name])
 
 
 ## Machine sprite by name, e.g. "machine_gpu_rack" or "machine_gpu_rack_leds_a".

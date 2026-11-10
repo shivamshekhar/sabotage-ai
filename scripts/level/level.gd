@@ -38,6 +38,7 @@ const MACHINES := {
 	"S": {"sprite": "machine_supercomputer", "w": 3, "h": 3},
 	"M": {"sprite": "machine_monitoring_station", "w": 4, "h": 3},
 	"R": {"sprite": "machine_server_tower", "w": 1, "h": 3},
+	"L": {"sprite": "machine_lock_terminal", "w": 2, "h": 3},
 }
 
 # MACHINE_TINT: colour multiplied over each machine sprite. White leaves it unchanged, lower
@@ -89,6 +90,7 @@ const SCREEN_KINDS := {
 	"left": MonitorScreen.Kind.GRAPH,
 	"center": MonitorScreen.Kind.TERMINAL,
 	"right": MonitorScreen.Kind.SCOPE,
+	"lock": MonitorScreen.Kind.LOCK,
 }
 
 # SIRENS AND LAMPS (map letters 'i' and 'l'): a soft additive halo on the lamp that pulses.
@@ -147,6 +149,22 @@ var side_padding := 0
 ## Ladder columns in world space (from the top tile down to the floor); the Player climbs these.
 var ladders: Array[Rect2] = []
 
+## Emitted when the player uses a computer whose laser is still on. game names the puzzle (see HackPopup).
+signal hack_requested(laser_id: String, game: String)
+
+# PIT_ENTRY_MARGIN: how far in pixels below the lip of a deep spike pit you must have dropped before
+# it counts as having fallen in. It keeps a player standing or landing at the very edge safe.
+# Higher: more forgiving at the edge. Lower: touching the lip with your head is already too far.
+const PIT_ENTRY_MARGIN := 24.0
+
+# TERMINAL_REACH: how far in pixels around a computer the player can stand and still use it.
+# Higher: usable from further away. Lower: the player must stand right in front of it.
+const TERMINAL_REACH := 40.0
+
+var _lasers := {}      # id -> LaserField
+var _screens_at := {}  # Vector2i(column, row of a machine's letter) -> its MonitorScreens
+var _lock_screens := {}   # laser id -> the gate computer's MonitorScreens
+var _terminals: Array[Dictionary] = []   # {"rect": Rect2 (where to stand), "laser": id, "game": String, "hint": Label}
 var _map: Array[String] = []
 var _goal_fired := false
 var _fans: Array[Dictionary] = []   # spinning fan blades: {"sprite": Sprite2D, "speed": radians per second}
@@ -169,6 +187,9 @@ func _ready() -> void:
 	_build_solid_colliders()
 	_build_ledges()
 	_build_ladders()
+	_build_lasers()
+	_build_terminals()
+	_build_pit_zones()
 
 
 # ---------- map helpers ----------
@@ -267,6 +288,7 @@ func _build_tiles() -> void:
 				"P": spawn = Vector2((c + 0.5) * T, (r + 1) * T)
 				"E": _build_exit(c, r)
 				"K": _build_checkpoint(c, r)
+				"B": _spawn_bro(c, r)
 				_:
 					if MACHINES.has(_map[r][c]):
 						_build_machine(MACHINES[_map[r][c]], c, r)
@@ -360,7 +382,10 @@ func _build_machine(def: Dictionary, c: int, r: int) -> void:
 	var screens := MachineScreens.rects(sprite_name)
 	for key in screens:
 		var rect: Rect2 = screens[key]
-		_add_screen(SCREEN_KINDS[key], pos + rect.position, rect.size)
+		var screen := _add_screen(SCREEN_KINDS[key], pos + rect.position, rect.size)
+		if not _screens_at.has(Vector2i(c, r)):
+			_screens_at[Vector2i(c, r)] = []
+		_screens_at[Vector2i(c, r)].append(screen)
 	var half := MACHINE_BLINK_PERIOD / 2.0
 	for i in 2:
 		var leds := Sprite2D.new()
@@ -389,18 +414,139 @@ func _add_fan(at: Vector2) -> void:
 
 
 ## One live monitor screen drawn over a blank screen in a machine image.
-func _add_screen(screen_kind: MonitorScreen.Kind, at: Vector2, screen_size: Vector2) -> void:
+func _add_screen(screen_kind: MonitorScreen.Kind, at: Vector2, screen_size: Vector2) -> MonitorScreen:
 	var screen := MonitorScreen.new()
 	screen.position = at
 	screen.z_index = -4  # over the machine, under the player
 	screen.modulate = MACHINE_TINT
 	screen.setup(screen_kind, screen_size, hash(at))  # seeded by position so screens differ
 	add_child(screen)
+	return screen
 
 
 func _process(delta: float) -> void:
 	for fan in _fans:
 		fan["sprite"].rotation += fan["speed"] * delta
+	_update_terminal_hints()
+
+
+# ---------- lasers and computers ----------
+
+## An AI Bro standing on the tile below the map marker "B".
+func _spawn_bro(c: int, r: int) -> void:
+	var bro := AIBro.new()
+	bro.position = Vector2((c + 0.5) * T, (r + 1) * T)
+	add_child(bro)
+
+
+## Spike pits too deep to climb out of kill whoever falls in (the player or an enemy). A pit is a run of
+## floor spikes with solid wall on both sides, rising at least PIT_DEEP_ROWS tiles above the spikes'
+## bottom row and tall enough that a jump from the bottom cannot reach the top (see Player's jump
+## height: JUMP_VELOCITY^2 / (2 * GRAVITY)). Shallower spikes just hurt (see Player.hazard_damage()).
+func _build_pit_zones() -> void:
+	var jump_height := Player.JUMP_VELOCITY * Player.JUMP_VELOCITY / (2.0 * Player.GRAVITY)
+	for r in _map.size():
+		var c := 0
+		while c < _map[r].length():
+			if _map[r][c] != "^":
+				c += 1
+				continue
+			var c0 := c
+			while c < _map[r].length() and _map[r][c] == "^":
+				c += 1
+			var c1 := c - 1
+			var depth := 0
+			while _is_solid(c0 - 1, r - depth) and _is_solid(c1 + 1, r - depth):
+				depth += 1
+			if depth * T <= jump_height:
+				continue
+			var top := (r - depth + 1) * T + PIT_ENTRY_MARGIN
+			var zone := _make_area(Rect2(c0 * T + 6, top, (c1 - c0 + 1) * T - 12, (r + 1) * T - top))
+			zone.collision_mask = Player.LAYER_WORLD | Player.LAYER_ENEMY
+			zone.body_entered.connect(func(body: Node) -> void:
+				if body.has_method("fall_in_pit"):
+					body.fall_in_pit())
+
+
+## One LaserField per digit in the map (all cells of one id must form a single vertical run).
+func _build_lasers() -> void:
+	var spans := {}   # id -> [column, first row, last row]
+	for r in _map.size():
+		for c in _map[r].length():
+			var ch := _map[r][c]
+			if ch >= "1" and ch <= "9":
+				if not spans.has(ch):
+					spans[ch] = [c, r, r]
+				else:
+					spans[ch][2] = r
+	for id in spans:
+		var s: Array = spans[id]
+		var field := LaserField.new()
+		add_child(field)
+		field.setup(id, Rect2(s[0] * T, s[1] * T, T, (s[2] - s[1] + 1) * T))
+		_lasers[id] = field
+
+
+## The computers from LevelData.terminals(): the spot the player must stand on, a hint label, and the laser they run.
+func _build_terminals() -> void:
+	for t in LevelData.terminals(level_id):
+		var letter := _cell(t["c"], t["r"])
+		if not MACHINES.has(letter):
+			push_error("Terminal at (%d, %d) is not on a machine letter" % [t["c"], t["r"]])
+			continue
+		var def: Dictionary = MACHINES[letter]
+		var body := Rect2(t["c"] * T, (t["r"] + 1 - int(def["h"])) * T, int(def["w"]) * T, int(def["h"]) * T)
+		var hint := Label.new()
+		hint.text = "TAP USE" if TouchControls.should_show() else "PRESS E"
+		hint.add_theme_font_size_override("font_size", 30)
+		hint.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
+		hint.add_theme_color_override("font_outline_color", Color.BLACK)
+		hint.add_theme_constant_override("outline_size", 8)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint.size = Vector2(body.size.x, 40)
+		hint.position = Vector2(body.position.x, body.position.y - 48)
+		hint.z_index = 5
+		hint.visible = false
+		add_child(hint)
+		_lock_screens[t["laser"]] = _screens_at.get(Vector2i(t["c"], t["r"]), [])
+		_terminals.append({
+			"rect": body.grow_individual(TERMINAL_REACH, 0, TERMINAL_REACH, 0),
+			"laser": t["laser"], "game": t["game"], "hint": hint,
+		})
+
+
+func _player_box(feet: Vector2) -> Rect2:
+	return Rect2(feet.x - Player.BODY_SIZE.x / 2.0, feet.y - Player.BODY_SIZE.y, Player.BODY_SIZE.x, Player.BODY_SIZE.y)
+
+
+func _update_terminal_hints() -> void:
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	for t in _terminals:
+		var near: bool = player != null and _player_box(player.global_position).intersects(t["rect"])
+		t["hint"].visible = near and laser_is_on(t["laser"])
+
+
+## True if the field with this id exists and is on.
+func laser_is_on(id: String) -> bool:
+	return _lasers.has(id) and _lasers[id].on
+
+
+## Switch a laser field on or off.
+func set_laser(id: String, on: bool) -> void:
+	if _lasers.has(id):
+		_lasers[id].set_on(on)
+	for screen in _lock_screens.get(id, []):
+		screen.set_locked(on)
+
+
+## The player pressed "use" while standing at feet position `feet`. If that is in reach of a computer
+## whose laser is still on, ask for its puzzle and return true.
+func try_interact(feet: Vector2) -> bool:
+	for t in _terminals:
+		if _player_box(feet).intersects(t["rect"]) and laser_is_on(t["laser"]):
+			hack_requested.emit(t["laser"], t["game"])
+			return true
+	return false
 
 
 func _blink_machine(leds: Sprite2D, delay: float) -> void:

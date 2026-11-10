@@ -35,6 +35,14 @@ func _ready() -> void:
 	_setup_camera(level, player)
 	level.goal_reached.connect(_on_goal_reached)
 
+	player.died.connect(_on_player_died)
+
+	# Using a computer opens its puzzle; solving it switches the laser off.
+	player.interacted.connect(func() -> void: level.try_interact(player.global_position))
+	level.hack_requested.connect(func(laser_id: String, game: String) -> void:
+		var popup := HackPopup.open(self, laser_id, game)
+		popup.solved.connect(func(id: String) -> void: level.set_laser(id, false)))
+
 
 ## Which level to load: the environment variable SABOTAGE_LEVEL ("test" for the test level),
 ## otherwise the default level. An unknown value warns and falls back to the default.
@@ -68,6 +76,27 @@ func _setup_camera(level: Level, player: Player) -> void:
 		if TouchControls.should_show():  # phones only; hidden on PC
 			add_child(TouchControls.new())
 	cam.make_current()
+
+
+# GAME_OVER_TIME: seconds the "GAME OVER" banner stays up after the player dies, while they
+# respawn at the last checkpoint. Higher: a longer pause to take it in. Lower: back in the action sooner.
+const GAME_OVER_TIME := 1.6
+
+func _on_player_died(cause: String) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 19
+	var label := Label.new()
+	label.text = "GAME OVER" + "\n" + {"pit": "fell into the spikes", "fall": "fell too far", "health": "out of health"}.get(cause, "")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 12)
+	layer.add_child(label)
+	add_child(layer)
+	get_tree().create_timer(GAME_OVER_TIME).timeout.connect(layer.queue_free)
 
 
 func _on_goal_reached() -> void:

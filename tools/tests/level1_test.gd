@@ -50,6 +50,18 @@ func _map_without(rows: Array[String], c0: int, r0: int, c1: int, r1: int) -> Ar
 	return out
 
 
+## The map with the lasers in on_ids turned into solid wall and the other lasers removed.
+func _lasers_as_walls(rows: Array[String], on_ids: Array) -> Array[String]:
+	var out: Array[String] = []
+	for line in rows:
+		var chars := line.split("")
+		for i in chars.size():
+			if chars[i] >= "1" and chars[i] <= "9":
+				chars[i] = "#" if on_ids.has(chars[i]) else "."
+		out.append("".join(chars))
+	return out
+
+
 func _initialize() -> void:
 	var rows := LevelData.level_1()
 
@@ -66,6 +78,9 @@ func _initialize() -> void:
 	var map_cols := rows[0].length()
 	for r in rows.size():
 		for c in map_cols:
+			if rows[r][c] == "B":
+				var under := rows[r + 1][c]
+				_check("AI Bro (%d,%d) stands on solid ground" % [c, r], "#XO=".contains(under))
 			if rows[r][c] == "K":
 				var below := rows[r + 1][c]
 				_check("checkpoint (%d,%d) stands on solid ground" % [c, r], below == "#" or below == "X" or below == "O" or below == "=")
@@ -92,6 +107,50 @@ func _initialize() -> void:
 	var no_ladder := LevelSolver.new(_map_without(rows, 82, 20, 82, 25))
 	no_ladder.solve()
 	_check("the tower cannot be skipped without the ladder", no_ladder.route().is_empty())
+
+	# 3b. Nothing floats: lamps, sirens and canisters stand on something
+	for id in LevelData.ids():
+		var m := LevelData.map(id)
+		var floating: Array[String] = []
+		for r in m.size():
+			for c in m[r].length():
+				if "lic".contains(m[r][c]):
+					var below := m[r + 1][c] if r + 1 < m.size() else "#"
+					var ladder_top := below == "H" and m[r][c] != "H"
+					if not ("#XO=".contains(below) or ladder_top):
+						floating.append("%s at (%d,%d)" % [m[r][c], c, r])
+		_check("level %s: lamps, sirens and canisters stand on something" % id, floating.is_empty(), str(floating))
+
+	# 3c. Lasers and computers
+	var terminals := LevelData.terminals("1")
+	var laser_ids := {}
+	for r in rows.size():
+		for c in map_cols:
+			var ch := rows[r][c]
+			if ch >= "1" and ch <= "9":
+				laser_ids[ch] = true
+	_check("every laser has exactly one computer", terminals.size() == laser_ids.size(), "%d computers, %d lasers" % [terminals.size(), laser_ids.size()])
+	for t in terminals:
+		_check("computer for laser %s sits on a machine letter" % t["laser"], rows[t["r"]][t["c"]] == "L")
+		_check("laser %s exists" % t["laser"], laser_ids.has(t["laser"]))
+		_check("puzzle '%s' exists" % t["game"], HackPopup.has_game(t["game"]))
+	# In order: with lasers k.. on, computer k can be reached and the exit cannot.
+	var ids: Array = laser_ids.keys()
+	ids.sort()
+	for k in ids.size():
+		var on_ids: Array = ids.slice(k)
+		var world := LevelSolver.new(_lasers_as_walls(rows, on_ids))
+		world.solve()
+		var term: Dictionary = terminals[k]
+		var machine := Vector2(2, 3)
+		var zone := Rect2(term["c"] * 70 - 40, (term["r"] + 1 - int(machine.y)) * 70, machine.x * 70 + 80, machine.y * 70)
+		var reached := false
+		for key in world.nodes:
+			var p: Vector2 = world.nodes[key]
+			if Rect2(p.x - 30, p.y - 128, 60, 128).intersects(zone):
+				reached = true
+		_check("lasers %s on: the computer for laser %s can be reached" % [on_ids, term["laser"]], reached)
+		_check("lasers %s on: the exit cannot be reached" % [on_ids], world.route().is_empty())
 
 	# 4. Calibration against the real Player
 	OS.set_environment("SABOTAGE_LEVEL", "test")

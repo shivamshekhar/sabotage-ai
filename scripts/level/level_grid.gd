@@ -77,6 +77,12 @@ func ceiling_spikes(c0: int, c1: int, r: int) -> void:
 	fill(c0, r, c1, r, "v")
 
 
+## A laser force field in column c from row r0 down to row r1. id is one digit, "1" to "9"; the
+## terminal listed for that id in LevelData.terminals() switches the field off.
+func laser(c: int, r0: int, r1: int, id: String) -> void:
+	fill(c, r0, c, r1, id)
+
+
 ## A column of crates, `height` tiles tall, whose lowest crate is on row r_bottom. ch is "X" (metal)
 ## or "O" (orange).
 func crate_stack(c: int, r_bottom: int, height: int, ch: String = "X") -> void:

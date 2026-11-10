@@ -11,11 +11,18 @@ const MONITORING_STATION: Dictionary = {
 	"center": Rect2(94.0, 12.0, 92.0, 110.0),
 }
 
+# LOCK_TERMINAL: screens of the sprite "machine_lock_terminal", by position (left, center, right).
+const LOCK_TERMINAL: Dictionary = {
+	"lock": Rect2(15.0, 23.0, 110.0, 100.0),
+}
+
 
 ## Screen rectangles for a machine sprite name (empty if it has no live screens).
 static func rects(sprite_name: String) -> Dictionary:
 	match sprite_name:
 		"machine_monitoring_station":
 			return MONITORING_STATION
+		"machine_lock_terminal":
+			return LOCK_TERMINAL
 		_:
 			return {}

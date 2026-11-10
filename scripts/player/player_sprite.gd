@@ -49,6 +49,9 @@ const BLINK_HALF := 0.06
 # visible blink.
 const BLINK_LOW := 0.2
 
+## Which Kenney character this sprite shows; defaults to CHARACTER. AIBro sets it to "zombie".
+var character := CHARACTER
+
 var _clock := 0.0
 var _flinch_tween: Tween
 var _blink_tween: Tween
@@ -60,7 +63,7 @@ func _init() -> void:
 	position = Vector2(0, -110.0 * SCALE / 2.0)
 
 
-## state: idle | walk | jump | fall | climb | climb_idle | hurt
+## state: idle | walk | jump | fall | climb | climb_idle | hurt | throw_windup | throw_release
 func update_pose(state: StringName, facing: int, delta: float) -> void:
 	_clock += delta
 	flip_h = facing < 0
@@ -71,6 +74,10 @@ func update_pose(state: StringName, facing: int, delta: float) -> void:
 			_set_pose("climb%d" % (int(_clock / CLIMB_FRAME_TIME) % 2 + 1))
 		&"climb_idle":
 			_set_pose("climb1")
+		&"throw_windup":
+			_set_pose("action1")   # arm raised behind the head
+		&"throw_release":
+			_set_pose("action2")   # arm snapped forward
 		_:
 			_set_pose(String(state))
 
@@ -103,4 +110,4 @@ func flinch(facing: int) -> void:
 
 
 func _set_pose(pose: String) -> void:
-	texture = SpriteLibrary.character_pose(CHARACTER, pose)
+	texture = SpriteLibrary.character_pose(character, pose)

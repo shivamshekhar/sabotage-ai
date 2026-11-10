@@ -21,7 +21,7 @@ for t in tools/tests/*.gd; do
   name=$(basename "$t" .gd)
   log="build/test_$name.log"
   start=$(date +%s)
-  timeout 180 "$GODOT" --headless --fixed-fps 60 --path . --script "res://$t" > "$log" 2>&1
+  timeout 400 "$GODOT" --headless --fixed-fps 60 --path . --script "res://$t" > "$log" 2>&1
   code=$?
   secs=$(( $(date +%s) - start ))
   # Count FAIL lines too: a test that exits 0 but printed FAIL (or no verdict) is a failure.

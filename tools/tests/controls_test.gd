@@ -105,14 +105,15 @@ func _main() -> void:
 	_check("Up at a ladder's bottom climbs", player.climbing)
 	_release_all()
 
-	# ---- can't jump while on a ladder
+	# ---- jump while on a ladder leaps off it
 	await _wait(5)
 	var y_on_ladder := player.global_position.y
 	Input.action_press("jump")
 	await _wait(10)
-	_check("jump is ignored while climbing", player.climbing and absf(player.global_position.y - y_on_ladder) < 2.0,
+	_check("jump leaves the ladder", not player.climbing and player.global_position.y < y_on_ladder - 2.0,
 		"climbing=%s y=%d (was %d)" % [player.climbing, int(player.global_position.y), int(y_on_ladder)])
 	_release_all()
+	await _wait(120)  # land before the next check
 
 	# ---- unimplemented actions are safe no-ops
 	_check("interact() exists", player.has_method("interact"))

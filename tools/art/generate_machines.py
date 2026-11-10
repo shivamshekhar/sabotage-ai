@@ -10,7 +10,7 @@ Each machine writes three PNGs into its own folder (<out>/<machine>/, e.g. gpu_r
 Shared moving parts (the fan blades) go in <out>/parts/.
 Sizes are multiples of the 70px tile so they drop onto the level grid:
   machine_gpu_rack 140x210 (2x3), machine_supercomputer 210x210 (3x3),
-  machine_monitoring_station 280x210 (4x3), machine_server_tower 70x210 (1x3).
+  machine_monitoring_station 280x210 (4x3), machine_server_tower 70x210 (1x3), machine_lock_terminal 140x210 (2x3).
 """
 import math
 import os
@@ -213,9 +213,14 @@ def save_raw(name, img):
     img.save(os.path.join(machine_dir(name), f"{name}.png"))
 
 
+SCREEN_DATA = {}   # every machine's screen rectangles; the file is rewritten with all of them each time
+
+
 def write_screen_data(machines):
     """Writes scripts/level/machine_screens.gd: the screen rectangles of machines whose screens
     show live content, in pixels from the top-left of the machine sprite."""
+    SCREEN_DATA.update(machines)
+    machines = SCREEN_DATA
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "level", "machine_screens.gd")
     out = [
         "class_name MachineScreens",
@@ -395,6 +400,50 @@ def monitoring_station():
     write_screen_data({"machine_monitoring_station": screens})
 
 
+# ------------------------------------------------------------------ Lock terminal (140x210)
+def lock_terminal():
+    """The computer that switches off a laser gate: one big screen (drawn live: a red padlock while the
+    gate is locked, a green one once open), a keyboard and a card reader, and red-and-black warning
+    stripes so it can't be mistaken for the decorative monitoring stations."""
+    W, H = 140, 210
+    im = new(W, H)
+    d = ImageDraw.Draw(im)
+    leds, panels = [], []
+    screens = {}
+    cabinet(d, W, H)
+    # Warning stripes along the top and bottom edges.
+    for x in range(0, W, 14):
+        R(d, x, 5, x + 7, 12, (200, 40, 40, 255))
+        R(d, x + 7, 5, x + 14, 12, (20, 14, 16, 255))
+        R(d, x, H - 22, x + 7, H - 15, (200, 40, 40, 255))
+        R(d, x + 7, H - 22, x + 14, H - 15, (20, 14, 16, 255))
+    # The big screen: bezel and a blank screen for the game to draw on.
+    R(d, 10, 18, W - 10, 128, (12, 16, 26, 255))
+    R(d, 11, 19, W - 11, 127, (54, 68, 100, 255))
+    R(d, 15, 23, W - 15, 123, (8, 15, 30, 255))
+    screens["lock"] = (15, 23, W - 30, 100)
+    # Desk with keyboard and card reader.
+    R(d, 6, 134, W - 6, 146, (14, 18, 28, 255))
+    grad(d, 7, 135, W - 7, 145, (84, 102, 140), (52, 64, 92))
+    R(d, 24, 136, 78, 144, (20, 26, 40, 255))
+    for kx in range(26, 76, 5):
+        R(d, kx, 137.4, kx + 3, 139.6, (70, 86, 120, 255))
+        R(d, kx, 141, kx + 3, 142.6, (58, 72, 102, 255))
+    R(d, 90, 136, 128, 144, (10, 13, 22, 255))
+    R(d, 94, 139, 124, 141.4, (255, 190, 60, 255))
+    panels.append((94, 139, 124, 141.4, (255, 190, 60), 230))
+    # Status lights on the front.
+    for i in range(4):
+        c = RED if i % 2 == 0 else ORANGE
+        R(d, 22 + i * 28, 158, 22 + i * 28 + 10, 164, lerp((30, 38, 58), c, 0.4) + (255,))
+        leds.append((27 + i * 28, 161, c))
+    for x in range(30, 110, 7):
+        R(d, x, 176, x + 4, 188, (10, 13, 22, 255))
+    save("machine_lock_terminal", im)
+    overlays("machine_lock_terminal", (W, H), leds, panels, 31)
+    write_screen_data({"machine_lock_terminal": screens})
+
+
 # ------------------------------------------------------------------ Server tower (70x210)
 def server_tower():
     W, H = 70, 210
@@ -428,5 +477,6 @@ if __name__ == "__main__":
     gpu_rack()
     supercomputer()
     monitoring_station()
+    lock_terminal()
     server_tower()
     print("wrote machines to", OUT)

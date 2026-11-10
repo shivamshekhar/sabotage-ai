@@ -6,7 +6,7 @@ extends SceneTree
 
 # POSES_USED: the character poses PlayerSprite asks for (idle, walk1, ...). Every character must have
 # all of them, so changing PlayerSprite.CHARACTER to any character works.
-const POSES_USED := ["idle", "walk1", "walk2", "jump", "fall", "climb1", "climb2", "hurt"]
+const POSES_USED := ["idle", "walk1", "walk2", "jump", "fall", "climb1", "climb2", "hurt", "action1", "action2"]
 
 # BACKGROUND_LAYERS: the image names LevelBackground loads from its folder.
 const BACKGROUND_LAYERS := ["far", "mid_base", "mid_leds_a", "mid_leds_b", "cables"]
@@ -25,6 +25,7 @@ func _initialize() -> void:
 	_check_tiles(SpriteLibrary.THEMED_TILE_DIR, "themed tiles")
 	_check_machines()
 	_check_characters()
+	_check_projectiles()
 	_check_backgrounds()
 	print("ALL PASS" if ok else "SOME FAILED")
 	quit(0 if ok else 1)
@@ -89,6 +90,22 @@ func _check_machines() -> void:
 				missing.append(sprite + variant)
 	_check("machines: every placeable machine has its image, LED layers and shadow", missing.is_empty(), str(missing))
 	_check("machines: the fan blade sprite loads", SpriteLibrary.machine(MachineFans.FAN_SPRITE) != null)
+
+
+func _check_projectiles() -> void:
+	var missing := []
+	for object_name in SpriteLibrary.PROJECTILES:
+		if SpriteLibrary.projectile(object_name) == null:
+			missing.append(object_name)
+	_check("projectiles: all %d throwable objects load" % SpriteLibrary.PROJECTILES.size(), missing.is_empty() and SpriteLibrary.PROJECTILES.size() > 0, str(missing))
+	var dir := SpriteLibrary.PROJECTILE_DIR
+	var strays := []
+	for group in DirAccess.get_directories_at(dir):
+		for f in _pngs(dir + group):
+			var n: String = f.trim_suffix(".png").trim_prefix("projectile_")
+			if not SpriteLibrary.PROJECTILES.has(n) or SpriteLibrary.PROJECTILES[n] != group:
+				strays.append("%s/%s" % [group, f])
+	_check("projectiles: every file is listed in SpriteLibrary.PROJECTILES, in its group folder", strays.is_empty(), str(strays))
 
 
 func _check_characters() -> void:

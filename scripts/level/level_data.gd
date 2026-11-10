@@ -15,10 +15,14 @@ extends RefCounted
 ##   X  metal crate        O  orange crate
 ##   P  player spawn       E  exit terminal
 ##   K  checkpoint (a green beacon: touching it sets where you respawn)
+##   B  an AI Bro enemy, standing on the tile below the marker
+##   1-9  a laser force field (a solid wall while on). Its id is the digit; the computer that
+##        switches it off is listed in terminals()
 ## Machines (decor). The letter marks the BOTTOM-LEFT tile; the rest of the footprint
 ## (to the right and up) must be left as '.'.
 ##   G  GPU rack 2x3        S  supercomputer 3x3
 ##   M  monitoring station 4x3     R  server tower 1x3
+##   L  lock terminal 2x3: the gate computers listed in terminals(), not for decoration
 ## Other background decor
 ##   k controls panel   w dark panel   r ceiling rail   m monitor   t tv monitor
 ##   g gear   i siren   l lamp   c canister   ~ slime
@@ -137,8 +141,10 @@ static func level_1() -> Array[String]:
 	g.crate_stack(10, ground - 1, 2)            # ...then a taller one, then drop down the far side
 	g.put(12, ground - 1, "K")
 	_l1_pit(g, 14, 16)                          # first pit: 3 wide
-	g.fill(19, 21, 27, 21, "#")                 # a low ceiling over a spike strip: no room for a high jump
+	g.fill(19, 21, 30, 21, "#")                 # a low ceiling over a spike strip: no room for a high jump
 	g.spikes(22, 23, ground - 1)
+	g.put(26, ground - 1, "L")                  # terminal 1 (a lock terminal): opens the laser one tile past it
+	g.laser(29, 22, ground - 1, "1")
 
 	# ---- ACT 1, section 2 (columns 31 to 61): a wide pit crossed on two stepping stones, then a crate gauntlet
 	_l1_pit(g, 31, 44)
@@ -161,6 +167,8 @@ static func level_1() -> Array[String]:
 	g.ladder(82, 20, 25)                        # ground -> tier 1
 	g.slab(83, 87, 20)                          # tier 1, left half
 	g.slab(92, 97, 20)                          # tier 1, right half (4-tile gap between the halves)
+	g.put(94, 19, "L")                          # terminal 2: next to its laser, a step from where you land
+	g.laser(96, 15, 19, "2")                    # between the terminal and the ladder, under tier 2
 	g.ladder(97, 14, 19)                        # tier 1 -> tier 2
 	g.slab(91, 96, 14)                          # tier 2
 	g.ledge(86, 87, 13)                         # ledges climbing up and to the left
@@ -178,16 +186,37 @@ static func level_1() -> Array[String]:
 	g.slab(49, 52, 9)                           # exit platform
 	g.put(50, 8, "E")
 
+	# ---- AI Bros: each paces near a ledge or flat spot and chases you if it sees you coming
+	g.put(48, ground - 1, "B")                  # by the second checkpoint
+	g.put(59, ground - 1, "B")                  # in the crate gauntlet
+	g.put(68, ground - 4 - 1, "B")              # on the raised deck: you meet it as you climb the crate stairs
+	g.put(79, ground - 1, "B")                  # between the last pit and the tower
+	g.put(59, 8, "B")                           # on the middle platform of the corridor
+
 	_l1_decor(g)
 	return g.to_rows()
 
 
+## The computers you can use. "c"/"r" is the machine's bottom-left tile (the letter in the map), "laser" is
+## the id of the force field it switches off (the digit in the map) and "game" picks its puzzle
+## ("random" = a different silly one each time; see HackPopup.GAME_NAMES for the others). Each force field needs exactly one terminal, reachable before the field.
+static func terminals(id: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if id == TEST_ID:
+		return out
+	out.append({"c": 26, "r": L1_GROUND - 1, "laser": "1", "game": "random"})
+	out.append({"c": 94, "r": 19, "laser": "2", "game": "random"})
+	return out
+
+
 ## Background machines and lights. Decor never blocks the player, but it must not overwrite
 ## anything solid or any marker, so each piece is only placed where its whole footprint is empty.
+## Floor-standing decor (lamps "l", sirens "i", canisters "c") must stand on something solid; the
+## test in tools/tests/level1_test.gd checks that nothing floats.
 static func _l1_decor(g: LevelGrid) -> void:
 	var y := L1_GROUND - 1
 	var machines := [
-		["S", 5, y, 3, 3], ["G", 17, y, 2, 3], ["R", 26, y, 1, 3], ["G", 54, y, 2, 3],
+		["S", 5, y, 3, 3], ["G", 17, y, 2, 3], ["G", 54, y, 2, 3],
 		["M", 58, y, 4, 3], ["R", 78, y, 1, 3], ["S", 85, y, 3, 3], ["M", 89, y, 4, 3],
 		["G", 94, y, 2, 3],
 	]
@@ -199,12 +228,14 @@ static func _l1_decor(g: LevelGrid) -> void:
 					free = false
 		if free:
 			g.put(m[1], m[2], m[0])
-	var lights := [
-		["r", 3, 1], ["r", 4, 1], ["r", 5, 1], ["r", 6, 1], ["r", 7, 1], ["r", 8, 1],
-		["l", 6, 21], ["l", 17, 22], ["l", 40, 22], ["l", 58, 22], ["l", 86, 21], ["l", 92, 21],
-		["l", 53, 6], ["l", 64, 6], ["m", 56, 6], ["t", 62, 7], ["m", 70, 6], ["i", 51, 5],
-		["g", 20, 3], ["g", 80, 3], ["c", 11, 25], ["~", 74, 25],
+	g.fill(1, 1, 98, 1, "r")        # a rail along the ceiling
+	var decor := [
+		# lamps and sirens, each standing on a floor, deck, slab or ledge
+		["l", 8, y], ["l", 20, y], ["l", 47, y], ["l", 70, 21], ["l", 83, 19],
+		["l", 93, 13], ["l", 60, 8], ["l", 70, 8], ["i", 52, 8], ["c", 11, y],
+		# wall monitors hung under the corridor ceiling, gears hung under the rail
+		["m", 54, 5], ["t", 63, 5], ["g", 20, 2], ["g", 80, 2],
 	]
-	for l in lights:
-		if g.get_cell(l[1], l[2]) == ".":
-			g.put(l[1], l[2], l[0])
+	for d in decor:
+		if g.get_cell(d[1], d[2]) == ".":
+			g.put(d[1], d[2], d[0])

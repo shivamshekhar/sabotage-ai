@@ -18,6 +18,10 @@ const LAYER_WORLD := 1
 # mask must include it for the player to collide with it.
 const LAYER_LADDER_DECK := 2
 
+# LAYER_ENEMY: enemies. The player does not collide with it (you can walk through an enemy; it
+# hurts you by touching, see AIBro), but thrown objects look for it (see Projectile).
+const LAYER_ENEMY := 4
+
 # MOVEMENT TUNING. Units are pixels and seconds. Godot's Y axis points DOWN, so "up" is a
 # NEGATIVE velocity. Every formula is multiplied by delta (the physics step), so the feel
 # does not depend on frame rate.
@@ -29,7 +33,7 @@ const LAYER_LADDER_DECK := 2
 #     jump distance = SPEED * air time          (air time: see JUMP_VELOCITY and GRAVITY)
 # Higher: a faster runner whose jumps cover more ground, so gaps that were hard get easy.
 # Lower: slower and more deliberate; wide gaps can become impossible to cross.
-const SPEED := 370.0
+const SPEED := 380.0
 
 # ACCEL: how fast velocity.x chases its target, in pixels per second per second. It is the
 # step size of the move_toward() call above, so it governs speeding up, braking and turning
@@ -104,14 +108,48 @@ const BODY_SIZE := Vector2(60, 128)
 
 # MAX_HEALTH: health at spawn and after dying, and the "full" mark of the health bar
 # (bar fill = health / MAX_HEALTH).
-#     hits you can take = MAX_HEALTH / HAZARD_DAMAGE, rounded up
+#     hits you can take = 1 / HAZARD_DAMAGE_FRACTION, rounded up
 # Higher: a sturdier player. Lower: a more fragile one.
 const MAX_HEALTH := 100
 
-# HAZARD_DAMAGE: health lost per hit from a hazard such as spikes (see take_damage()).
-# Standing in a hazard hurts you again every INVULN_TIME seconds.
+# HAZARD_DAMAGE_FRACTION: share of MAX_HEALTH lost per hit from a hazard such as spikes
+# (see hazard_damage() and take_damage()). Standing in a hazard hurts you again every
+# INVULN_TIME seconds.
+#     damage per hit = round(MAX_HEALTH * HAZARD_DAMAGE_FRACTION)
 # Higher: deadlier hazards. Lower: more forgiving ones.
-const HAZARD_DAMAGE := 25
+const HAZARD_DAMAGE_FRACTION := 0.2
+
+# MAX_NAME_LENGTH: the most characters of the player's name that are kept and shown above the health
+# bar. Longer names are cut off, so a name can never be wider than the sprite (HealthBar.TITLE_FONT_SIZE
+# sets the letter size; tools/tests/health_test.gd checks the widest name fits).
+# Higher: room for longer names, but they may stick out past the sprite. Lower: shorter names only.
+const MAX_NAME_LENGTH := 10
+
+# DEFAULT_NAME: the name shown until players can choose their own (a menu is planned).
+const DEFAULT_NAME := "SABOTEUR"
+
+# PIT_DEATH_DELAY: seconds the player blinks at the bottom of a deadly spike pit, after landing, before the
+# game over is declared and they respawn (see fall_in_pit()). Higher: a longer look at what happened.
+# Lower: back in the action sooner.
+const PIT_DEATH_DELAY := 0.5
+
+# THROW_COOLDOWN: seconds after a throw before the next one is allowed (see attack_light()).
+# Higher: slower, more deliberate throwing. Lower: you can spam objects.
+const THROW_COOLDOWN := 0.35
+
+# THROW_WINDUP: seconds between pressing the throw button and the object leaving the hand: the
+# wind-up pose (arm drawn back) is shown for this long, then the release pose. Higher: a slower, more
+# visible wind-up and a laggier button. Lower: the throw feels instant.
+const THROW_WINDUP := 0.08
+
+# THROW_POSE_TIME: seconds from the button press until the throwing pose ends and normal movement
+# poses return. It should be longer than THROW_WINDUP (the rest is the follow-through).
+const THROW_POSE_TIME := 0.3
+
+# THROW_HAND: where a thrown object leaves the player, relative to the feet and in the direction
+# the player faces: x is how far in front, y is the height (negative = up). It should be around
+# chest height (see BODY_SIZE).
+const THROW_HAND := Vector2(34, -92)
 
 # INVULN_TIME: seconds after a hit during which further damage is ignored. The sprite
 # blinks for this long. While standing in spikes it is also the gap between hits:
@@ -154,8 +192,28 @@ const HEALTH_BAR_OFFSET := Vector2(0, -142)
 # Higher: forgiving, tall drops are safe. Lower: even moderate drops are lethal.
 const FALL_DEATH_HEIGHT := 700.0
 
-## Emitted when the player dies. cause is "health" (ran out of health) or "fall".
+## Emitted when the player dies. cause is "health" (ran out of health), "fall" or "pit".
 signal died(cause: String)
+
+## Emitted when the player presses the interact button.
+signal interacted
+
+## Emitted when the player throws an object (see attack_light()).
+signal threw(projectile: Projectile)
+
+# LADDER_REGRAB_TIME: seconds after jumping off a ladder during which ladders cannot be grabbed
+# again, so holding up/down as you leap doesn't snap you straight back onto the same ladder.
+# Higher: a longer committed leap. Lower: you can catch a ladder again sooner, even the one you left.
+const LADDER_REGRAB_TIME := 0.3
+
+## The player's name, shown above the health bar. Setting it trims spaces at the ends and cuts it to
+## MAX_NAME_LENGTH characters; an empty name falls back to DEFAULT_NAME.
+var display_name := DEFAULT_NAME:
+	set(value):
+		var cleaned := value.strip_edges().left(MAX_NAME_LENGTH)
+		display_name = cleaned if cleaned != "" else DEFAULT_NAME
+		if _health_bar != null:
+			_health_bar.set_title(display_name)
 
 var spawn := Vector2.ZERO
 var health := MAX_HEALTH
@@ -164,7 +222,13 @@ var climbing := false
 ## Ladder columns in world space (top-left of the top tile, down to the floor). Set by main from the Level.
 var ladders: Array[Rect2] = []
 
-var _peak_y := 0.0      # highest point (smallest y) reached since last standing/climbing
+var _pit_dying := false      # fell into a deadly pit: falling, then waiting out PIT_DEATH_DELAY
+var _pit_timer := -1.0     # counts down once the player has landed at the bottom (negative = not landed yet)
+var _throw_timer := 0.0   # while above zero, another throw is not allowed
+var _windup := -1.0       # seconds until a started throw leaves the hand (negative = no throw pending)
+var _throw_pose_timer := 0.0   # while above zero, the throwing pose is shown
+var _regrab_timer := 0.0  # while above zero, ladders cannot be grabbed (after jumping off one)
+var _peak_y := 0.0     # highest point (smallest y) reached since last standing/climbing
 var _ladder := Rect2()  # the ladder being climbed (valid while climbing)
 var _facing := 1
 var _hurt_timer := 0.0
@@ -176,6 +240,7 @@ var _health_bar: HealthBar
 
 func _ready() -> void:
 	z_index = 2
+	add_to_group("player")
 	_peak_y = global_position.y
 	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK
 	var shape := CollisionShape2D.new()
@@ -192,6 +257,7 @@ func _ready() -> void:
 
 	_health_bar = HealthBar.new()
 	_health_bar.position = HEALTH_BAR_OFFSET
+	_health_bar.set_title(display_name)
 	add_child(_health_bar)
 	health_changed.connect(func(current: int, maximum: int) -> void:
 		_health_bar.set_ratio(float(current) / maximum))
@@ -199,8 +265,9 @@ func _ready() -> void:
 
 
 ## Returns true if the hit landed (not blocked by invulnerability).
-func take_damage(amount: int) -> bool:
-	if _invuln_timer > 0.0:
+## `source_x` is the x of whatever hit us, if it has a position: the knockback pushes away from it.
+func take_damage(amount: int, source_x: float = NAN) -> bool:
+	if _invuln_timer > 0.0 or _pit_dying:
 		return false
 	health = maxi(0, health - amount)
 	health_changed.emit(health, MAX_HEALTH)
@@ -210,21 +277,40 @@ func take_damage(amount: int) -> bool:
 		_invuln_timer = INVULN_TIME
 		_hurt_timer = HURT_TIME
 		_stun_timer = STUN_TIME
+		_windup = -1.0            # a hit interrupts a throw
+		_throw_pose_timer = 0.0
 		_stop_climb()
-		velocity = Vector2(-_facing * KNOCKBACK_X, KNOCKBACK_UP)
+		var push := -_facing
+		if not is_nan(source_x) and not is_equal_approx(source_x, global_position.x):
+			push = 1 if global_position.x > source_x else -1
+		velocity = Vector2(push * KNOCKBACK_X, KNOCKBACK_UP)
 		_visuals.flinch(_facing)
 		_visuals.blink(INVULN_TIME)
 	return true
 
 
-## Interact with whatever is in reach (terminals, doors, levers...). Not implemented yet.
+## Interact with whatever is in reach. The player only announces it (the interacted signal); the
+## level decides whether there is a computer in reach.
 func interact() -> void:
-	pass
+	interacted.emit()
 
 
-## Quick, weak attack. Not implemented yet.
+## The player's weapon: throw an everyday object, picked at random (see SpriteLibrary.PROJECTILES), in the
+## direction the player faces. It flies in an arc (see Projectile).
 func attack_light() -> void:
-	pass
+	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0:
+		return
+	_throw_timer = THROW_COOLDOWN
+	_windup = THROW_WINDUP
+	_throw_pose_timer = THROW_POSE_TIME
+
+
+## The object leaves the hand (called when the wind-up ends).
+func _release_throw() -> void:
+	var names: Array = SpriteLibrary.PROJECTILES.keys()
+	var from := global_position + Vector2(_facing * THROW_HAND.x, THROW_HAND.y)
+	var obj := Projectile.launch(get_parent(), names[randi() % names.size()], from, _facing, velocity)
+	threw.emit(obj)
 
 
 ## Slow, strong attack. Not implemented yet.
@@ -232,8 +318,45 @@ func attack_heavy() -> void:
 	pass
 
 
+## Damage dealt to the player by one hazard hit (spikes): a share of MAX_HEALTH, see HAZARD_DAMAGE_FRACTION.
+static func hazard_damage() -> int:
+	return roundi(MAX_HEALTH * HAZARD_DAMAGE_FRACTION)
+
+
+## Fell into a spike pit too deep to climb out of: all health is lost and the player dies.
+## The player keeps falling to the bottom, can no longer be controlled, blinks for PIT_DEATH_DELAY seconds
+## down there, then the death is declared and they respawn (see _pit_step()).
+func fall_in_pit() -> void:
+	if _pit_dying:
+		return
+	_pit_dying = true
+	_pit_timer = -1.0
+	health = 0
+	health_changed.emit(health, MAX_HEALTH)
+	_stop_climb()
+	_windup = -1.0
+	_throw_pose_timer = 0.0
+	_visuals.update_pose(&"hurt", _facing, 0.0)
+
+
+func _pit_step(delta: float) -> void:
+	velocity.x = move_toward(velocity.x, 0.0, ACCEL * delta)
+	if not is_on_floor():
+		velocity.y += GRAVITY * delta
+	move_and_slide()
+	if is_on_floor() and _pit_timer < 0.0:
+		_pit_timer = PIT_DEATH_DELAY
+		_visuals.blink(PIT_DEATH_DELAY)
+	if _pit_timer >= 0.0:
+		_pit_timer -= delta
+		if _pit_timer <= 0.0:
+			die("pit")
+	_visuals.update_pose(&"hurt", _facing, delta)
+
+
 ## Out of health or a deadly fall: back to the last checkpoint with a full bar.
 func die(cause: String = "health") -> void:
+	_pit_dying = false
 	died.emit(cause)
 	_peak_y = spawn.y
 	health = MAX_HEALTH
@@ -247,11 +370,22 @@ func die(cause: String = "health") -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _pit_dying:
+		_pit_step(delta)
+		return
 	var dir := Input.get_axis("move_left", "move_right")
 	var vdir := Input.get_axis("move_up", "move_down")  # negative = up
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_invuln_timer = maxf(0.0, _invuln_timer - delta)
 	_stun_timer = maxf(0.0, _stun_timer - delta)
+	_throw_timer = maxf(0.0, _throw_timer - delta)
+	_throw_pose_timer = maxf(0.0, _throw_pose_timer - delta)
+	if _windup >= 0.0:
+		_windup -= delta
+		if _windup <= 0.0:
+			_windup = -1.0
+			if _stun_timer <= 0.0 and not climbing:   # knocked about or grabbed a ladder mid wind-up: no throw
+				_release_throw()
 	if _stun_timer > 0.0:
 		dir = 0.0  # knocked back: no steering for a moment
 
@@ -263,29 +397,39 @@ func _physics_process(delta: float) -> void:
 		attack_heavy()
 
 	if hazard_count > 0:
-		take_damage(HAZARD_DAMAGE)  # ignored while invulnerable
+		take_damage(hazard_damage())  # ignored while invulnerable
 
 	# Up/down grabs a ladder when one is in reach: standing at its bottom, standing on its
 	# top deck (down only), or catching it mid-jump. Otherwise up falls through to a jump.
-	if not climbing and vdir != 0.0 and _stun_timer <= 0.0:
+	_regrab_timer = maxf(0.0, _regrab_timer - delta)
+	if not climbing and vdir != 0.0 and _stun_timer <= 0.0 and _regrab_timer <= 0.0:
 		var ladder := _find_ladder(vdir)
 		if ladder.has_area():
 			_start_climb(ladder)
 
+	# Jump button while on a ladder: let go and leap off, steering with left/right.
+	var ladder_jump := false
+	if climbing and Input.is_action_just_pressed("jump"):
+		_stop_climb()
+		_regrab_timer = LADDER_REGRAB_TIME
+		ladder_jump = true
+
 	if climbing:
-		# Locked to the ladder: only up/down. No jumping and no sideways movement;
-		# you leave at the top deck or the bottom floor.
+		# Locked to the ladder: only up/down, no sideways movement. You leave at the top deck,
+		# the bottom floor, or by pressing jump (handled above).
 		velocity = Vector2(0.0, vdir * CLIMB_SPEED)
 	else:
 		# Weaker deceleration while stunned so the knockback actually carries.
 		var accel := 500.0 if _stun_timer > 0.0 else ACCEL
 		velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)
-		if not is_on_floor():
+		if ladder_jump:
+			velocity.y = JUMP_VELOCITY
+		elif not is_on_floor():
 			velocity.y += GRAVITY * delta
-		elif Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("move_up"):
-			# "jump" (Space / the JUMP button) always jumps. "move_up" (W / Up / D-pad up) is
-			# both jump and climb: a ladder in reach was already grabbed above (so we'd be
-			# climbing, not here); otherwise it jumps.
+		elif Input.is_action_just_pressed("jump") or (Input.is_action_just_pressed("move_up") and not TouchControls.should_show()):
+			# "jump" (Space / the JUMP button) always jumps. On a keyboard "move_up" (W / Up)
+			# is both jump and climb: a ladder in reach was already grabbed above (so we'd be
+			# climbing, not here); otherwise it jumps. On a phone the D-pad's up never jumps.
 			velocity.y = JUMP_VELOCITY
 
 	move_and_slide()
@@ -365,6 +509,8 @@ func _keep_on_ladder(vdir: float) -> void:
 func _pose_state(vdir: float) -> StringName:
 	if _hurt_timer > 0.0:
 		return &"hurt"
+	if _throw_pose_timer > 0.0 and not climbing:
+		return &"throw_windup" if _windup >= 0.0 else &"throw_release"
 	if climbing:
 		return &"climb" if vdir != 0.0 else &"climb_idle"
 	if not is_on_floor():
