@@ -43,7 +43,7 @@ jobs:
           mv templates_tmp/templates/* "$dest/"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Import the project (twice: the second pass registers the script class names)
+      - name: "Import the project twice (the second pass registers the script class names)"
         run: |
           godot --headless --path . --import || true
           godot --headless --path . --import || true
