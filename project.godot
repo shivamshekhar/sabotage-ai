@@ -19,8 +19,14 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=0
 
+[physics]
+
+common/physics_ticks_per_second=60
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.07, 0.08, 0.12, 1)
+2d/snap/snap_2d_transforms_to_pixel=true

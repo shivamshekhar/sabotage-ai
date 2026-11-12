@@ -83,6 +83,44 @@ func laser(c: int, r0: int, r1: int, id: String) -> void:
 	fill(c, r0, c, r1, id)
 
 
+## A deadly pit across columns c0 to c1: a hole `depth` rows deep whose top row is r_top (the walking surface),
+## filled with `liquid` (a map character from SpriteLibrary.PIT_KINDS) except for the top row, which is left
+## as air so the liquid sits one tile below the walkway. The row under the pit must be solid.
+func pit(c0: int, c1: int, r_top: int, liquid: String, depth: int = 3) -> void:
+	carve(c0, r_top, c1, r_top + depth - 1)
+	fill(c0, r_top + 1, c1, r_top + depth - 1, liquid)
+
+
+## Machine letters mark the bottom-LEFT tile of a footprint this many tiles wide (see level_data.gd).
+const MACHINE_WIDTHS := {"G": 2, "S": 3, "M": 4, "R": 1, "L": 2}
+
+
+## A left-right mirror image of this grid. Machine letters are moved so their footprints still stand where the
+## mirrored machine is (their letter must stay at the left edge of the footprint).
+func mirrored() -> LevelGrid:
+	var out := LevelGrid.new(cols, rows)
+	for r in rows:
+		for c in cols:
+			var ch: String = _cells[r][c]
+			if ch == ".":
+				continue
+			var target := cols - 1 - c
+			if MACHINE_WIDTHS.has(ch):
+				target -= MACHINE_WIDTHS[ch] - 1
+			out._cells[r][target] = ch
+	return out
+
+
+## Copy every non-empty cell of `other` into this grid, with its top-left corner at (col_off, row_off).
+## Cells that fall outside this grid are dropped.
+func paste(other: LevelGrid, col_off: int, row_off: int) -> void:
+	for r in other.rows:
+		for c in other.cols:
+			var ch: String = other._cells[r][c]
+			if ch != "." and r + row_off >= 0 and r + row_off < rows and c + col_off >= 0 and c + col_off < cols:
+				_cells[r + row_off][c + col_off] = ch
+
+
 ## A column of crates, `height` tiles tall, whose lowest crate is on row r_bottom. ch is "X" (metal)
 ## or "O" (orange).
 func crate_stack(c: int, r_bottom: int, height: int, ch: String = "X") -> void:

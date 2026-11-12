@@ -161,11 +161,6 @@ const ENEMY_ACTIVE_RANGE := 1500.0
 # ENEMY_TICK: seconds between checks of which enemies should be asleep. Higher: cheaper, slower to wake.
 const ENEMY_TICK := 0.25
 
-# PIT_ENTRY_MARGIN: how far in pixels below the lip of a deep spike pit you must have dropped before
-# it counts as having fallen in. It keeps a player standing or landing at the very edge safe.
-# Higher: more forgiving at the edge. Lower: touching the lip with your head is already too far.
-const PIT_ENTRY_MARGIN := 24.0
-
 # TERMINAL_REACH: how far in pixels around a computer the player can stand and still use it.
 # Higher: usable from further away. Lower: the player must stand right in front of it.
 const TERMINAL_REACH := 40.0
@@ -200,7 +195,7 @@ func _ready() -> void:
 	_build_ladders()
 	_build_lasers()
 	_build_terminals()
-	_build_pit_zones()
+	_build_pits()
 
 
 # ---------- map helpers ----------
@@ -276,11 +271,9 @@ func _build_tiles() -> void:
 				"=": _place(_run_name("ledge", "=", c, r, true), c, r)
 				"H": _place("ladder_top" if _cell(c, r - 1) != "H" else "ladder_middle", c, r, -2)
 				"^":
-					_place("spikes_up", c, r, 1)
-					_add_hazard(Rect2(c * T + 10, r * T + 30, 50, 40))
+					add_child(SpikeTrap.new(c, r, true))
 				"v":
-					_place("spikes_down", c, r, 1)
-					_add_hazard(Rect2(c * T + 10, r * T, 50, 40))
+					add_child(SpikeTrap.new(c, r, false))
 				"k": _decor(_run_name("panel_controls", "k", c, r, false), c, r)
 				"w": _decor(_run_name("panel_dark", "w", c, r, false), c, r)
 				"r": _decor(_run_name("rail_thin", "r", c, r, false), c, r, -4, Color.WHITE)
@@ -449,38 +442,46 @@ func _process(delta: float) -> void:
 
 ## An AI Bro standing on the tile below the map marker "B".
 func _spawn_bro(c: int, r: int) -> void:
+	# A Bro needs flat ground to pace on; one placed where there is not enough is skipped (with a warning)
+	if LevelData.bro_flat_span(_map, c, r) < LevelData.bro_min_flat_tiles():
+		push_warning("AI Bro at (%d, %d) not spawned: it needs %d tiles of flat ground" % [c, r, LevelData.bro_min_flat_tiles()])
+		return
 	var bro := AIBro.new()
 	bro.position = Vector2((c + 0.5) * T, (r + 1) * T)
 	add_child(bro)
 
 
-## Spike pits too deep to climb out of kill whoever falls in (the player or an enemy). A pit is a run of
-## floor spikes with solid wall on both sides, rising at least PIT_DEEP_ROWS tiles above the spikes'
-## bottom row and tall enough that a jump from the bottom cannot reach the top (see Player's jump
-## height: JUMP_VELOCITY^2 / (2 * GRAVITY)). Shallower spikes just hurt (see Player.hazard_damage()).
-func _build_pit_zones() -> void:
-	var jump_height := Player.JUMP_VELOCITY * Player.JUMP_VELOCITY / (2.0 * Player.GRAVITY)
+## Deadly pits: every connected block of one liquid character (see SpriteLibrary.PIT_KINDS: A toxic waste,
+## F lava, N nuclear waste, W piranha tank) becomes a PitHazard. Whoever falls in dies (PitHazard). Ordinary
+## spikes are SpikeTrap and only hurt.
+func _build_pits() -> void:
+	var kinds := {}
+	for kind in SpriteLibrary.PIT_KINDS:
+		kinds[SpriteLibrary.PIT_KINDS[kind]] = kind
+	var seen := {}
 	for r in _map.size():
-		var c := 0
-		while c < _map[r].length():
-			if _map[r][c] != "^":
-				c += 1
+		for c in _map[r].length():
+			var ch := _map[r][c]
+			if not kinds.has(ch) or seen.has(Vector2i(c, r)):
 				continue
-			var c0 := c
-			while c < _map[r].length() and _map[r][c] == "^":
-				c += 1
-			var c1 := c - 1
-			var depth := 0
-			while _is_solid(c0 - 1, r - depth) and _is_solid(c1 + 1, r - depth):
-				depth += 1
-			if depth * T <= jump_height:
-				continue
-			var top := (r - depth + 1) * T + PIT_ENTRY_MARGIN
-			var zone := _make_area(Rect2(c0 * T + 6, top, (c1 - c0 + 1) * T - 12, (r + 1) * T - top))
-			zone.collision_mask = Player.LAYER_WORLD | Player.LAYER_ENEMY
-			zone.body_entered.connect(func(body: Node) -> void:
-				if body.has_method("fall_in_pit"):
-					body.fall_in_pit())
+			# the pit is a rectangle: extend right along the row, then down while the whole row matches
+			var w := 1
+			while c + w < _map[r].length() and _map[r][c + w] == ch:
+				w += 1
+			var h := 1
+			while r + h < _map.size() and _row_is(ch, c, r + h, w):
+				h += 1
+			for yy in h:
+				for xx in w:
+					seen[Vector2i(c + xx, r + yy)] = true
+			add_child(PitHazard.new(kinds[ch], Rect2(c * T, r * T, w * T, h * T)))
+
+
+func _row_is(ch: String, c: int, r: int, w: int) -> bool:
+	for xx in w:
+		if _cell(c + xx, r) != ch:
+			return false
+	return true
 
 
 ## One LaserField per digit in the map (all cells of one id must form a single vertical run).
@@ -547,7 +548,7 @@ func _wake_nearby_enemies() -> void:
 	if player == null:
 		return
 	for e in get_tree().get_nodes_in_group("enemies"):
-		(e as AIBro).set_active(absf(e.global_position.x - player.global_position.x) <= ENEMY_ACTIVE_RANGE)
+		e.set_active(absf(e.global_position.x - player.global_position.x) <= ENEMY_ACTIVE_RANGE)
 
 
 func _update_terminal_hints() -> void:
@@ -633,17 +634,6 @@ func _make_area(rect: Rect2) -> Area2D:
 	area.add_child(shape)
 	add_child(area)
 	return area
-
-
-func _add_hazard(rect: Rect2) -> void:
-	# Player tracks how many hazards it overlaps and takes damage while inside one.
-	var area := _make_area(rect)
-	area.body_entered.connect(func(body: Node) -> void:
-		if body is Player:
-			body.hazard_count += 1)
-	area.body_exited.connect(func(body: Node) -> void:
-		if body is Player:
-			body.hazard_count -= 1)
 
 
 func _add_solid(rect: Rect2, one_way: bool = false, layer: int = Player.LAYER_WORLD) -> void:

@@ -62,12 +62,13 @@ func _main() -> void:
 			player = n
 
 	# ---- key bindings
-	_check("Space is bound to jump", _has_key("jump", KEY_SPACE))
-	_check("W and Up are bound to move_up", _has_key("move_up", KEY_W) and _has_key("move_up", KEY_UP))
+	_check("Space and W are bound to jump", _has_key("jump", KEY_SPACE) and _has_key("jump", KEY_W))
+	_check("Up is bound to move_up", _has_key("move_up", KEY_UP))
 	_check("E is bound to interact", _has_key("interact", KEY_E))
-	_check("J is bound to light attack", _has_key("attack_light", KEY_J))
-	_check("K is bound to heavy attack", _has_key("attack_heavy", KEY_K))
-	_check("A/D/arrows still move", _has_key("move_left", KEY_A) and _has_key("move_right", KEY_D) and _has_key("move_left", KEY_LEFT) and _has_key("move_right", KEY_RIGHT))
+	_check("Q is bound to light attack", _has_key("attack_light", KEY_Q))
+	_check("S is bound to heavy attack", _has_key("attack_heavy", KEY_S))
+	_check("the arrow keys move", _has_key("move_left", KEY_LEFT) and _has_key("move_right", KEY_RIGHT) and _has_key("move_down", KEY_DOWN))
+	_check("A and D no longer move the player (they are free)", not _has_key("move_left", KEY_A) and not _has_key("move_right", KEY_D))
 
 	# ---- Space jumps
 	_tp(300.0, 840.0)

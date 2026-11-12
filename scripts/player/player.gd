@@ -128,7 +128,7 @@ const MAX_NAME_LENGTH := 10
 # DEFAULT_NAME: the name shown until players can choose their own (a menu is planned).
 const DEFAULT_NAME := "SABOTEUR"
 
-# PIT_DEATH_DELAY: seconds the player blinks at the bottom of a deadly spike pit, after landing, before the
+# PIT_DEATH_DELAY: seconds the player blinks at the bottom of a deadly pit (see PitHazard), after landing, before the
 # game over is declared and they respawn (see fall_in_pit()). Higher: a longer look at what happened.
 # Lower: back in the action sooner.
 const PIT_DEATH_DELAY := 0.5
@@ -323,7 +323,7 @@ static func hazard_damage() -> int:
 	return roundi(MAX_HEALTH * HAZARD_DAMAGE_FRACTION)
 
 
-## Fell into a spike pit too deep to climb out of: all health is lost and the player dies.
+## Fell into a deadly pit (see PitHazard): all health is lost and the player dies.
 ## The player keeps falling to the bottom, can no longer be controlled, blinks for PIT_DEATH_DELAY seconds
 ## down there, then the death is declared and they respawn (see _pit_step()).
 func fall_in_pit() -> void:
@@ -362,6 +362,7 @@ func die(cause: String = "health") -> void:
 	health = MAX_HEALTH
 	health_changed.emit(health, MAX_HEALTH)
 	global_position = spawn
+	reset_physics_interpolation()   # a teleport: don't smear the sprite across the level
 	velocity = Vector2.ZERO
 	_stop_climb()
 	_hurt_timer = HURT_TIME

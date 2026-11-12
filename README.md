@@ -66,6 +66,7 @@ Stick to Godot 4.7.x. The project files and the export templates must be the sam
    godot --path .                       # play
    SABOTAGE_LEVEL=test godot --path .   # the test level (a small sandbox) instead of Level 1
    SABOTAGE_PREVIEW=1 godot --path .    # zoomed-out view of the whole level (debug aid)
+   SABOTAGE_START="39,78" godot --path .  # start on map tile column,row (debug aid for a big level)
    ```
    With no `SABOTAGE_LEVEL`, the game starts on Level 1. In PowerShell set the variable first:
    `$env:SABOTAGE_LEVEL = "test"; godot --path .`
@@ -86,12 +87,12 @@ The repo's [.vscode/settings.json](.vscode/settings.json) makes Git Bash the def
 
 | Action | Keyboard (PC) | Phone |
 |---|---|---|
-| Move | A / D or Left / Right | D-pad left / right |
-| Jump | **Space**, or W / Up | **JUMP** button, or D-pad up |
-| Climb up / down a ladder | W / Up, S / Down | D-pad up / down |
+| Move | Left / Right arrows | D-pad left / right |
+| Jump | **Space**, **W**, or Up | **JUMP** button, or D-pad up |
+| Climb up / down a ladder | Up / Down arrows | D-pad up / down |
 | Interact | E | **USE** button |
-| Throw an object (weapon) | J | **LIGHT** button |
-| Heavy attack | K | **HEAVY** button |
+| Throw an object (weapon) | **Q** | **LIGHT** button |
+| Heavy attack | **S** | **HEAVY** button |
 
 Heavy attack is a placeholder for now: the key and button work but `attack_heavy()` in
 [scripts/player/player.gd](scripts/player/player.gd) is empty, ready to be filled in.
@@ -101,13 +102,24 @@ paintbrush, a vinyl record...: things the AI can't make) in an arc, like a throw
 ([scripts/player/projectile.gd](scripts/player/projectile.gd)). It takes 50% of an **AI Bro**'s health. AI Bros
 ([scripts/enemy/ai_bro.gd](scripts/enemy/ai_bro.gd), the zombie sprite) have 20% of the player's health, pace
 near their spot or ledge, chase you when you come near and they are facing you, and hit for 10% of your
-health. Spikes take 20% of yours; Bros are immune to floor spikes, but anyone (you or a Bro) who falls into a
-spike pit too deep to climb out of loses all health and dies; for the player that is GAME OVER and a respawn at
+health. There are two kinds of hazard, with their own classes and sprites. **Spikes** (`^` on the floor, `v` on the
+ceiling; [scripts/level/spike_trap.gd](scripts/level/spike_trap.gd)) only hurt: they take 20% of your health
+and Bros are immune to them. **Deadly pits** ([scripts/level/pit_hazard.gd](scripts/level/pit_hazard.gd)) kill
+anyone (you or a Bro) who falls in: toxic waste (`A`), lava (`F`), nuclear waste (`N`) and a tank of robotic
+piranhas (`W`). For the player a pit is GAME OVER and a respawn at
 the last checkpoint. Bros never walk off a ledge: they turn round while pacing and stop at an edge while chasing; they climb steps and
 hop narrow gaps by jumping, and only notice you within a short range while facing you. Their sensing runs ten
 times a second, Bros far from the player sleep (no physics at all), and a dead Bro is freed at once, so a level can
 hold many (`tools/tests/enemy_ai_test.gd` checks the movement, the sleeping, and that 200 killed Bros leave nothing
-behind). Put a Bro in a level with `B` in the map. Damage numbers are fractions of
+behind). Put a Bro in a level with `B` in the map; it needs enough flat ground to pace on (`LevelData.bro_min_flat_tiles()`,
+worked out from its patrol beat and width): the level builder reports a Bro placed where there is not enough room, a
+Bro that still ends up cramped is not spawned, and `level1_test.gd` checks every marker.
+
+**Robot piranhas** ([scripts/enemy/piranha.gd](scripts/enemy/piranha.gd)) live in the `W` tanks: they hide under the liquid, pop up
+at their own spot and either peek out snapping their jaws or leap to one side, at you when you are near, and a bite takes 10% of
+your health. They have no health bar: one thrown object destroys one, and it returns at the same spot a few seconds later (only
+then). A tank that is off screen is hidden and does no work (its piranhas, bubbles and glow are switched off), and so is any enemy
+far from the player. `tools/tests/piranha_test.gd` checks all of this. Damage numbers are fractions of
 `Player.MAX_HEALTH` (see the constants in those scripts). `tools/tests/enemy_test.gd` checks all of this.
 
 **Phone layout** ([scripts/ui/touch_controls.gd](scripts/ui/touch_controls.gd)): an 8-way D-pad at
@@ -323,6 +335,7 @@ python tools/art/generate_background.py assets/backgrounds/data_center
 python tools/art/generate_tiles.py assets/tiles/kenney_industrial assets/tiles/data_center
 python tools/art/generate_machines.py assets/machines/data_center
 python tools/art/generate_projectiles.py
+python tools/art/generate_pit_hazards.py
 python tools/art/generate_icon.py icon.png
 ```
 
@@ -332,6 +345,7 @@ After regenerating, run `godot --headless --path . --import` so Godot re-imports
 |---|---|---|
 | `generate_background.py` | 3 parallax layers + 2 LED layers, blurred for depth of field. Each layer is one *storey* of the hall (racks standing on a floor slab, a gantry with stairs and columns) that tiles vertically, so racks never float and the picture never ends. `W` and `H` must match `TILE_W` and `TILE_H` in `scripts/level/background.gd` | `BLUR_*`, colours, rack layout, `*_FLOOR` |
 | `generate_tiles.py` | themed ground, ledges, ladders, crates, spikes + regraded props | palette constants at the top |
+| `generate_pit_hazards.py` | The deadly-pit art in `assets/pit_hazards/<kind>/`: recolours of Kenney's CC0 lava and water tiles (kept in `tools/art/sources/kenney_platformer_redux/`) for toxic waste, lava, nuclear waste and the piranha tank, plus the robot piranha painted in parts (body, lower jaw, eye glow) so the game can animate its bite. The liquids' motion is `scripts/level/pit_liquid.gdshader` | `recolour()` values, the piranha drawing |
 | `generate_projectiles.py` | The 12 throwable objects in `assets/projectiles/pixel_art/` (6 public-domain paintings shrunk to pixel art from `tools/art/sources/`, a cat photo and 5 everyday objects, drawn in code). A new object is listed in `SpriteLibrary.PROJECTILES` | the per-object functions |
 | `generate_machines.py` | GPU rack, supercomputer, monitoring station, server tower + LED layers + shadows + the spinning fan blades (`machine_fan.png`). Also **writes `scripts/level/machine_fans.gd` and `scripts/level/machine_screens.gd`** (where each machine's fans and monitor screens sit), so commit those files after regenerating | the per-machine functions |
 | `generate_icon.py` | the 512x512 app icon (`icon.png`) | colours, hero pose |
@@ -476,6 +490,16 @@ Work them out from the current values (tile size is `Level.T`) and keep steps an
 comfortably inside them, so levels stay fair. After retuning, run `tools/run_tests.sh`: the
 Level 1 test will tell you if the level became unbeatable or has a dead end.
 
+**Level 1 is four floors tall** (149 x 67 tiles): floor 0 runs left to right through deadly pits, spike strips,
+crate hurdles, laser tunnels, stepping-stone pits and crate stairs, then a tower of ladders and ledges climbs
+onto floor 1, which runs right to left, and so on up to the exit on floor 3. It is built from small *pieces*
+(`_s_pit`, `_s_tunnel`, `_s_stones`, `_s_gauntlet`, `_s_deck`...) listed per floor in `_l1_plan()`; each piece
+starts and ends on flat floor so they join in any order, and the odd floors are drawn facing right and then
+mirrored. To change a floor, edit its plan. `tools/tests/level1_test.gd` solves the whole level (and each
+laser, and the no-stones and no-ladders variants) and checks that a floor is no longer finishable if a piece
+is made impossible; `SABOTAGE_FLOOR=2 godot_console --headless --path . --script res://tools/solve_level.gd`
+prints and solves one floor.
+
 There are two levels: **Level 1** (`level_1()`, drawn with the `LevelGrid` helpers in
 `scripts/level/level_grid.gd`: `slab`, `ledge`, `ladder`, `spikes`, `crate_stack`...) and the **test
 level** (`test_level()`), a sandbox that must not be changed. Checkpoints (`K`) set where you respawn.
@@ -517,7 +541,7 @@ Code and generated art are released under the [MIT License](LICENSE): use and mo
 with no warranty and no liability. Third-party art in `assets/kenney/` is CC0 by Kenney (license
 files included alongside it).
 
-Art by [Kenney](https://kenney.nl) (CC0): Platformer Pack: Industrial, Platformer Characters 1.
+Art by [Kenney](https://kenney.nl) (CC0): Platformer Pack: Industrial, Platformer Characters 1, and the lava and water tiles of Platformer Pack Redux (the base of the deadly pits' liquids).
 
 The thrown paintings are pixel-art reductions of public-domain works, from Wikimedia Commons: Mona Lisa
 (Leonardo da Vinci), The Starry Night (Vincent van Gogh), The Great Wave off Kanagawa (Hokusai), Girl with a

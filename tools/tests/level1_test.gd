@@ -1,17 +1,27 @@
 extends SceneTree
 ## Level 1 checks. Exits non-zero on failure.
-##  1. Structure: one spawn, one exit, rows the same width, checkpoints on solid ground.
+##  1. Structure: one spawn, one exit, rows the same width, the right amount of everything for a level five
+##     times the size of the original, everything standing on something, each laser gate close to its
+##     computer with nothing in between.
 ##  2. LevelSolver proves the exit is reachable and that no spot reachable on the way is a dead end.
-##  3. Difficulty: with the stepping stones or the first ladder removed, the exit is NOT reachable,
-##     so the wide pits cannot simply be jumped and the tower cannot be skipped.
-##  4. Calibration: the solver's jump model lands within a few pixels of the real Player's jump,
+##  3. Lasers: with every gate on you cannot finish; computer k can be reached while gates k.. are on.
+##  4. Difficulty: with the stepping stones or the ladders removed, the exit is NOT reachable, so the
+##     wide pits cannot simply be jumped and the towers cannot be skipped.
+##  5. Calibration: the solver's jump model lands within a few pixels of the real Player's jump,
 ##     so (2) and (3) say something about the real game.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level1_test.gd
-## (it takes a minute or two: the solver simulates tens of thousands of jumps)
+## (it takes about a minute: the solver simulates tens of thousands of jumps)
 
 # LAND_TOLERANCE: how far in pixels the solver's landing may differ from the engine's in the
 # calibration jump. Larger accepts a rougher model of the player's physics.
 const LAND_TOLERANCE := 20.0
+
+# SCALE / ORIGINAL_*: how much the original (one floor) Level 1 had of each thing. The level must have at least
+# SCALE times as many pits and enemies.
+const SCALE := 3.5
+const ORIGINAL_PITS := 3
+const ORIGINAL_ENEMIES := 5
+const ORIGINAL_LADDERS := 2
 
 # CAL_X / CAL_Y: where the calibration jumps start (feet position) on the test level's long ground
 # floor. Any flat open stretch of the test level will do.
@@ -37,19 +47,6 @@ func _check(name: String, cond: bool, detail := "") -> void:
 		ok = false
 
 
-func _map_without(rows: Array[String], c0: int, r0: int, c1: int, r1: int) -> Array[String]:
-	var out: Array[String] = []
-	for r in rows.size():
-		var line := rows[r]
-		if r >= r0 and r <= r1:
-			var chars := line.split("")
-			for c in range(c0, c1 + 1):
-				chars[c] = "."
-			line = "".join(chars)
-		out.append(line)
-	return out
-
-
 ## The map with the lasers in on_ids turned into solid wall and the other lasers removed.
 func _lasers_as_walls(rows: Array[String], on_ids: Array) -> Array[String]:
 	var out: Array[String] = []
@@ -62,53 +59,96 @@ func _lasers_as_walls(rows: Array[String], on_ids: Array) -> Array[String]:
 	return out
 
 
-func _initialize() -> void:
-	var rows := LevelData.level_1()
+func _remove_chars(rows: Array[String], chars: String) -> Array[String]:
+	var out: Array[String] = []
+	for line in rows:
+		var chars_arr := line.split("")
+		for i in chars_arr.size():
+			if chars.contains(chars_arr[i]):
+				chars_arr[i] = "."
+		out.append("".join(chars_arr))
+	return out
 
-	# 1. Structure
-	var spawns := 0
-	var exits := 0
-	for r in rows:
-		if r.length() != rows[0].length():
-			_check("rows all the same width", false, r)
-		spawns += r.count("P")
-		exits += r.count("E")
-	_check("exactly one spawn", spawns == 1, str(spawns))
-	_check("exactly one exit", exits == 1, str(exits))
-	var map_cols := rows[0].length()
-	for r in rows.size():
-		for c in map_cols:
-			if rows[r][c] == "B":
-				var under := rows[r + 1][c]
-				_check("AI Bro (%d,%d) stands on solid ground" % [c, r], "#XO=".contains(under))
-			if rows[r][c] == "K":
-				var below := rows[r + 1][c]
-				_check("checkpoint (%d,%d) stands on solid ground" % [c, r], below == "#" or below == "X" or below == "O" or below == "=")
 
-	# 2. Solve
+## The map without its stepping stones: the ledges of a pit sit on its floor's walking-surface row (or a couple of rows above it).
+func _remove_stones(rows: Array[String]) -> Array[String]:
+	var out: Array[String] = rows.duplicate()
+	for f in LevelData.L1_FLOORS:
+		for r in range(LevelData.l1_surface_row(f) - 2, LevelData.l1_surface_row(f) + 1):
+			out[r] = out[r].replace("=", ".")
+	return out
+
+
+func _solve(rows: Array[String]) -> LevelSolver:
 	var solver := LevelSolver.new(rows)
 	solver.solve()
-	var route := solver.route()
-	_check("the exit is reachable from the start", not route.is_empty(), "%d nodes" % solver.nodes.size())
-	var stuck := solver.stuck_nodes()
-	_check("no reachable spot is a dead end", stuck.is_empty(), "%d stuck, first %s" % [stuck.size(), stuck.slice(0, 3)])
-	# Every checkpoint must itself be solvable (respawning there never strands the player).
-	var coreach := solver.coreachable()
+	return solver
+
+
+func _count(rows: Array[String], chars: String) -> int:
+	var n := 0
+	for line in rows:
+		for ch in chars:
+			n += line.count(ch)
+	return n
+
+
+## How many separate pits (rectangles of one liquid) the map has.
+func _count_pits(rows: Array[String]) -> int:
+	var seen := {}
+	var n := 0
+	for r in rows.size():
+		for c in rows[r].length():
+			var ch := rows[r][c]
+			if "AFNW".contains(ch) and not seen.has(Vector2i(c, r)):
+				n += 1
+				var stack := [Vector2i(c, r)]
+				while not stack.is_empty():
+					var p: Vector2i = stack.pop_back()
+					if seen.has(p) or p.y < 0 or p.y >= rows.size() or p.x < 0 or p.x >= rows[p.y].length() or rows[p.y][p.x] != ch:
+						continue
+					seen[p] = true
+					for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+						stack.append(p + d)
+	return n
+
+
+func _initialize() -> void:
+	var rows := LevelData.level_1()
+	var map_cols := rows[0].length()
+
+	# 1. Structure
+	var widths_ok := true
+	for r in rows:
+		if r.length() != map_cols:
+			widths_ok = false
+	_check("rows all the same width", widths_ok)
+	_check("exactly one spawn", _count(rows, "P") == 1, str(_count(rows, "P")))
+	_check("exactly one exit", _count(rows, "E") == 1, str(_count(rows, "E")))
+	_check("the map is %d x %d tiles" % [map_cols, rows.size()], map_cols * rows.size() >= 3 * 100 * 30, "%.1f times the original area" % (map_cols * rows.size() / 3000.0))
+	var pits := _count_pits(rows)
+	var enemies := _count(rows, "B")
+	var ladders := LevelSolver.new(rows).ladders.size()
+	_check("at least %.1f times as many pits as the original" % SCALE, pits >= SCALE * ORIGINAL_PITS, "%d pits" % pits)
+	_check("at least %.1f times as many enemies" % SCALE, enemies >= SCALE * ORIGINAL_ENEMIES, "%d enemies" % enemies)
+	_check("a tower of ladders on every floor but the top", ladders >= (LevelData.L1_FLOORS - 1) * ORIGINAL_LADDERS, "%d ladders" % ladders)
+	var cramped := LevelData.bros_without_room(rows)
+	_check("every AI Bro stands on at least %d tiles of flat ground to pace on" % LevelData.bro_min_flat_tiles(), cramped.is_empty(), str(cramped))
+	var narrow: Array[String] = ["#####", "#...#", "#...#", "#.B.#", "#####"]
+	var wide: Array[String] = ["###############", "#.............#", "#.............#", "#......B......#", "###############"]
+	_check("the room check refuses a cramped spot and accepts a roomy one", LevelData.bros_without_room(narrow).size() == 1 and LevelData.bros_without_room(wide).is_empty(), "%d and %d tiles" % [LevelData.bro_flat_span(narrow, 2, 3), LevelData.bro_flat_span(wide, 7, 3)])
+	var kinds := {}
+	for ch in "AFNW":
+		if _count(rows, ch) > 0:
+			kinds[ch] = true
+	_check("all four kinds of deadly pit are used", kinds.size() == 4, str(kinds.keys()))
+	_check("ordinary spikes are still there", _count(rows, "^") > 0)
 	for r in rows.size():
 		for c in map_cols:
-			if rows[r][c] == "K":
-				var k := solver.key_for((c + 0.5) * 70.0, (r + 1) * 70.0)
-				_check("checkpoint (%d,%d) can still finish" % [c, r], coreach.has(k))
-
-	# 3. Difficulty
-	var no_stones := LevelSolver.new(_map_without(rows, 35, LevelData.L1_GROUND, 42, LevelData.L1_GROUND))
-	no_stones.solve()
-	_check("the wide pit cannot be jumped without its stepping stones", no_stones.route().is_empty())
-	var no_ladder := LevelSolver.new(_map_without(rows, 82, 20, 82, 25))
-	no_ladder.solve()
-	_check("the tower cannot be skipped without the ladder", no_ladder.route().is_empty())
-
-	# 3b. Nothing floats: lamps, sirens and canisters stand on something
+			var below := rows[r + 1][c] if r + 1 < rows.size() else "#"
+			if rows[r][c] == "B" or rows[r][c] == "K":
+				if not "#XO=".contains(below):
+					_check("%s (%d,%d) stands on something" % [rows[r][c], c, r], false)
 	for id in LevelData.ids():
 		var m := LevelData.map(id)
 		var floating: Array[String] = []
@@ -121,36 +161,94 @@ func _initialize() -> void:
 						floating.append("%s at (%d,%d)" % [m[r][c], c, r])
 		_check("level %s: lamps, sirens and canisters stand on something" % id, floating.is_empty(), str(floating))
 
-	# 3c. Lasers and computers
+	# 1b. Lasers and computers
 	var terminals := LevelData.terminals("1")
-	var laser_ids := {}
+	var laser_cells := {}   # id -> Array of Vector2i
 	for r in rows.size():
 		for c in map_cols:
 			var ch := rows[r][c]
 			if ch >= "1" and ch <= "9":
-				laser_ids[ch] = true
-	_check("every laser has exactly one computer", terminals.size() == laser_ids.size(), "%d computers, %d lasers" % [terminals.size(), laser_ids.size()])
+				if not laser_cells.has(ch):
+					laser_cells[ch] = []
+				laser_cells[ch].append(Vector2i(c, r))
+	_check("every laser has exactly one computer", terminals.size() == laser_cells.size() and laser_cells.size() >= 2 * (LevelData.L1_FLOORS - 1) + 1, "%d computers, %d lasers" % [terminals.size(), laser_cells.size()])
+	var close_ok := true
+	var detail := ""
 	for t in terminals:
-		_check("computer for laser %s sits on a machine letter" % t["laser"], rows[t["r"]][t["c"]] == "L")
-		_check("laser %s exists" % t["laser"], laser_ids.has(t["laser"]))
-		_check("puzzle '%s' exists" % t["game"], HackPopup.has_game(t["game"]))
-	# In order: with lasers k.. on, computer k can be reached and the exit cannot.
-	var ids: Array = laser_ids.keys()
+		var cells: Array = laser_cells.get(t["laser"], [])
+		if cells.is_empty() or not HackPopup.has_game(t["game"]):
+			close_ok = false
+			continue
+		var lc: int = cells[0].x
+		var tr: int = t["r"]
+		# between the computer's footprint and the gate: the same flat floor, nothing in the way
+		var from_c: int = (t["c"] + 2) if lc > t["c"] else (lc + 1)
+		var to_c: int = (lc - 1) if lc > t["c"] else (t["c"] - 1)
+		if to_c - from_c + 1 > 3:
+			close_ok = false
+			detail += " laser %s is %d tiles from its computer;" % [t["laser"], to_c - from_c + 1]
+		for c in range(from_c, to_c + 1):
+			if "#XO=H".contains(rows[tr][c]) or not "#=".contains(rows[tr + 1][c]):
+				close_ok = false
+				detail += " laser %s: something between at column %d;" % [t["laser"], c]
+	_check("each computer is within three tiles of its gate on the same flat floor, nothing between", close_ok, detail)
+	# Room around each computer: nothing in its 2x3 footprint, and a clear tile on both sides (the gate is a tile away)
+	var crowded := []
+	for t in terminals:
+		for dr in range(0, 3):
+			for dc in range(-1, 3):
+				var ch := rows[t["r"] - dr][t["c"] + dc]
+				var is_letter: bool = dc == 0 and dr == 0
+				if ch != "." and not is_letter:
+					crowded.append("%s at (%d,%d) next to the computer at (%d,%d)" % [ch, t["c"] + dc, t["r"] - dr, t["c"], t["r"]])
+	_check("nothing overlaps or crowds a lock terminal", crowded.is_empty(), str(crowded))
+	var on_letters := true
+	for t in terminals:
+		if rows[t["r"]][t["c"]] != "L":
+			on_letters = false
+	_check("every computer sits on a lock-terminal letter", on_letters)
+
+	# 2. Solve the whole level
+	var t0 := Time.get_ticks_msec()
+	var solver := _solve(rows)
+	var route := solver.route()
+	_check("the exit is reachable from the start", not route.is_empty(), "%d nodes in %d ms" % [solver.nodes.size(), Time.get_ticks_msec() - t0])
+	var stuck := solver.stuck_nodes()
+	_check("no reachable spot is a dead end", stuck.is_empty(), "%d stuck, first %s" % [stuck.size(), stuck.slice(0, 3)])
+	var coreach := solver.coreachable()
+	var bad_checkpoints := []
+	for r in rows.size():
+		for c in map_cols:
+			if rows[r][c] == "K" and not coreach.has(solver.key_for((c + 0.5) * 70.0, (r + 1) * 70.0)):
+				bad_checkpoints.append(Vector2i(c, r))
+	_check("every checkpoint can still finish", bad_checkpoints.is_empty(), str(bad_checkpoints))
+
+	# 3. Lasers: every gate on = no finish; computer k reachable while gate k and the later ones are on
+	var ids: Array = laser_cells.keys()
 	ids.sort()
+	var all_on := _solve(_lasers_as_walls(rows, ids))
+	_check("with every laser gate on the exit cannot be reached", all_on.route().is_empty())
 	for k in ids.size():
 		var on_ids: Array = ids.slice(k)
-		var world := LevelSolver.new(_lasers_as_walls(rows, on_ids))
-		world.solve()
-		var term: Dictionary = terminals[k]
-		var machine := Vector2(2, 3)
-		var zone := Rect2(term["c"] * 70 - 40, (term["r"] + 1 - int(machine.y)) * 70, machine.x * 70 + 80, machine.y * 70)
+		var world := _solve(_lasers_as_walls(rows, on_ids))
+		var term: Dictionary = {}
+		for t in terminals:
+			if t["laser"] == ids[k]:
+				term = t
+		var zone := Rect2(term["c"] * 70 - 40, (term["r"] - 2) * 70, 2 * 70 + 80, 3 * 70)
 		var reached := false
 		for key in world.nodes:
 			var p: Vector2 = world.nodes[key]
 			if Rect2(p.x - 30, p.y - 128, 60, 128).intersects(zone):
 				reached = true
-		_check("lasers %s on: the computer for laser %s can be reached" % [on_ids, term["laser"]], reached)
-		_check("lasers %s on: the exit cannot be reached" % [on_ids], world.route().is_empty())
+				break
+		_check("gates %s to 9 on: the computer for gate %s can be reached" % [ids[k], ids[k]], reached)
+
+	# 4. Difficulty
+	var no_stones := _solve(_remove_stones(rows))
+	_check("the wide pits cannot be jumped without their stepping stones", no_stones.route().is_empty())
+	var no_ladders := _solve(_remove_chars(rows, "H"))
+	_check("the towers cannot be skipped without their ladders", no_ladders.route().is_empty())
 
 	# 4. Calibration against the real Player
 	OS.set_environment("SABOTAGE_LEVEL", "test")

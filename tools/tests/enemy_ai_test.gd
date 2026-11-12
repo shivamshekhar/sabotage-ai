@@ -136,6 +136,28 @@ func _main() -> void:
 	_check("a Bro does not try to climb a wall taller than its jump", bro.state == AIBro.State.CHASE and bro.global_position.x < 600.0 and bro.global_position.y > -5.0, "x=%.0f y=%.0f" % [bro.global_position.x, bro.global_position.y])
 	await _drop_world()
 
+	# ---- crowds: Bros that start on the same spot, or all chase the player, do not end up as one sprite
+	_make_world([[-4000, 4000, 0]], 0.0, 0.0)
+	var crowd: Array[AIBro] = []
+	for i in 4:
+		crowd.append(_bro(600.0, 0.0))   # four Bros on exactly the same spot
+	await _wait(240)
+	var min_gap := 1e9
+	for i in crowd.size():
+		for j in range(i + 1, crowd.size()):
+			min_gap = minf(min_gap, absf(crowd[i].global_position.x - crowd[j].global_position.x))
+	_check("Bros that start on top of each other drift apart", min_gap >= 20.0, "closest pair %.0f px apart" % min_gap)
+	for b in crowd:
+		b.global_position = Vector2(player.global_position.x + 220.0, 0.0)   # all four chase at once, from the same spot
+		b._dir = -1
+	await _wait(300)
+	min_gap = 1e9
+	for i in crowd.size():
+		for j in range(i + 1, crowd.size()):
+			min_gap = minf(min_gap, absf(crowd[i].global_position.x - crowd[j].global_position.x))
+	_check("chasing Bros line up at different spots instead of overlapping", min_gap >= 20.0, "closest pair %.0f px apart" % min_gap)
+	await _drop_world()
+
 	# ---- point-blank: an object thrown from inside an enemy's hit box still hits it (it used to pass through)
 	_make_world([[-2000, 2000, 0]], 0.0, 0.0)
 	player._facing = 1
@@ -177,7 +199,7 @@ func _main() -> void:
 	for n in get_nodes_in_group("player"):
 		player = n
 	for e in get_nodes_in_group("enemies"):
-		if absf(e.global_position.x - player.global_position.x) > Level.ENEMY_ACTIVE_RANGE + 100.0:
+		if e is AIBro and absf(e.global_position.x - player.global_position.x) > Level.ENEMY_ACTIVE_RANGE + 100.0:
 			far_count += 1
 			if not e.is_physics_processing():
 				asleep += 1
@@ -185,7 +207,7 @@ func _main() -> void:
 	_check("Bros far from the player are asleep (no physics at all)", asleep == far_count, "%d of %d" % [asleep, far_count])
 	var target: AIBro = null
 	for e in get_nodes_in_group("enemies"):
-		if not e.is_physics_processing():
+		if e is AIBro and not e.is_physics_processing():
 			target = e
 	player.global_position = Vector2(target.global_position.x - 300.0, target.global_position.y)
 	await _wait(40)

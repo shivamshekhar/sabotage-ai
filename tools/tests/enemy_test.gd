@@ -1,5 +1,5 @@
 extends SceneTree
-## AI Bro enemies, thrown objects and spike pits. Exits non-zero on failure.
+## AI Bro enemies, thrown objects and deadly pits. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/enemy_test.gd
 
 var ok := true
@@ -194,7 +194,7 @@ func _main() -> void:
 	main.queue_free()
 	await _wait(5)
 
-	# ---- deep spike pits kill whoever falls in (Level 1's first pit: columns 14 to 16)
+	# ---- deadly pits kill whoever falls in (the first toxic-waste pit of Level 1, read from the map)
 	OS.set_environment("SABOTAGE_LEVEL", "1")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -205,30 +205,43 @@ func _main() -> void:
 			player = n
 		elif n is Level:
 			level = n
+	# the first toxic-waste pit: its liquid starts at (pit_c, pit_r); the floor's walking surface is the row above
+	var pit_c := 0
+	var pit_r := 0
+	var map := LevelData.level_1()
+	for r in map.size():
+		var c: int = map[r].find("A")
+		if c >= 0 and pit_r == 0:
+			pit_c = c
+			pit_r = r
+	var surface := float(pit_r) * 70.0 - 70.0   # y of the floor the pit is cut into
+	var bottom := surface + 3.0 * 70.0         # y of the pit's solid floor
+	player.global_position = Vector2((pit_c - 0.5) * 70.0, surface)   # stand by the pit: Bros far from the player sleep
+	player.velocity = Vector2.ZERO
 	var pit_bro := AIBro.new()
-	pit_bro.position = Vector2(15.5 * 70.0, 26.0 * 70.0 - 30.0)
+	pit_bro.position = Vector2((pit_c + 1.5) * 70.0, surface - 30.0)
 	level.add_child(pit_bro)
 	await _wait(90)
-	_check("a Bro that falls into a deep spike pit dies", not is_instance_valid(pit_bro) or pit_bro.health == 0)
+	_check("a Bro that falls into a deadly pit dies", not is_instance_valid(pit_bro) or pit_bro.health == 0)
 
 	var causes: Array[String] = []
 	player.died.connect(func(c: String) -> void: causes.append(c))
-	player.global_position = Vector2(13.5 * 70.0, 26.0 * 70.0)   # on the lip of the pit
+	player.global_position = Vector2((pit_c - 0.5) * 70.0, surface)   # on the lip of the pit
 	player.velocity = Vector2.ZERO
 	await _wait(30)
-	_check("standing on the lip of a deep pit is safe", causes.is_empty(), str(causes))
-	player.global_position = Vector2(15.5 * 70.0, 26.0 * 70.0 + 40.0)   # dropped in
+	_check("standing on the lip of a deadly pit is safe", causes.is_empty(), str(causes))
+	player.global_position = Vector2((pit_c + 1.5) * 70.0, surface + 90.0)   # dropped in (into the liquid)
 	player.velocity = Vector2.ZERO
 	await _wait(32)   # about 25 frames to fall, then it lands and starts blinking
-	_check("a player in a deadly pit falls all the way down first", player.global_position.y > 28.0 * 70.0 - 20.0, "y=%.0f" % player.global_position.y)
+	_check("a player in a deadly pit falls all the way down first", player.global_position.y > bottom - 20.0, "y=%.0f" % player.global_position.y)
 	_check("with no game over yet, and no health left", causes.is_empty() and player.health == 0, "%s health %d" % [causes, player.health])
 	_check("and blinks while it waits", player._visuals.modulate.a < 1.0 or player._visuals._blink_tween != null)
 	Input.action_press("jump")
 	await _wait(8)
 	Input.action_release("jump")
-	_check("and cannot jump out", player.global_position.y > 28.0 * 70.0 - 20.0)
+	_check("and cannot jump out", player.global_position.y > bottom - 20.0)
 	await _wait(int(Player.PIT_DEATH_DELAY * 60.0) + 10)
-	_check("the player that falls into a deep spike pit dies", causes == ["pit"], str(causes))
+	_check("the player that falls into a deadly pit dies", causes == ["pit"], str(causes))
 	_check("and is back at the respawn point with full health", player.global_position.distance_to(player.spawn) < 5.0 and player.health == Player.MAX_HEALTH)
 
 	print("ALL PASS" if ok else "SOME FAILED")

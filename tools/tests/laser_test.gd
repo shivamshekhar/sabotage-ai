@@ -2,14 +2,12 @@ extends SceneTree
 ## Laser force fields, computers and the puzzle popup, played in Level 1. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/laser_test.gd
 
-# NEAR_X / FEET_Y: a spot in front of Level 1's first computer, and the ground's feet y. If the
-# first computer or laser moves in LevelData.level_1(), update these.
-const NEAR_X := 1900.0
-const FEET_Y := 1820.0
-
-# LASER_LEFT_EDGE: the x of the left face of laser 1's wall (its column is 29; the wall is
-# LaserField.BEAM_WIDTH wide, centred in the column).
-const LASER_LEFT_EDGE := 29 * 70 + 35 - LaserField.BEAM_WIDTH / 2.0
+# The test plays the first floor's tunnel gate (laser 1) and its computer. Where they are is read from the map
+# (see _find_gate_one()): NEAR_X is a spot in front of the computer, FEET_Y the floor's feet y, and
+# LASER_LEFT_EDGE the x of the left face of the gate's wall (LaserField.BEAM_WIDTH wide, centred in its column).
+var NEAR_X := 0.0
+var FEET_Y := 0.0
+var LASER_LEFT_EDGE := 0.0
 
 var main: Node
 var level: Level
@@ -23,7 +21,20 @@ func _check(name: String, cond: bool, detail := "") -> void:
 		ok = false
 
 
+func _find_gate_one() -> void:
+	var rows := LevelData.level_1()
+	for t in LevelData.terminals("1"):
+		if t["laser"] == "1":
+			NEAR_X = (t["c"] + 1.0) * 70.0
+			FEET_Y = (t["r"] + 1) * 70.0
+	for r in rows.size():
+		for c in rows[r].length():
+			if rows[r][c] == "1":
+				LASER_LEFT_EDGE = c * 70 + 35 - LaserField.BEAM_WIDTH / 2.0
+
+
 func _initialize() -> void:
+	_find_gate_one()
 	OS.set_environment("SABOTAGE_LEVEL", "1")
 	HackPopup.force_game = "sequence"   # the level asks for a random puzzle; this test plays the memory one
 	main = load("res://scenes/main.tscn").instantiate()
@@ -74,7 +85,7 @@ func _main() -> void:
 		"x=%.0f, wall face at %.0f" % [player.global_position.x, LASER_LEFT_EDGE])
 
 	# Using the computer asks for its puzzle; using it from far away does nothing.
-	_tp(300.0, FEET_Y)
+	_tp(NEAR_X - 900.0, FEET_Y)
 	_check("far from a computer, use does nothing", not level.try_interact(player.global_position))
 	_tp(NEAR_X, FEET_Y)
 	await _wait(10)

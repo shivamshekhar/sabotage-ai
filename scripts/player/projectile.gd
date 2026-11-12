@@ -108,7 +108,7 @@ func _physics_process(delta: float) -> void:
 	var to := from + velocity * delta
 	# 1. Did this step pass through an enemy? Every enemy's hit box is tested against the step's line.
 	for e in get_tree().get_nodes_in_group("enemies"):
-		if _segment_hits_rect(from, to, (e as AIBro).hurtbox().grow(HIT_RADIUS)):
+		if _segment_hits_rect(from, to, e.hurtbox().grow(HIT_RADIUS)):
 			e.take_hit(HIT_FRACTION, from.x)
 			_finish()
 			return
@@ -160,6 +160,7 @@ func _land(at: Vector2) -> void:
 	velocity = Vector2.ZERO
 	var half := _sprite.texture.get_height() * SPRITE_SCALE / 2.0
 	global_position = at + Vector2(0.0, -half + REST_SINK)
+	reset_physics_interpolation()
 	_sprite.rotation = randf_range(-0.25, 0.25)   # settle, slightly askew
 	remove_from_group("projectiles")   # no longer in flight
 	add_to_group("landed_projectiles")

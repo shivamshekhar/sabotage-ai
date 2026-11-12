@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_check_machines()
 	_check_characters()
 	_check_projectiles()
+	_check_pits()
 	_check_backgrounds()
 	print("ALL PASS" if ok else "SOME FAILED")
 	quit(0 if ok else 1)
@@ -106,6 +107,31 @@ func _check_projectiles() -> void:
 			if not SpriteLibrary.PROJECTILES.has(n) or SpriteLibrary.PROJECTILES[n] != group:
 				strays.append("%s/%s" % [group, f])
 	_check("projectiles: every file is listed in SpriteLibrary.PROJECTILES, in its group folder", strays.is_empty(), str(strays))
+
+
+func _check_pits() -> void:
+	var missing := []
+	for kind in SpriteLibrary.PIT_KINDS:
+		for part in SpriteLibrary.PIT_PARTS:
+			if SpriteLibrary.pit(kind, part) == null:
+				missing.append("%s/%s" % [kind, part])
+	for part in SpriteLibrary.PIT_FISH_PARTS:
+		if SpriteLibrary.pit("piranha_tank", part) == null:
+			missing.append("piranha_tank/" + part)
+	_check("pit hazards: every kind has its liquid tile, and the piranha tank its fish parts", missing.is_empty(), str(missing))
+	var chars := {}
+	for kind in SpriteLibrary.PIT_KINDS:
+		chars[SpriteLibrary.PIT_KINDS[kind]] = true
+	_check("pit hazards: each kind has its own map character", chars.size() == SpriteLibrary.PIT_KINDS.size())
+	var strays := []
+	var dir := SpriteLibrary.PIT_DIR
+	for kind in DirAccess.get_directories_at(dir):
+		if not SpriteLibrary.PIT_KINDS.has(kind):
+			strays.append(kind)
+		for f in _pngs(dir + kind):
+			if not f.begins_with("pit_%s_" % kind):
+				strays.append("%s/%s" % [kind, f])
+	_check("pit hazards: nothing but known kinds and correctly named files", strays.is_empty(), str(strays))
 
 
 func _check_characters() -> void:

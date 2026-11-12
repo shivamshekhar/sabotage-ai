@@ -30,6 +30,12 @@ func _ready() -> void:
 	player.spawn = level.spawn
 	player.ladders = level.ladders
 	player.position = level.spawn
+	# Debug aid: SABOTAGE_START="column,row" starts the player standing on that map tile (row = the tile the
+	# feet are in), e.g. to look at a part of a big level. It also becomes the respawn point.
+	var start_at := OS.get_environment("SABOTAGE_START").split(",")
+	if start_at.size() == 2:
+		player.position = Vector2((float(start_at[0]) + 0.5) * Level.T, (float(start_at[1]) + 1.0) * Level.T)
+		player.spawn = player.position
 	add_child(player)
 
 	_setup_camera(level, player)
@@ -67,6 +73,9 @@ func _setup_camera(level: Level, player: Player) -> void:
 		add_child(cam)
 	else:
 		cam.position_smoothing_enabled = true
+		# Follow in the physics step, like the player it is attached to, so the two never drift apart by a
+		# fraction of a pixel (the player's movement is interpolated; see project.godot, physics_interpolation).
+		cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
 		cam.limit_left = -level.side_padding
 		cam.limit_top = 0
 		cam.limit_right = level.world_w + level.side_padding
@@ -86,7 +95,7 @@ func _on_player_died(cause: String) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 19
 	var label := Label.new()
-	label.text = "GAME OVER" + "\n" + {"pit": "fell into the spikes", "fall": "fell too far", "health": "out of health"}.get(cause, "")
+	label.text = "GAME OVER" + "\n" + {"pit": "fell into a deadly pit", "fall": "fell too far", "health": "out of health"}.get(cause, "")
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)

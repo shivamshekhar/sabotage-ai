@@ -8,8 +8,16 @@ func _init() -> void:
 	var id := OS.get_environment("SABOTAGE_LEVEL")
 	if id == "":
 		id = LevelData.DEFAULT_ID
+	var map := LevelData.map(id)
+	var floor_env := OS.get_environment("SABOTAGE_FLOOR")
+	if floor_env != "":
+		map = LevelData.l1_floor_map(int(floor_env))   # one floor of Level 1 on its own
+		id = "1 floor " + floor_env
+	if OS.get_environment("SABOTAGE_PRINT") != "":
+		for row in map:
+			print(row)
 	var t0 := Time.get_ticks_msec()
-	var solver := LevelSolver.new(LevelData.map(id))
+	var solver := LevelSolver.new(map)
 	solver.solve()
 	var ms := Time.get_ticks_msec() - t0
 	print("level %s: %d nodes, %d sims, %d ms" % [id, solver.nodes.size(), solver.sim_count, ms])

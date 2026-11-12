@@ -3,7 +3,7 @@ extends CharacterBody2D
 ## The first enemy: an "AI Bro" (a zombie sprite). It paces back and forth around its home spot and never
 ## steps off a ledge. When the player comes close and the Bro is facing them, it chases: it climbs steps
 ## and ledges by jumping and hops over small gaps, but stops at any real drop (so it never walks into a
-## spike pit). Close up it hits the player (damage and a flinch). Thrown objects (Projectile) hurt it.
+## deadly pit). Close up it hits the player (damage and a flinch). Thrown objects (Projectile) hurt it.
 ## Origin is at the feet, like the player.
 ##
 ## Cost per Bro is kept small so a level can hold many: the sensing (a couple of ray casts) runs only
@@ -67,8 +67,21 @@ const DROP_LIMIT := 90.0
 # GAP_JUMP_REACH: while chasing, if the ground ahead ends, the Bro jumps only when there is floor this far
 # ahead (in pixels) to land on. It must be less than a jump can carry at CHASE_SPEED:
 #     jump carry = CHASE_SPEED * 2 * |JUMP_VELOCITY| / GRAVITY
-# so only narrow gaps are hopped; a spike pit is far too wide, and the Bro stops at its edge instead.
+# so only narrow gaps are hopped; a deadly pit is far too wide, and the Bro stops at its edge instead.
 const GAP_JUMP_REACH := 115.0
+
+# SEPARATION_RADIUS: Bros closer than this many pixels to each other (horizontally, and within a body height
+# vertically) push each other apart so a crowd never piles up into one sprite. SEPARATION_SPEED is how fast,
+# in pixels per second, a Bro drifts away from each close neighbour. Higher radius: a looser crowd. Higher
+# speed: they spring apart harder (keep it well below CHASE_SPEED).
+const SEPARATION_RADIUS := 72.0
+const SEPARATION_SPEED := 110.0
+
+# STANDOFF_MIN / STANDOFF_MAX: each chasing Bro stops a random distance (a fraction of HIT_RANGE, between
+# these two) in front of the player, so several chasers line up at different spots instead of all
+# standing on the same pixel.
+const STANDOFF_MIN := 0.25
+const STANDOFF_MAX := 0.8
 
 # WALL_PROBE: how far ahead in pixels the Bro looks for a wall or step blocking its way.
 const WALL_PROBE := 30.0
@@ -118,6 +131,8 @@ var _can_hop_gap := false
 var _sees_player := false
 var _lost_player := false
 var _player_above := false
+var _standoff := 0.5          # this Bro's own stopping distance, as a fraction of HIT_RANGE
+var _separation := 0.0        # -1 to 1: which way, and how strongly, close neighbours push this Bro
 
 
 ## Contact damage in health points (see CONTACT_DAMAGE_FRACTION).
@@ -141,6 +156,7 @@ func _ready() -> void:
 	_home_x = global_position.x
 	_dir = 1 if randf() < 0.5 else -1
 	_think_timer = randf() * THINK_INTERVAL   # spread the sensing of many Bros over different frames
+	_standoff = randf_range(STANDOFF_MIN, STANDOFF_MAX)
 	name = "AIBro"
 	z_index = 1
 	add_to_group("enemies")
@@ -238,6 +254,9 @@ func _sense() -> void:
 		state = State.RETURN
 	elif state == State.RETURN and _sees_player:
 		state = State.CHASE
+	_separation = _neighbour_push()
+	if _separation != 0.0 and is_on_floor() and not _floor_ahead(1 if _separation > 0.0 else -1, EDGE_PROBE, DROP_LIMIT):
+		_separation = 0.0   # never pushed off a ledge by a neighbour
 	# Sensing ahead is only needed while walking on the floor.
 	if is_on_floor():
 		var heading := _dir
@@ -247,6 +266,23 @@ func _sense() -> void:
 		_ground_ahead = _wall_ahead or _floor_ahead(heading, EDGE_PROBE, DROP_LIMIT)   # a wall ahead is not a ledge
 		_can_climb = _wall_ahead and not _blocked_at(heading, jump_height() - 10.0)
 		_can_hop_gap = not _ground_ahead and _floor_ahead(heading, GAP_JUMP_REACH, DROP_LIMIT)
+
+
+## Which way close neighbours push this Bro: the sum of the directions away from each Bro within
+## SEPARATION_RADIUS, limited to -1..1. Two Bros on exactly the same spot are split by their instance ids.
+func _neighbour_push() -> float:
+	var push := 0.0
+	for other in get_tree().get_nodes_in_group("enemies"):
+		if other == self or not other is AIBro:
+			continue   # only other Bros crowd a Bro
+		var dx: float = global_position.x - other.global_position.x
+		if absf(dx) >= SEPARATION_RADIUS or absf(global_position.y - other.global_position.y) >= BODY_SIZE.y:
+			continue
+		var away := signf(dx)
+		if away == 0.0:
+			away = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
+		push += away * (1.0 - absf(dx) / SEPARATION_RADIUS * 0.3)
+	return clampf(push, -1.0, 1.0)
 
 
 # ---------- behaviour (every frame, from the latest sensing) ----------
@@ -267,7 +303,7 @@ func _chase() -> void:
 		return
 	_dir = 1 if _player.global_position.x > global_position.x else -1
 	var gap := absf(_player.global_position.x - global_position.x)
-	if gap < HIT_RANGE * 0.5:
+	if gap < HIT_RANGE * _standoff:
 		_walk(0.0)
 		if _player_above and is_on_floor():
 			_jump()   # the player is on a ledge above: try to hop up to them
@@ -278,7 +314,7 @@ func _chase() -> void:
 				_jump()
 				_walk(_dir * CHASE_SPEED)
 			else:
-				_walk(0.0)   # a real drop (or a spike pit): stop at the edge
+				_walk(0.0)   # a real drop (or a deadly pit): stop at the edge
 			return
 		if _wall_ahead:
 			if _can_climb:
@@ -308,6 +344,7 @@ func _jump() -> void:
 
 
 func _walk(speed: float) -> void:
+	speed += _separation * SEPARATION_SPEED   # drift away from close neighbours
 	velocity.x = move_toward(velocity.x, speed, 1800.0 * get_physics_process_delta_time())
 
 
@@ -367,7 +404,7 @@ func take_hit(fraction: float, from_x: float = NAN) -> void:
 		_die()
 
 
-## Fell into a spike pit too deep to climb out of: all health is lost.
+## Fell into a deadly pit (see PitHazard): all health is lost.
 func fall_in_pit() -> void:
 	health = 0
 	_bar.set_ratio(0.0)

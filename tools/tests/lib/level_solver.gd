@@ -32,24 +32,37 @@ var edges := {}                    # key -> Array of keys
 var start_key := -1
 var sim_count := 0
 
-var _hazards: Array[Rect2] = []
+# Lookup grids (one byte per map cell, row by row) so the thousands of simulated frames stay cheap.
+var _solid_grid := PackedByteArray()
+var _oneway_grid := PackedByteArray()
+var _hazard_grid := PackedByteArray()   # 1 = floor spikes, 2 = ceiling spikes, 3 = deadly pit liquid
 
 
 func _init(map: Array[String]) -> void:
 	rows = map
 	cols = rows[0].length()
+	_solid_grid.resize(rows.size() * cols)
+	_oneway_grid.resize(rows.size() * cols)
+	_hazard_grid.resize(rows.size() * cols)
 	for r in rows.size():
 		for c in cols:
 			var ch := rows[r][c]
+			var i := r * cols + c
+			if ch == "#" or ch == "X" or ch == "O":
+				_solid_grid[i] = 1
+			if ch == "=" or (ch == "H" and (r == 0 or rows[r - 1][c] != "H")):
+				_oneway_grid[i] = 1
 			match ch:
 				"P":
 					spawn = Vector2i(int((c + 0.5) * T), (r + 1) * T)
 				"E":
 					exit_rect = Rect2(c * T, (r - 1) * T, T, 2 * T)
 				"^":
-					_hazards.append(Rect2(c * T + 10, r * T + 30, 50, 40))
+					_hazard_grid[i] = 1
 				"v":
-					_hazards.append(Rect2(c * T + 10, r * T, 50, 40))
+					_hazard_grid[i] = 2
+				"A", "F", "N", "W":
+					_hazard_grid[i] = 3
 	# Ladders: contiguous H runs in a column.
 	for c in cols:
 		var r := 0
@@ -77,10 +90,9 @@ func is_solid(ch: String) -> bool:
 
 ## A one-way platform whose top is at the top of the cell: ledges, and the top tile of a ladder.
 func is_oneway(c: int, r: int) -> bool:
-	var ch := cell(c, r)
-	if ch == "=":
-		return true
-	return ch == "H" and cell(c, r - 1) != "H"
+	if c < 0 or c >= cols or r < 0 or r >= rows.size():
+		return false
+	return _oneway_grid[r * cols + c] == 1
 
 
 func hits_solid(x: float, y: float) -> bool:
@@ -91,16 +103,37 @@ func hits_solid(x: float, y: float) -> bool:
 	var r1 := int(floorf((y - 0.01) / T))
 	for r in range(r0, r1 + 1):
 		for c in range(c0, c1 + 1):
-			if is_solid(cell(c, r)):
+			if c < 0 or c >= cols or r < 0 or r >= rows.size():
+				return true   # outside the map counts as solid wall
+			if _solid_grid[r * cols + c] == 1:
 				return true
 	return false
 
 
+## True if the player's box at feet position (x, y) touches spikes (these hurt) or a deadly pit liquid. Either
+## makes a route invalid: the solver wants routes that take no damage at all.
 func in_hazard(x: float, y: float) -> bool:
 	var box := Rect2(x - 30, y - 128, 60, 128)
-	for h in _hazards:
-		if box.intersects(h):
-			return true
+	var c0 := int(floorf(box.position.x / T))
+	var c1 := int(floorf(box.end.x / T))
+	var r0 := int(floorf(box.position.y / T))
+	var r1 := int(floorf((box.end.y - 0.01) / T))
+	for r in range(r0, r1 + 1):
+		if r < 0 or r >= rows.size():
+			continue
+		for c in range(c0, c1 + 1):
+			if c < 0 or c >= cols:
+				continue
+			match _hazard_grid[r * cols + c]:
+				1:
+					if box.intersects(Rect2(c * T + 10, r * T + 30, 50, 40)):
+						return true
+				2:
+					if box.intersects(Rect2(c * T + 10, r * T, 50, 40)):
+						return true
+				3:
+					if box.intersects(Rect2(c * T, r * T, T, T)):
+						return true
 	return false
 
 
@@ -193,8 +226,8 @@ func _expand(p: Vector2) -> Array[Vector2]:
 		var v0s: Array = [0.0] if d == 0 else [0.0, d * Player.SPEED]
 		for v0 in v0s:
 			for jump in [true, false]:
-				if not jump and d == 0:
-					continue
+				if not jump and (d == 0 or supported(x + d * NODE_STEP, y)):
+					continue   # walking off only matters where the floor ends
 				var patterns: Array = [[d, 9999, d]]
 				if d != 0:
 					for k in HOLD_FRAMES:

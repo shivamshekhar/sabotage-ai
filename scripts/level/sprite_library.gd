@@ -56,6 +56,19 @@ const MACHINE_PARTS := ["machine_fan"]
 # MACHINE_PARTS_FOLDER: name of the folder, inside MACHINE_DIR, that holds MACHINE_PARTS.
 const MACHINE_PARTS_FOLDER := "parts"
 
+# PIT_DIR: folder of the deadly-pit art, one subfolder per kind. pit() builds
+# <PIT_DIR>/<kind>/pit_<kind>_<part>.png.
+const PIT_DIR := "res://assets/pit_hazards/"
+
+# PIT_KINDS: every kind of deadly pit liquid (see PitHazard) and the map character that draws it. Each has a "liquid"
+# tile; the piranha tank also has the parts of its robot fish: "fish_body", "fish_jaw" and "fish_eye". The generator
+# (tools/art/generate_pit_hazards.py) writes these files.
+const PIT_KINDS := {
+	"toxic_waste": "A", "lava": "F", "nuclear_waste": "N", "piranha_tank": "W",
+}
+const PIT_PARTS := ["liquid"]
+const PIT_FISH_PARTS := ["fish_body", "fish_jaw", "fish_eye"]
+
 # PROJECTILE_DIR: folder of the throwable pixel-art objects, one subfolder per group.
 # projectile() builds <PROJECTILE_DIR>/<group>/projectile_<name>.png.
 const PROJECTILE_DIR := "res://assets/projectiles/pixel_art/"
@@ -72,6 +85,11 @@ const PROJECTILES := {
 }
 
 static var _cache := {}
+
+
+## A deadly-pit image: kind is a key of PIT_KINDS, part one of PIT_PARTS (or PIT_FISH_PARTS for the piranha tank).
+static func pit(kind: String, part: String) -> Texture2D:
+	return _load("%s%s/pit_%s_%s.png" % [PIT_DIR, kind, kind, part])
 
 
 ## A throwable object's sprite by name, e.g. "mona_lisa" (see PROJECTILES).
