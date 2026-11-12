@@ -56,6 +56,11 @@ const BOUNCE_KEEP := 0.2
 # rather than hovering. Purely visual.
 const REST_SINK := 4.0
 
+# HIT_RADIUS: how far in pixels around the object's centre counts as touching an enemy. Enemies are tested
+# directly against the object's path each step (not through the physics engine), so a fast object
+# can't slip through and one that starts inside an enemy still hits it. Higher: more forgiving hits.
+const HIT_RADIUS := 16.0
+
 # LIFETIME: seconds before a thrown object that hit nothing disappears.
 const LIFETIME := 4.0
 
@@ -99,19 +104,20 @@ func _physics_process(delta: float) -> void:
 	if _age > LIFETIME:
 		_finish()
 		return
-	var next := position + velocity * delta
-	# Did the step run into a wall, a floor or an enemy? (A ray from here to there: fast objects can't skip through.)
-	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + velocity * delta,
-		Player.LAYER_WORLD | Player.LAYER_ENEMY)
+	var from := global_position
+	var to := from + velocity * delta
+	# 1. Did this step pass through an enemy? Every enemy's hit box is tested against the step's line.
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if _segment_hits_rect(from, to, (e as AIBro).hurtbox().grow(HIT_RADIUS)):
+			e.take_hit(HIT_FRACTION, from.x)
+			_finish()
+			return
+	# 2. Did it run into a wall, a floor, a crate or a ledge? (A ray from here to there: it can't skip through.)
+	var query := PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD)
 	for p in get_tree().get_nodes_in_group("player"):
 		query.exclude.append((p as CollisionObject2D).get_rid())   # the thrower is on the world layer too
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
-		var target: Object = hit["collider"]
-		if target.has_method("take_hit"):
-			target.take_hit(HIT_FRACTION, global_position.x)
-			_finish()
-			return
 		var normal: Vector2 = hit["normal"]
 		if normal.y < -0.5:
 			_land(hit["position"])          # came down on a floor, a crate or a ledge
@@ -121,9 +127,31 @@ func _physics_process(delta: float) -> void:
 			velocity.x = -velocity.x * BOUNCE_KEEP
 			velocity.y = maxf(velocity.y, 0.0) * 0.5
 		return
-	position = next
+	global_position = to
 	velocity.y += GRAVITY * delta
 	_sprite.rotation += SPIN_SPEED * _spin_dir * delta
+
+
+## True if the straight line from a to b touches the rectangle (the line is clipped against each of the
+## rectangle's two pairs of sides in turn).
+static func _segment_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
+	var t0 := 0.0
+	var t1 := 1.0
+	var d := b - a
+	for axis in 2:
+		var lo: float = r.position[axis]
+		var hi: float = r.end[axis]
+		if absf(d[axis]) < 0.00001:
+			if a[axis] < lo or a[axis] > hi:
+				return false
+		else:
+			var ta: float = (lo - a[axis]) / d[axis]
+			var tb: float = (hi - a[axis]) / d[axis]
+			t0 = maxf(t0, minf(ta, tb))
+			t1 = minf(t1, maxf(ta, tb))
+			if t0 > t1:
+				return false
+	return true
 
 
 ## Come to rest on the surface point `at`, stay visible for REST_TIME, then blink for BLINK_TIME and disappear.

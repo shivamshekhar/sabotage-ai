@@ -52,6 +52,7 @@ const BLINK_LOW := 0.2
 ## Which Kenney character this sprite shows; defaults to CHARACTER. AIBro sets it to "zombie".
 var character := CHARACTER
 
+var _pose_name := ""   # the pose currently shown, so an unchanged pose costs nothing
 var _clock := 0.0
 var _flinch_tween: Tween
 var _blink_tween: Tween
@@ -110,4 +111,7 @@ func flinch(facing: int) -> void:
 
 
 func _set_pose(pose: String) -> void:
+	if pose == _pose_name:
+		return
+	_pose_name = pose
 	texture = SpriteLibrary.character_pose(character, pose)

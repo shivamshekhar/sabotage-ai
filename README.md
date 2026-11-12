@@ -10,6 +10,7 @@ macOS/Linux notes are given where the steps differ.
 - [1. Requirements](#1-requirements)
 - [2. Set up and run on desktop](#2-set-up-and-run-on-desktop)
 - [3. Build an Android APK](#3-build-an-android-apk)
+- [Play it in a browser (GitHub Pages)](#play-it-in-a-browser-github-pages)
 - [4. Release builds for Google Play](#4-release-builds-for-google-play)
 - [5. Regenerating the art](#5-regenerating-the-art)
 - [6. Automated checks](#6-automated-checks)
@@ -102,7 +103,11 @@ paintbrush, a vinyl record...: things the AI can't make) in an arc, like a throw
 near their spot or ledge, chase you when you come near and they are facing you, and hit for 10% of your
 health. Spikes take 20% of yours; Bros are immune to floor spikes, but anyone (you or a Bro) who falls into a
 spike pit too deep to climb out of loses all health and dies; for the player that is GAME OVER and a respawn at
-the last checkpoint. Put a Bro in a level with `B` in the map. Damage numbers are fractions of
+the last checkpoint. Bros never walk off a ledge: they turn round while pacing and stop at an edge while chasing; they climb steps and
+hop narrow gaps by jumping, and only notice you within a short range while facing you. Their sensing runs ten
+times a second, Bros far from the player sleep (no physics at all), and a dead Bro is freed at once, so a level can
+hold many (`tools/tests/enemy_ai_test.gd` checks the movement, the sleeping, and that 200 killed Bros leave nothing
+behind). Put a Bro in a level with `B` in the map. Damage numbers are fractions of
 `Player.MAX_HEALTH` (see the constants in those scripts). `tools/tests/enemy_test.gd` checks all of this.
 
 **Phone layout** ([scripts/ui/touch_controls.gd](scripts/ui/touch_controls.gd)): an 8-way D-pad at
@@ -241,6 +246,35 @@ older phones too, switch Project Settings > Rendering > Renderer to "Compatibili
 
 `build/` is git-ignored. The package name is `com.shivamshekhar.sabotageai`; change it (and the
 version) in `export_presets.cfg` or the export dialog.
+
+## Play it in a browser (GitHub Pages)
+
+The game also exports to the web, and a GitHub Action publishes it for free.
+
+**One-time setup**
+1. The repository must be **public** (GitHub Pages is free only for public repositories on a free account; a
+   private repository needs a paid plan). If you'd rather keep the code private, export the web build
+   (below) and upload the `build/web` folder to a free static host such as itch.io (type "HTML") or
+   Cloudflare Pages instead.
+2. In the repository on GitHub: **Settings > Pages > Source: GitHub Actions**.
+3. Push to `main`. The workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) installs Godot
+   and its export templates, exports the **Web** preset and deploys it. The link is shown in the workflow
+   run (and under Settings > Pages): `https://<your-user>.github.io/<repo-name>/`. If you upgrade Godot,
+   change `GODOT_VERSION` in that file to match.
+
+**Build and try it locally** (needs the Godot export templates, installed through the editor once:
+Editor > Manage Export Templates)
+```bash
+mkdir -p build/web
+godot --headless --path . --export-release "Web" build/web/index.html
+cd build/web && python -m http.server 8060     # then open http://localhost:8060 in a browser
+```
+(Opening `index.html` as a file does not work: browsers only run WebAssembly from a web server.)
+
+Notes: the web preset uses the single-threaded build, so it needs no special server headers and runs on
+GitHub Pages; it is somewhat slower than the app. The phone controls appear in phone browsers (play in
+landscape); on a computer you use the keyboard. `SABOTAGE_LEVEL` and the other environment variables do not
+exist on the web: it always starts on Level 1. The first load downloads about 10 MB (compressed).
 
 ## 4. Release builds for Google Play
 

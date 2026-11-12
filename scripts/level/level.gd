@@ -152,6 +152,15 @@ var ladders: Array[Rect2] = []
 ## Emitted when the player uses a computer whose laser is still on. game names the puzzle (see HackPopup).
 signal hack_requested(laser_id: String, game: String)
 
+# ENEMY_ACTIVE_RANGE: enemies further than this many pixels from the player are put to sleep (no thinking,
+# no physics: see AIBro.set_active()) and wake up when the player comes within it. Keep it comfortably
+# bigger than half the screen width so a Bro is never seen asleep. Higher: more Bros awake at once (more
+# cost). Lower: they freeze earlier and may be caught mid-air by a player who closes in quickly.
+const ENEMY_ACTIVE_RANGE := 1500.0
+
+# ENEMY_TICK: seconds between checks of which enemies should be asleep. Higher: cheaper, slower to wake.
+const ENEMY_TICK := 0.25
+
 # PIT_ENTRY_MARGIN: how far in pixels below the lip of a deep spike pit you must have dropped before
 # it counts as having fallen in. It keeps a player standing or landing at the very edge safe.
 # Higher: more forgiving at the edge. Lower: touching the lip with your head is already too far.
@@ -161,6 +170,8 @@ const PIT_ENTRY_MARGIN := 24.0
 # Higher: usable from further away. Lower: the player must stand right in front of it.
 const TERMINAL_REACH := 40.0
 
+var _enemy_clock := 0.0
+var _player_node: Node2D
 var _lasers := {}      # id -> LaserField
 var _screens_at := {}  # Vector2i(column, row of a machine's letter) -> its MonitorScreens
 var _lock_screens := {}   # laser id -> the gate computer's MonitorScreens
@@ -428,6 +439,10 @@ func _process(delta: float) -> void:
 	for fan in _fans:
 		fan["sprite"].rotation += fan["speed"] * delta
 	_update_terminal_hints()
+	_enemy_clock += delta
+	if _enemy_clock >= ENEMY_TICK:
+		_enemy_clock = 0.0
+		_wake_nearby_enemies()
 
 
 # ---------- lasers and computers ----------
@@ -519,8 +534,26 @@ func _player_box(feet: Vector2) -> Rect2:
 	return Rect2(feet.x - Player.BODY_SIZE.x / 2.0, feet.y - Player.BODY_SIZE.y, Player.BODY_SIZE.x, Player.BODY_SIZE.y)
 
 
+## The player node (looked up once and kept).
+func _player_ref() -> Node2D:
+	if _player_node == null or not is_instance_valid(_player_node):
+		_player_node = get_tree().get_first_node_in_group("player") as Node2D
+	return _player_node
+
+
+## Only enemies near the player are awake; the rest sleep (see ENEMY_ACTIVE_RANGE).
+func _wake_nearby_enemies() -> void:
+	var player := _player_ref()
+	if player == null:
+		return
+	for e in get_tree().get_nodes_in_group("enemies"):
+		(e as AIBro).set_active(absf(e.global_position.x - player.global_position.x) <= ENEMY_ACTIVE_RANGE)
+
+
 func _update_terminal_hints() -> void:
-	var player := get_tree().get_first_node_in_group("player") as Node2D
+	if _terminals.is_empty():
+		return
+	var player := _player_ref()
 	for t in _terminals:
 		var near: bool = player != null and _player_box(player.global_position).intersects(t["rect"])
 		t["hint"].visible = near and laser_is_on(t["laser"])

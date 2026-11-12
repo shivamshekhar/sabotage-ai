@@ -74,13 +74,13 @@ func _main() -> void:
 	_check("it is still patrolling (nobody to chase)", bro.state == AIBro.State.PATROL)
 
 	# ---- it only chases what it is facing
-	player.global_position = Vector2(bro.global_position.x + 300.0, 0.0)
+	player.global_position = Vector2(bro.global_position.x + AIBro.SIGHT_RANGE * 0.6, 0.0)
 	player.velocity = Vector2.ZERO
 	bro._dir = -1   # facing away from the player
-	await _wait(3)
+	await _wait(10)
 	_check("facing away: no chase", bro.state == AIBro.State.PATROL)
 	bro._dir = 1
-	await _wait(3)
+	await _wait(10)   # the Bro looks around every AIBro.THINK_INTERVAL seconds
 	_check("facing the player within range: it chases", bro.state == AIBro.State.CHASE)
 
 	# ---- and hits when it arrives

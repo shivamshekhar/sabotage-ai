@@ -134,15 +134,20 @@ var _face_held: Array[int] = []           # fingers currently on each face butto
 var _face_touches := {}                   # finger id -> face button index (-1 = none)
 var _emulate_mouse := false
 var _canvas: Control
+var _was_paused := false
 
 
-## Phones show the overlay; PCs don't. SABOTAGE_TOUCH=1 forces it on for debugging.
+## Phones (the app, or a phone's web browser) show the overlay; PCs don't. SABOTAGE_TOUCH=1 forces it on for debugging.
 static func should_show() -> bool:
-	return OS.has_feature("mobile") or OS.get_environment("SABOTAGE_TOUCH") != ""
+	# A phone app, or the game running in a phone's web browser (the "web_android" / "web_ios" features).
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") 		or OS.get_environment("SABOTAGE_TOUCH") != ""
 
 
 func _ready() -> void:
 	layer = 10
+	# Keep running while the game is paused (a puzzle popup pauses it) so a finger lifted during the pause is
+	# never missed: otherwise a button would stay "held" for ever and stop working. See _process().
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_emulate_mouse = not OS.has_feature("mobile") and OS.get_environment("SABOTAGE_TOUCH") != ""
 	for i in FACE_BUTTONS.size():
 		_face_centers.append(Vector2.ZERO)
@@ -187,7 +192,20 @@ func face_center(index: int) -> Vector2:
 	return _face_centers[index]
 
 
+## While the game is paused every control is let go and ignored (the popup's own buttons take the taps);
+## when it resumes the controls start from a clean state.
+func _process(_delta: float) -> void:
+	var paused := get_tree().paused
+	if paused != _was_paused:
+		_was_paused = paused
+		_release_all()
+		if _canvas:
+			_canvas.queue_redraw()
+
+
 func _input(event: InputEvent) -> void:
+	if _was_paused or get_tree().paused:
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touch_down(event.index, event.position)
