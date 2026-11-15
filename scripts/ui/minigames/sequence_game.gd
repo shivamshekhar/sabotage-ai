@@ -49,7 +49,7 @@ func _ready() -> void:
 func begin() -> void:
 	_round += 1
 	_sequence.clear()
-	for i in LENGTH:
+	for i in int(_p("length", LENGTH)):
 		_sequence.append(randi() % PAD_COLORS.size())
 	_input_index = 0
 	_accepting = false
@@ -63,9 +63,9 @@ func _show_sequence(my_round: int) -> void:
 		if my_round != _round:
 			return
 		_light(i, true)
-		await get_tree().create_timer(FLASH_TIME, true, false, true).timeout
+		await get_tree().create_timer(float(_p("flash_time", FLASH_TIME)), true, false, true).timeout
 		_light(i, false)
-		await get_tree().create_timer(FLASH_TIME * 0.5, true, false, true).timeout
+		await get_tree().create_timer(float(_p("flash_time", FLASH_TIME)) * 0.5, true, false, true).timeout
 	if my_round == _round:
 		_status.text = "YOUR TURN  (%d)" % _sequence.size()
 		_accepting = true

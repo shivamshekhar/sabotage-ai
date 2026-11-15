@@ -149,7 +149,11 @@ func _check_characters() -> void:
 
 func _check_backgrounds() -> void:
 	var missing := []
+	for id in LevelData.level_ids():   # every level has its own background folder with every layer
+		for layer in LevelBackground.LAYERS:
+			if load(LevelData.level_dir(id) + "background/" + layer + ".png") == null:
+				missing.append("%s/%s" % [id, layer])
 	for layer in BACKGROUND_LAYERS:
-		if load(LevelBackground.DIR + layer + ".png") == null:
+		if load(LevelData.background_dir(LevelData.DEFAULT_ID) + layer + ".png") == null:
 			missing.append(layer)
 	_check("backgrounds: all layers load", missing.is_empty(), str(missing))

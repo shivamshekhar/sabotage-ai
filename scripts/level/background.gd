@@ -9,9 +9,9 @@ extends Node2D
 ## The tints dim and cool each layer so the background recedes and the gameplay plane
 ## in front (tiles, machines, player) stands out. Raise them for a brighter backdrop.
 
-# DIR: folder holding the generated layer images (far, mid_base, mid_leds_a, mid_leds_b,
-# cables). Change it to use a different theme's set of images.
-const DIR := "res://assets/backgrounds/data_center/"
+# LAYERS: the image names every background folder must hold (far, mid_base, mid_leds_a, mid_leds_b, cables).
+# Each level keeps its own set in levels/<level>/background/ (see LevelData.background_dir()).
+const LAYERS := ["far", "mid_base", "mid_leds_a", "mid_leds_b", "cables"]
 
 # TILE_W: width in pixels of each layer image. It is used as the parallax repeat size, so the
 # image repeats seamlessly sideways. It must equal the image width produced by
@@ -42,6 +42,11 @@ const MID_LEDS_TINT := Color(0.52, 0.58, 0.78)
 const CABLES_TINT := Color(0.46, 0.50, 0.64)
 
 
+## The folder (ending in "/") the layer images come from. Set before adding the node to the tree; Level sets it from
+## LevelData.background_dir().
+var dir := "res://levels/level_01/background/"
+
+
 func _ready() -> void:
 	_layer("far", 0.12, -30, FAR_TINT)
 	_layer("mid_base", 0.40, -28, MID_TINT)
@@ -60,7 +65,7 @@ func _layer(image: String, scroll: float, z: int, tint: Color) -> Sprite2D:
 	add_child(p)
 
 	var s := Sprite2D.new()
-	s.texture = load(DIR + image + ".png")
+	s.texture = load(dir + image + ".png")
 	s.centered = false
 	s.modulate = tint
 	p.add_child(s)

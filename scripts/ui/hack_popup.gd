@@ -31,6 +31,7 @@ static var _last_game := ""
 var laser_id := ""
 var game: Minigame
 var game_name := ""
+var definition := {}      # settings for the puzzle (see open_definition())
 
 
 static func has_game(game_id: String) -> bool:
@@ -68,8 +69,13 @@ static func _make_game(game_id: String) -> Minigame:
 	return SequenceGame.new()
 
 
-## Show the popup for a laser and puzzle name. Returns the popup (already added under `parent`).
+## Show the popup for a laser and puzzle name. Returns the popup (already added under `parent`). `requested` is a built-in
+## puzzle name, "random", or the id of a puzzle defined by the level file being played.
 static func open(parent: Node, laser: String, requested: String) -> HackPopup:
+	if force_game == "" and requested != "random" and not GAME_NAMES.has(requested):
+		var definition := LevelFile.minigame(LevelData.data_for(LevelData.current_id), requested)
+		if not definition.is_empty():
+			return open_definition(parent, laser, definition)
 	var chosen := requested
 	if force_game != "":
 		chosen = force_game
@@ -81,6 +87,22 @@ static func open(parent: Node, laser: String, requested: String) -> HackPopup:
 	popup.game_name = chosen
 	parent.add_child(popup)
 	popup._build(chosen)
+	return popup
+
+
+## Show a puzzle from a definition: {"kind": a built-in puzzle name, "params": {...settings...}, "questions": [...]}, the shape
+## used by level files (see tools/level_editor/FORMAT.md) and by the level editor's preview.
+static func open_definition(parent: Node, laser: String, definition: Dictionary) -> HackPopup:
+	var kind := str(definition.get("kind", ""))
+	if not GAME_NAMES.has(kind):
+		kind = random_game_name()
+	_last_game = kind
+	var popup := HackPopup.new()
+	popup.laser_id = laser
+	popup.game_name = kind
+	popup.definition = definition
+	parent.add_child(popup)
+	popup._build(kind)
 	return popup
 
 
@@ -144,6 +166,10 @@ func _build(chosen_name: String) -> void:
 	top.add_child(close)
 
 	game = _make_game(chosen_name)
+	var settings: Dictionary = (definition.get("params", {}) as Dictionary).duplicate()
+	if definition.has("questions"):
+		settings["questions"] = definition["questions"]
+	game.params = settings
 	var hint := Label.new()
 	hint.text = game.instructions
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -57,7 +57,7 @@ func _ready() -> void:
 
 func begin() -> void:
 	_hits = 0
-	_zone_width = ZONE_START
+	_zone_width = float(_p("zone_start", ZONE_START))
 	_marker = 0.0
 	_dir = 1.0
 	_new_zone()
@@ -70,13 +70,13 @@ func _new_zone() -> void:
 
 
 func _update_status() -> void:
-	_status.text = "ALIGN  %d / %d" % [_hits, HITS_NEEDED]
+	_status.text = "ALIGN  %d / %d" % [_hits, int(_p("hits_needed", HITS_NEEDED))]
 
 
 func _process(delta: float) -> void:
 	if not _running:
 		return
-	_marker += _dir * SWEEP_SPEED * delta
+	_marker += _dir * float(_p("sweep_speed", SWEEP_SPEED)) * delta
 	if _marker >= 1.0:
 		_marker = 1.0
 		_dir = -1.0
@@ -99,12 +99,12 @@ func press() -> void:
 		return
 	if _marker >= _zone_start and _marker <= _zone_start + _zone_width:
 		_hits += 1
-		if _hits >= HITS_NEEDED:
+		if _hits >= int(_p("hits_needed", HITS_NEEDED)):
 			_running = false
 			_status.text = "ACCESS GRANTED"
 			solved.emit()
 			return
-		_zone_width *= ZONE_SHRINK
+		_zone_width *= float(_p("zone_shrink", ZONE_SHRINK))
 		_new_zone()
 		_update_status()
 	else:
@@ -120,7 +120,7 @@ func aim() -> void:
 
 
 func auto_solve() -> void:
-	for i in HITS_NEEDED:
+	for i in int(_p("hits_needed", HITS_NEEDED)):
 		while not _running:
 			await _wait_frames(1)
 		aim()

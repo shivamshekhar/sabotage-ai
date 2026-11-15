@@ -76,6 +76,26 @@ func _main() -> void:
 		spots[f.home_x] = true
 	_check("each has its own spot to pop up from", spots.size() == fish.size())
 	_check("a hidden piranha cannot be hit", fish[0].hurtbox().size == Vector2.ZERO)
+	_check("the mouth has four drawn poses to flip through", fish[0]._frames.size() == 4 and fish[0]._frames[0] != fish[0]._frames[3])
+	_check("a bite step uses only those poses", Piranha.BITE_STEPS.all(func(st: Array) -> bool: return int(st[0]) >= 0 and int(st[0]) < 4))
+	_check("a leap bite uses only those poses", Piranha.LEAP_BITE_STEPS.all(func(st: Array) -> bool: return int(st[0]) >= 0 and int(st[0]) < 4))
+	# a leaping fish has its mouth open most of the time and snaps it shut now and then
+	var jumper: Piranha = fish[0]
+	jumper._start_leap(null)
+	var seen_frames := {}
+	var open_frames := 0
+	var total_frames := 0
+	for i in 40:    # the first 0.67 s of the leap
+		await _wait(1)
+		seen_frames[jumper._body.texture] = true
+		total_frames += 1
+		if jumper._body.texture == jumper._frames[2] or jumper._body.texture == jumper._frames[3]:
+			open_frames += 1
+	_check("the mouth opens and closes during a leap (several poses shown)", seen_frames.size() >= 3, "%d poses" % seen_frames.size())
+	_check("and is open most of the time", open_frames > total_frames / 2, "%d of %d frames open" % [open_frames, total_frames])
+	_check("a hidden piranha keeps its mouth shut", jumper._frames.has(jumper._body.texture))
+	jumper._hide_and_lurk()
+	_check("the mouth is shut again once it is back under", jumper._body.texture == jumper._frames[0])
 	_check("a bite takes 10% of the player's health", Piranha.bite_damage() == roundi(Player.MAX_HEALTH * 0.1), str(Piranha.bite_damage()))
 
 	# They leap at the player standing above the tank and bite.

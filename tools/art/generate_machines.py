@@ -1,6 +1,6 @@
 """Generates the data-center machines used as foreground decor.
 
-Usage (needs Pillow):  python tools/art/generate_machines.py assets/machines/data_center
+Usage (needs Pillow):  python tools/art/generate_machines.py levels/common/machines/data_center
 
 Each machine writes three PNGs into its own folder (<out>/<machine>/, e.g. gpu_rack/):
   <name>.png          the machine
@@ -19,7 +19,7 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFilter
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/machines/data_center"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "levels/common/machines/data_center"
 os.makedirs(OUT, exist_ok=True)
 
 # Files are stored one folder per machine (gpu_rack/, supercomputer/, ...) with its image, LED layers and

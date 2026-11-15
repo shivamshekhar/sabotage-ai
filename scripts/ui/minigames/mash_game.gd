@@ -29,17 +29,17 @@ func _ready() -> void:
 
 func begin() -> void:
 	_taps = 0
-	_prompt.text = "Tap %d times before the bar runs out!" % TAPS_NEEDED
-	_status.text = "0 / %d" % TAPS_NEEDED
-	_start_clock(TIME_LIMIT)
+	_prompt.text = "Tap %d times before the bar runs out!" % int(_p("taps_needed", TAPS_NEEDED))
+	_status.text = "0 / %d" % int(_p("taps_needed", TAPS_NEEDED))
+	_start_clock(float(_p("time_limit", TIME_LIMIT)))
 
 
 func _on_tap() -> void:
 	if _over:
 		return
 	_taps += 1
-	_status.text = "%d / %d" % [_taps, TAPS_NEEDED]
-	if _taps >= TAPS_NEEDED:
+	_status.text = "%d / %d" % [_taps, int(_p("taps_needed", TAPS_NEEDED))]
+	if _taps >= int(_p("taps_needed", TAPS_NEEDED)):
 		_win()
 
 
@@ -48,7 +48,7 @@ func _on_clock_done() -> void:
 
 
 func auto_solve() -> void:
-	for i in TAPS_NEEDED:
+	for i in int(_p("taps_needed", TAPS_NEEDED)):
 		_button.pressed.emit()
 
 

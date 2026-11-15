@@ -2,14 +2,14 @@
 
 Usage (needs Pillow):
     python tools/art/generate_tiles.py <kenney_tiles_dir> <out_dir>
-    e.g. python tools/art/generate_tiles.py assets/tiles/kenney_industrial assets/tiles/data_center
+    e.g. python tools/art/generate_tiles.py levels/common/tiles/kenney_industrial levels/common/tiles/data_center
 
 - Structural pieces (ground, ledges, ladders, crates, spikes) are drawn from scratch
   in the same palette as the background: dark steel, cyan edge lights, orange accents.
 - Props (monitors, panels, gear, sirens, canisters, slime...) are Kenney sprites regraded
   into the palette: neutral greys become navy steel, saturated accents stay bright.
 
-Output files keep the Kenney names (see assets/tiles/kenney_industrial/NAMES.md), so the game
+Output files keep the Kenney names (see levels/common/tiles/kenney_industrial/NAMES.md), so the game
 (SpriteLibrary) can use them as drop-in replacements. Like the Kenney set they are stored in category
 folders (terrain/, structure/, equipment/, hazards/, lights/, signage/), chosen from the first word of
 the sprite's name.
@@ -19,8 +19,8 @@ import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else "assets/tiles/kenney_industrial"
-OUT = sys.argv[2] if len(sys.argv) > 2 else "assets/tiles/data_center"
+SRC = sys.argv[1] if len(sys.argv) > 1 else "levels/common/tiles/kenney_industrial"
+OUT = sys.argv[2] if len(sys.argv) > 2 else "levels/common/tiles/data_center"
 os.makedirs(OUT, exist_ok=True)
 
 SS = 4  # supersampling factor

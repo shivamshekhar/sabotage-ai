@@ -59,7 +59,7 @@ func _next_round() -> void:
 			_correct += 1
 	_field.queue_redraw()
 	_prompt.text = "How many RED dots?"
-	_status.text = "%d / %d" % [_round_no, ROUNDS]
+	_status.text = "%d / %d" % [_round_no, int(_p("rounds", ROUNDS))]
 	_clear(_row)
 	_buttons.clear()
 	_answers.clear()
@@ -89,7 +89,7 @@ func _on_pick(n: int) -> void:
 		return
 	if n == _correct:
 		_round_no += 1
-		if _round_no >= ROUNDS:
+		if _round_no >= int(_p("rounds", ROUNDS)):
 			_win()
 		else:
 			_next_round()
@@ -98,7 +98,7 @@ func _on_pick(n: int) -> void:
 
 
 func auto_solve() -> void:
-	for i in ROUNDS:
+	for i in int(_p("rounds", ROUNDS)):
 		_buttons[_answers.find(_correct)].pressed.emit()
 		await _wait_frames(1)
 

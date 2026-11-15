@@ -28,7 +28,7 @@ const LAYER_ENEMY := 4
 
 # SPEED: top running speed, in pixels per second. It is the target of the horizontal
 # movement in _physics_process():
-#     velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)   (dir is -1, 0 or 1)
+#     velocity.x = move_toward(velocity.x, dir * run_speed, accel * delta)   (dir is -1, 0 or 1)
 # It also sets how far a jump carries:
 #     jump distance = SPEED * air time          (air time: see JUMP_VELOCITY and GRAVITY)
 # Higher: a faster runner whose jumps cover more ground, so gaps that were hard get easy.
@@ -47,7 +47,7 @@ const ACCEL := 1600.0
 
 # JUMP_VELOCITY: upward speed given at the moment of a jump, in pixels per second. It is
 # negative because the Y axis points down. Set once, when jumping on the floor:
-#     velocity.y = JUMP_VELOCITY
+#     velocity.y = jump_speed
 # and gravity then slows it, which gives:
 #     jump height = JUMP_VELOCITY^2 / (2 * GRAVITY)
 #     time to the top = |JUMP_VELOCITY| / GRAVITY
@@ -59,7 +59,7 @@ const JUMP_VELOCITY := -760.0
 
 # GRAVITY: downward acceleration, in pixels per second per second, added every physics step
 # while airborne:
-#     velocity.y += GRAVITY * delta
+#     velocity.y += gravity_px * LevelData.gravity_scale * delta
 # There is no maximum fall speed, so long drops keep speeding up. It also shapes the arc of
 # knockback hops.
 # Higher: heavy, snappy jumps (lower and shorter for the same JUMP_VELOCITY).
@@ -216,6 +216,22 @@ var display_name := DEFAULT_NAME:
 			_health_bar.set_title(display_name)
 
 var spawn := Vector2.ZERO
+# The values below start as the constants above and may be changed per level by a level file (see apply_tuning()). Code
+# reads these variables, never the constants, so a level can make the player faster, floatier and so on.
+var run_speed := SPEED
+var run_accel := ACCEL
+var jump_speed := JUMP_VELOCITY
+var gravity_px := GRAVITY
+var climb_px := CLIMB_SPEED
+var max_health := MAX_HEALTH
+var invuln_seconds := INVULN_TIME
+var hazard_fraction := HAZARD_DAMAGE_FRACTION
+var throw_cooldown := THROW_COOLDOWN
+var knock_x := KNOCKBACK_X
+var knock_up := KNOCKBACK_UP
+var stun_seconds := STUN_TIME
+var fall_death_px := FALL_DEATH_HEIGHT
+var pit_delay := PIT_DEATH_DELAY
 var health := MAX_HEALTH
 var hazard_count := 0   # how many hazard areas (spikes) currently overlap the player
 var climbing := false
@@ -261,7 +277,7 @@ func _ready() -> void:
 	add_child(_health_bar)
 	health_changed.connect(func(current: int, maximum: int) -> void:
 		_health_bar.set_ratio(float(current) / maximum))
-	health_changed.emit(health, MAX_HEALTH)
+	health_changed.emit(health, max_health)
 
 
 ## Returns true if the hit landed (not blocked by invulnerability).
@@ -270,22 +286,22 @@ func take_damage(amount: int, source_x: float = NAN) -> bool:
 	if _invuln_timer > 0.0 or _pit_dying:
 		return false
 	health = maxi(0, health - amount)
-	health_changed.emit(health, MAX_HEALTH)
+	health_changed.emit(health, max_health)
 	if health == 0:
 		die("health")
 	else:
-		_invuln_timer = INVULN_TIME
+		_invuln_timer = invuln_seconds
 		_hurt_timer = HURT_TIME
-		_stun_timer = STUN_TIME
+		_stun_timer = stun_seconds
 		_windup = -1.0            # a hit interrupts a throw
 		_throw_pose_timer = 0.0
 		_stop_climb()
 		var push := -_facing
 		if not is_nan(source_x) and not is_equal_approx(source_x, global_position.x):
 			push = 1 if global_position.x > source_x else -1
-		velocity = Vector2(push * KNOCKBACK_X, KNOCKBACK_UP)
+		velocity = Vector2(push * knock_x, knock_up)
 		_visuals.flinch(_facing)
-		_visuals.blink(INVULN_TIME)
+		_visuals.blink(invuln_seconds)
 	return true
 
 
@@ -300,7 +316,7 @@ func interact() -> void:
 func attack_light() -> void:
 	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0:
 		return
-	_throw_timer = THROW_COOLDOWN
+	_throw_timer = throw_cooldown
 	_windup = THROW_WINDUP
 	_throw_pose_timer = THROW_POSE_TIME
 
@@ -318,6 +334,29 @@ func attack_heavy() -> void:
 	pass
 
 
+## Apply a level's values (see the "player" and "terrain" sections of a level file; tools/level_editor/catalog.json lists them).
+## Keys that are missing keep their defaults. Call it once, right after creating the player.
+func apply_tuning(player_values: Dictionary, terrain_values: Dictionary = {}) -> void:
+	display_name = str(player_values.get("name", display_name))
+	run_speed = float(player_values.get("speed", run_speed))
+	run_accel = float(player_values.get("accel", run_accel))
+	jump_speed = float(player_values.get("jump_velocity", jump_speed))
+	gravity_px = float(player_values.get("gravity", gravity_px))
+	climb_px = float(player_values.get("climb_speed", climb_px))
+	max_health = int(player_values.get("max_health", max_health))
+	health = max_health
+	invuln_seconds = float(player_values.get("invuln_time", invuln_seconds))
+	hazard_fraction = float(player_values.get("hazard_damage_fraction", hazard_fraction))
+	throw_cooldown = float(player_values.get("throw_cooldown", throw_cooldown))
+	knock_x = float(player_values.get("knockback_x", knock_x))
+	knock_up = float(player_values.get("knockback_up", knock_up))
+	stun_seconds = float(player_values.get("stun_time", stun_seconds))
+	fall_death_px = float(terrain_values.get("fall_death_height", fall_death_px))
+	pit_delay = float(terrain_values.get("pit_death_delay", pit_delay))
+	if is_inside_tree():
+		health_changed.emit(health, max_health)
+
+
 ## Damage dealt to the player by one hazard hit (spikes): a share of MAX_HEALTH, see HAZARD_DAMAGE_FRACTION.
 static func hazard_damage() -> int:
 	return roundi(MAX_HEALTH * HAZARD_DAMAGE_FRACTION)
@@ -332,7 +371,7 @@ func fall_in_pit() -> void:
 	_pit_dying = true
 	_pit_timer = -1.0
 	health = 0
-	health_changed.emit(health, MAX_HEALTH)
+	health_changed.emit(health, max_health)
 	_stop_climb()
 	_windup = -1.0
 	_throw_pose_timer = 0.0
@@ -340,13 +379,13 @@ func fall_in_pit() -> void:
 
 
 func _pit_step(delta: float) -> void:
-	velocity.x = move_toward(velocity.x, 0.0, ACCEL * delta)
+	velocity.x = move_toward(velocity.x, 0.0, run_accel * delta)
 	if not is_on_floor():
-		velocity.y += GRAVITY * delta
+		velocity.y += gravity_px * LevelData.gravity_scale * delta
 	move_and_slide()
 	if is_on_floor() and _pit_timer < 0.0:
-		_pit_timer = PIT_DEATH_DELAY
-		_visuals.blink(PIT_DEATH_DELAY)
+		_pit_timer = pit_delay
+		_visuals.blink(pit_delay)
 	if _pit_timer >= 0.0:
 		_pit_timer -= delta
 		if _pit_timer <= 0.0:
@@ -359,8 +398,8 @@ func die(cause: String = "health") -> void:
 	_pit_dying = false
 	died.emit(cause)
 	_peak_y = spawn.y
-	health = MAX_HEALTH
-	health_changed.emit(health, MAX_HEALTH)
+	health = max_health
+	health_changed.emit(health, max_health)
 	global_position = spawn
 	reset_physics_interpolation()   # a teleport: don't smear the sprite across the level
 	velocity = Vector2.ZERO
@@ -398,7 +437,7 @@ func _physics_process(delta: float) -> void:
 		attack_heavy()
 
 	if hazard_count > 0:
-		take_damage(hazard_damage())  # ignored while invulnerable
+		take_damage(roundi(max_health * hazard_fraction))  # ignored while invulnerable
 
 	# Up/down grabs a ladder when one is in reach: standing at its bottom, standing on its
 	# top deck (down only), or catching it mid-jump. Otherwise up falls through to a jump.
@@ -418,13 +457,13 @@ func _physics_process(delta: float) -> void:
 	if climbing:
 		# Locked to the ladder: only up/down, no sideways movement. You leave at the top deck,
 		# the bottom floor, or by pressing jump (handled above).
-		velocity = Vector2(0.0, vdir * CLIMB_SPEED)
+		velocity = Vector2(0.0, vdir * climb_px)
 	else:
 		# Weaker deceleration while stunned so the knockback actually carries.
-		var accel := 500.0 if _stun_timer > 0.0 else ACCEL
+		var accel := 500.0 if _stun_timer > 0.0 else run_accel
 		velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)
 		if ladder_jump:
-			velocity.y = JUMP_VELOCITY
+			velocity.y = jump_speed
 		elif not is_on_floor():
 			velocity.y += GRAVITY * delta
 		elif Input.is_action_just_pressed("jump") or (Input.is_action_just_pressed("move_up") and not TouchControls.should_show()):
@@ -450,7 +489,7 @@ func _track_fall() -> void:
 	if climbing:
 		_peak_y = global_position.y
 	elif is_on_floor():
-		if global_position.y - _peak_y > FALL_DEATH_HEIGHT:
+		if global_position.y - _peak_y > fall_death_px:
 			die("fall")
 		else:
 			_peak_y = global_position.y

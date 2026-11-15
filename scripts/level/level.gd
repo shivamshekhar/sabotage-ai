@@ -18,11 +18,11 @@ signal checkpoint_reached(position: Vector2)
 const T := 70
 
 # SOLID: the map characters that are solid, i.e. get a collider and block the player: ground
-# '#', metal crate 'X', orange crate 'O'. _build_solid_colliders() merges neighbouring solid
-# cells into large rectangles. To make a new kind of solid block, add its character here and
-# give it art in _build_tiles(). Ledges '=' and ladder decks are NOT listed: they are
-# one-way and built separately.
-const SOLID := "#XO"
+# '#', metal crate 'X', orange crate 'O', and '@' for a solid block of a kind that has an entry in
+# levels/common/tile_registry.json (TileRegistry.physics_rows() puts it in the map). _build_solid_colliders() merges
+# neighbouring solid cells into large rectangles. A new kind of solid block needs no code: it is a registry entry with
+# `"behavior": "solid"` and a sprite. Ledges '=' and ladder decks are NOT listed: they are one-way and built separately.
+const SOLID := "#XO@"
 
 # MACHINES (GPU racks, supercomputers... placed from map letters).
 
@@ -45,6 +45,16 @@ const MACHINES := {
 # values darken it and uneven channels tint it. Machines are kept bright so they stand out
 # against the dimmed background.
 const MACHINE_TINT := Color.WHITE
+
+# BACKDROP_PROP_TINT: colour multiplied over the machines that are only scenery (GPU racks, supercomputers, monitoring stations,
+# server towers), so they sit a little behind the things you can stand on or use: slightly darker and cooler, but still clearly
+# visible and not part of the wall. The lock terminal (which you use) keeps MACHINE_TINT. White: no difference.
+const BACKDROP_PROP_TINT := Color(0.8, 0.85, 0.95)
+
+# FOREGROUND_SHADOW_COLOR / FOREGROUND_SHADOW_OFFSET: the soft dark copy drawn behind the ground edges, ledges and blocks you can
+# stand on, shifted down and to the right, so they read as nearer than the scenery behind them. Alpha 0: no shadow.
+const FOREGROUND_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.34)
+const FOREGROUND_SHADOW_OFFSET := Vector2(5.0, 8.0)
 
 # MACHINE_SHADOW_PAD: extra transparent border, in pixels, around each *_shadow.png so its
 # blur isn't clipped. It must match the pad used by tools/art/generate_machines.py; the
@@ -137,6 +147,11 @@ const LAMP_DIM := 0.5
 # used by the lamps (see LAMP_DIM, GLOW_MIN, GLOW_MAX). Lower: a more obvious "off" beacon.
 const CHECKPOINT_DIM := 0.4
 
+## The player's and the terrain's values for this level (from a level file; empty for the built-in levels). Main applies them to
+## the player with Player.apply_tuning().
+var player_tuning := {}
+var terrain_tuning := {}
+
 ## Which level to build (see LevelData.ids()). Set it before adding the Level to the tree.
 var level_id := LevelData.DEFAULT_ID
 var world_w := 0
@@ -171,7 +186,9 @@ var _lasers := {}      # id -> LaserField
 var _screens_at := {}  # Vector2i(column, row of a machine's letter) -> its MonitorScreens
 var _lock_screens := {}   # laser id -> the gate computer's MonitorScreens
 var _terminals: Array[Dictionary] = []   # {"rect": Rect2 (where to stand), "laser": id, "game": String, "hint": Label}
-var _map: Array[String] = []
+var _map: Array[String] = []    # the physics view of the level (see TileRegistry.physics_rows())
+var _kinds: Array[String] = []  # the level as stored: one character per tile, including kinds the game has no built-in character for
+var _data := {}   # the level file's data (player/terrain values, named objects, minigames); empty for the test level
 var _goal_fired := false
 var _fans: Array[Dictionary] = []   # spinning fan blades: {"sprite": Sprite2D, "speed": radians per second}
 var _glow_tex: GradientTexture2D
@@ -179,7 +196,15 @@ var _glow_mat: CanvasItemMaterial
 
 
 func _ready() -> void:
-	_map = LevelData.map(level_id)
+	LevelData.gravity_scale = 1.0
+	LevelData.current_id = level_id
+	_data = LevelData.data_for(level_id)   # empty for the test level
+	if not _data.is_empty():
+		player_tuning = _data.get("player", {})
+		terrain_tuning = _data.get("terrain", {})
+		LevelData.gravity_scale = float(terrain_tuning.get("gravity_scale", 1.0))
+	_kinds = LevelData.map(level_id)             # every tile as the registry knows it
+	_map = TileRegistry.physics_rows(_kinds)     # what each tile does (solid, one-way, ladder, hazard...): the rest of this class reads this
 	var cols := _map[0].length()
 	for r in _map.size():
 		if _map[r].length() != cols:
@@ -217,6 +242,20 @@ func _place(sprite_name: String, c: int, r: int, z: int = 0) -> Sprite2D:
 	s.position = Vector2(c * T, r * T)
 	s.z_index = z
 	add_child(s)
+	return s
+
+
+## A solid thing you can stand on (ground edge, ledge, block): place it and give it a soft shadow on what is behind it.
+func _place_solid(sprite_name: String, c: int, r: int) -> Sprite2D:
+	var s := _place(sprite_name, c, r)
+	if FOREGROUND_SHADOW_COLOR.a > 0.0:
+		var shadow := Sprite2D.new()
+		shadow.texture = s.texture
+		shadow.centered = false
+		shadow.position = s.position + FOREGROUND_SHADOW_OFFSET
+		shadow.modulate = FOREGROUND_SHADOW_COLOR
+		shadow.z_index = -1   # over the scenery, under the solid tile and the player
+		add_child(shadow)
 	return s
 
 
@@ -265,10 +304,15 @@ func _build_tiles() -> void:
 	for r in _map.size():
 		for c in _map[r].length():
 			match _map[r][c]:
-				"#": _place(_ground_name(c, r), c, r)
-				"X": _place("block_metal_x", c, r)
-				"O": _place("block_metal_orange", c, r)
-				"=": _place(_run_name("ledge", "=", c, r, true), c, r)
+				"#":
+					var ground := _ground_name(c, r)
+					if ground == "ground_fill":   # buried tiles: nothing behind them shows
+						_place(ground, c, r)
+					else:
+						_place_solid(ground, c, r)
+				"X": _place_solid("block_metal_x", c, r)
+				"O": _place_solid("block_metal_orange", c, r)
+				"=": _place_solid(_run_name("ledge", "=", c, r, true), c, r)
 				"H": _place("ladder_top" if _cell(c, r - 1) != "H" else "ladder_middle", c, r, -2)
 				"^":
 					add_child(SpikeTrap.new(c, r, true))
@@ -296,6 +340,25 @@ func _build_tiles() -> void:
 				_:
 					if MACHINES.has(_map[r][c]):
 						_build_machine(MACHINES[_map[r][c]], c, r)
+					elif TileRegistry.is_generic(_kinds[r][c]):
+						_build_generic(TileRegistry.kind_for_char(_kinds[r][c]), c, r)
+
+
+## A tile of a kind that is only an entry in the tile registry (no code of its own): `behavior` says what it is.
+func _build_generic(kind: Dictionary, c: int, r: int) -> void:
+	var sprite: Dictionary = kind.get("sprite", {})
+	match str(kind.get("behavior", "")):
+		"solid":   # a block to stand on: the collider comes from the '@' in the physics map
+			_place_solid(str(sprite.get("tile", "")), c, r)
+		"decor":   # a picture behind the player; the kind may set its depth (`z`) and `tint` (a [r, g, b] list)
+			var tint := Color(0.78, 0.82, 0.95)
+			if kind.has("tint"):
+				var t: Array = kind["tint"]
+				tint = Color(float(t[0]), float(t[1]), float(t[2]))
+			_decor(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
+		"machine":   # a decor machine with a footprint, like the GPU rack
+			var fp: Array = kind.get("footprint", [1, 1])
+			_build_machine({"sprite": str(sprite.get("machine", "")), "w": int(fp[0]), "h": int(fp[1])}, c, r)
 
 
 ## Decorative wall tiles beyond the left and right edges (see side_padding). No colliders: the
@@ -376,17 +439,19 @@ func _build_machine(def: Dictionary, c: int, r: int) -> void:
 	base.centered = false
 	base.position = pos
 	base.z_index = -5
-	base.modulate = MACHINE_TINT
+	# Scenery machines sit slightly behind the things you can stand on; the terminal you use does not.
+	var tint := MACHINE_TINT if sprite_name == MACHINES["L"]["sprite"] else MACHINE_TINT * BACKDROP_PROP_TINT
+	base.modulate = tint
 	add_child(base)
 	# Machines with fans (positions come from the generator, see MachineFans) get a blade
 	# sprite over each fan housing; _process() spins them.
 	for centre in MachineFans.centres(sprite_name):
-		_add_fan(pos + centre)
+		_add_fan(pos + centre, tint)
 	# Machines with monitors get a live display over each blank screen (rectangles come from the generator).
 	var screens := MachineScreens.rects(sprite_name)
 	for key in screens:
 		var rect: Rect2 = screens[key]
-		var screen := _add_screen(SCREEN_KINDS[key], pos + rect.position, rect.size)
+		var screen := _add_screen(SCREEN_KINDS[key], pos + rect.position, rect.size, tint)
 		if not _screens_at.has(Vector2i(c, r)):
 			_screens_at[Vector2i(c, r)] = []
 		_screens_at[Vector2i(c, r)].append(screen)
@@ -397,19 +462,19 @@ func _build_machine(def: Dictionary, c: int, r: int) -> void:
 		leds.centered = false
 		leds.position = pos
 		leds.z_index = -4
-		leds.modulate = Color(MACHINE_TINT, MACHINE_BLINK_LOW)
+		leds.modulate = Color(tint, MACHINE_BLINK_LOW)
 		add_child(leds)
 		# Group B runs half a cycle behind A; each machine gets its own offset from its column.
 		_blink_machine(leds, fmod(c * 0.29 + i * half, MACHINE_BLINK_PERIOD))
 
 
 ## One spinning fan: a blade sprite centred on `at`, turned every frame by _process().
-func _add_fan(at: Vector2) -> void:
+func _add_fan(at: Vector2, tint: Color) -> void:
 	var blades := Sprite2D.new()
 	blades.texture = SpriteLibrary.machine(MachineFans.FAN_SPRITE)
 	blades.position = at
 	blades.z_index = -4  # over the machine, under the player
-	blades.modulate = MACHINE_TINT
+	blades.modulate = tint
 	# Vary speed and starting angle from the fan's index so neighbours never match.
 	var spread := fmod(_fans.size() * 0.381966, 1.0)
 	blades.rotation = spread * TAU
@@ -418,11 +483,11 @@ func _add_fan(at: Vector2) -> void:
 
 
 ## One live monitor screen drawn over a blank screen in a machine image.
-func _add_screen(screen_kind: MonitorScreen.Kind, at: Vector2, screen_size: Vector2) -> MonitorScreen:
+func _add_screen(screen_kind: MonitorScreen.Kind, at: Vector2, screen_size: Vector2, tint: Color) -> MonitorScreen:
 	var screen := MonitorScreen.new()
 	screen.position = at
 	screen.z_index = -4  # over the machine, under the player
-	screen.modulate = MACHINE_TINT
+	screen.modulate = tint
 	screen.setup(screen_kind, screen_size, hash(at))  # seeded by position so screens differ
 	add_child(screen)
 	return screen
@@ -447,6 +512,9 @@ func _spawn_bro(c: int, r: int) -> void:
 		push_warning("AI Bro at (%d, %d) not spawned: it needs %d tiles of flat ground" % [c, r, LevelData.bro_min_flat_tiles()])
 		return
 	var bro := AIBro.new()
+	if not _data.is_empty():
+		var entry := LevelFile.object_at(_data, c, r)   # values and a name set in the level editor
+		bro.configure(entry.get("props", {}), str(entry.get("name", "")))
 	bro.position = Vector2((c + 0.5) * T, (r + 1) * T)
 	add_child(bro)
 
@@ -474,7 +542,10 @@ func _build_pits() -> void:
 			for yy in h:
 				for xx in w:
 					seen[Vector2i(c + xx, r + yy)] = true
-			add_child(PitHazard.new(kinds[ch], Rect2(c * T, r * T, w * T, h * T)))
+			var tank_values := {}
+			if not _data.is_empty():
+				tank_values = LevelFile.object_at(_data, c, r).get("props", {})
+			add_child(PitHazard.new(kinds[ch], Rect2(c * T, r * T, w * T, h * T), tank_values))
 
 
 func _row_is(ch: String, c: int, r: int, w: int) -> bool:
@@ -709,7 +780,9 @@ func _build_ladders() -> void:
 # ---------- backdrop ----------
 
 func _build_backdrop() -> void:
-	add_child(LevelBackground.new())
+	var backdrop := LevelBackground.new()
+	backdrop.dir = LevelData.background_dir(level_id)
+	add_child(backdrop)
 
 	# Light tint over the parallax art so gameplay tiles stay readable, plus the title.
 	var bd := Node2D.new()

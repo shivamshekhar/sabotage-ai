@@ -1,0 +1,411 @@
+{
+  "version": 1,
+  "doc": "Everything the level editor can edit apart from tiles (tiles and placeable objects are in levels/common/tile_registry.json): the tank settings, player, terrain, meta and minigame kinds.",
+  "tiles": [],
+  "objects": [
+    {
+      "type": "tank_settings",
+      "char": "",
+      "name": "Piranha tank settings",
+      "group": "Enemies",
+      "attaches_to": "W",
+      "props": [
+        {
+          "key": "fish_count",
+          "label": "Piranhas (0 = automatic)",
+          "type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 12
+        },
+        {
+          "key": "bite_fraction",
+          "label": "Bite damage (fraction of the player's health)",
+          "type": "float",
+          "default": 0.1,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.01
+        },
+        {
+          "key": "respawn_time",
+          "label": "Seconds until a destroyed piranha returns",
+          "type": "float",
+          "default": 6.0,
+          "min": 0.5,
+          "max": 60.0,
+          "step": 0.5
+        }
+      ]
+    }
+  ],
+  "player": [
+    {
+      "key": "name",
+      "label": "Name (max 10 characters)",
+      "type": "string",
+      "default": "SABOTEUR"
+    },
+    {
+      "key": "max_health",
+      "label": "Max health",
+      "type": "int",
+      "default": 100,
+      "min": 10,
+      "max": 1000
+    },
+    {
+      "key": "speed",
+      "label": "Run speed (px/s)",
+      "type": "float",
+      "default": 380.0,
+      "min": 100.0,
+      "max": 1000.0,
+      "step": 10.0
+    },
+    {
+      "key": "accel",
+      "label": "Acceleration (px/s^2)",
+      "type": "float",
+      "default": 1600.0,
+      "min": 200.0,
+      "max": 6000.0,
+      "step": 50.0
+    },
+    {
+      "key": "jump_velocity",
+      "label": "Jump velocity (negative = up)",
+      "type": "float",
+      "default": -760.0,
+      "min": -1600.0,
+      "max": -200.0,
+      "step": 10.0
+    },
+    {
+      "key": "gravity",
+      "label": "Gravity (px/s^2)",
+      "type": "float",
+      "default": 2000.0,
+      "min": 200.0,
+      "max": 6000.0,
+      "step": 50.0
+    },
+    {
+      "key": "climb_speed",
+      "label": "Climb speed (px/s)",
+      "type": "float",
+      "default": 250.0,
+      "min": 50.0,
+      "max": 800.0,
+      "step": 10.0
+    },
+    {
+      "key": "invuln_time",
+      "label": "Invulnerable seconds after a hit",
+      "type": "float",
+      "default": 1.0,
+      "min": 0.0,
+      "max": 5.0,
+      "step": 0.1
+    },
+    {
+      "key": "hazard_damage_fraction",
+      "label": "Spike damage (fraction of max health)",
+      "type": "float",
+      "default": 0.2,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01
+    },
+    {
+      "key": "throw_cooldown",
+      "label": "Seconds between throws",
+      "type": "float",
+      "default": 0.35,
+      "min": 0.05,
+      "max": 3.0,
+      "step": 0.05
+    },
+    {
+      "key": "knockback_x",
+      "label": "Knockback sideways (px/s)",
+      "type": "float",
+      "default": 260.0,
+      "min": 0.0,
+      "max": 1000.0,
+      "step": 10.0
+    },
+    {
+      "key": "knockback_up",
+      "label": "Knockback up (negative = up)",
+      "type": "float",
+      "default": -420.0,
+      "min": -1200.0,
+      "max": 0.0,
+      "step": 10.0
+    },
+    {
+      "key": "stun_time",
+      "label": "Stun seconds after a hit",
+      "type": "float",
+      "default": 0.25,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.05
+    }
+  ],
+  "terrain": [
+    {
+      "key": "gravity_scale",
+      "label": "Gravity scale (all things)",
+      "type": "float",
+      "default": 1.0,
+      "min": 0.2,
+      "max": 3.0,
+      "step": 0.05
+    },
+    {
+      "key": "fall_death_height",
+      "label": "Deadly fall height (px)",
+      "type": "float",
+      "default": 700.0,
+      "min": 200.0,
+      "max": 5000.0,
+      "step": 10.0
+    },
+    {
+      "key": "pit_death_delay",
+      "label": "Seconds before game over in a pit",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.0,
+      "max": 5.0,
+      "step": 0.1
+    },
+    {
+      "key": "background",
+      "label": "Background folder (next to the level file, or a res:// path)",
+      "type": "choice",
+      "default": "background"
+    }
+  ],
+  "meta": [
+    {
+      "key": "id",
+      "label": "Level id",
+      "type": "string",
+      "default": "my_level"
+    },
+    {
+      "key": "title",
+      "label": "Title",
+      "type": "string",
+      "default": "NEW LEVEL"
+    },
+    {
+      "key": "next",
+      "label": "Next level id (empty = restart)",
+      "type": "string",
+      "default": ""
+    }
+  ],
+  "minigames": [
+    {
+      "kind": "sequence",
+      "name": "Memory pads",
+      "params": [
+        {
+          "key": "length",
+          "label": "Pads in the sequence",
+          "type": "int",
+          "default": 4,
+          "min": 2,
+          "max": 10
+        },
+        {
+          "key": "flash_time",
+          "label": "Seconds each pad is lit",
+          "type": "float",
+          "default": 0.5,
+          "min": 0.1,
+          "max": 2.0,
+          "step": 0.05
+        }
+      ]
+    },
+    {
+      "kind": "timing",
+      "name": "Timing bar",
+      "params": [
+        {
+          "key": "hits_needed",
+          "label": "Hits in a row",
+          "type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 8
+        },
+        {
+          "key": "sweep_speed",
+          "label": "Marker speed (bar widths/s)",
+          "type": "float",
+          "default": 0.9,
+          "min": 0.2,
+          "max": 3.0,
+          "step": 0.1
+        },
+        {
+          "key": "zone_start",
+          "label": "Green zone width at first (fraction)",
+          "type": "float",
+          "default": 0.28,
+          "min": 0.05,
+          "max": 0.8,
+          "step": 0.01
+        },
+        {
+          "key": "zone_shrink",
+          "label": "Zone shrink per hit (multiplier)",
+          "type": "float",
+          "default": 0.7,
+          "min": 0.3,
+          "max": 1.0,
+          "step": 0.05
+        }
+      ]
+    },
+    {
+      "kind": "dont_press",
+      "name": "Don't press the red button",
+      "params": [
+        {
+          "key": "hold_time",
+          "label": "Seconds to resist",
+          "type": "float",
+          "default": 3.0,
+          "min": 1.0,
+          "max": 15.0,
+          "step": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "color_word",
+      "name": "Press the button that SAYS...",
+      "params": [
+        {
+          "key": "rounds",
+          "label": "Rounds",
+          "type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 8
+        }
+      ]
+    },
+    {
+      "kind": "captcha",
+      "name": "I am not a robot",
+      "params": [
+        {
+          "key": "ticks_needed",
+          "label": "Ticks needed",
+          "type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 8
+        }
+      ]
+    },
+    {
+      "kind": "wrong_only",
+      "name": "Wrong answers only",
+      "params": [
+        {
+          "key": "rounds",
+          "label": "Questions",
+          "type": "int",
+          "default": 2,
+          "min": 1,
+          "max": 8
+        }
+      ],
+      "questions": true
+    },
+    {
+      "kind": "jokes",
+      "name": "Pick the punchline",
+      "params": [
+        {
+          "key": "rounds",
+          "label": "Jokes",
+          "type": "int",
+          "default": 2,
+          "min": 1,
+          "max": 8
+        }
+      ],
+      "questions": true
+    },
+    {
+      "kind": "dot_count",
+      "name": "Count the red dots",
+      "params": [
+        {
+          "key": "rounds",
+          "label": "Rounds",
+          "type": "int",
+          "default": 2,
+          "min": 1,
+          "max": 8
+        }
+      ]
+    },
+    {
+      "kind": "mash",
+      "name": "Button mash",
+      "params": [
+        {
+          "key": "taps_needed",
+          "label": "Taps needed",
+          "type": "int",
+          "default": 12,
+          "min": 3,
+          "max": 60
+        },
+        {
+          "key": "time_limit",
+          "label": "Seconds allowed",
+          "type": "float",
+          "default": 3.0,
+          "min": 1.0,
+          "max": 15.0,
+          "step": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "simon_says",
+      "name": "Simon says",
+      "params": [
+        {
+          "key": "rounds",
+          "label": "Rounds",
+          "type": "int",
+          "default": 4,
+          "min": 2,
+          "max": 10
+        },
+        {
+          "key": "round_time",
+          "label": "Seconds per round",
+          "type": "float",
+          "default": 2.5,
+          "min": 1.0,
+          "max": 8.0,
+          "step": 0.25
+        }
+      ]
+    }
+  ]
+}

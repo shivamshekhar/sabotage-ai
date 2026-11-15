@@ -50,7 +50,7 @@ func _ready() -> void:
 
 func begin() -> void:
 	_ticks = 0
-	_status.text = "0 / %d" % TICKS_NEEDED
+	_status.text = "0 / %d" % int(_p("ticks_needed", TICKS_NEEDED))
 	_check.text = "[ ] I AM NOT A ROBOT"
 	_check.position = (FIELD_SIZE - BOX_SIZE) / 2.0
 
@@ -59,7 +59,7 @@ func _on_tick() -> void:
 	if _over:
 		return
 	_ticks += 1
-	if _ticks >= TICKS_NEEDED:
+	if _ticks >= int(_p("ticks_needed", TICKS_NEEDED)):
 		_check.text = "[x] HUMAN (PROBABLY)"
 		_win()
 		return
@@ -68,7 +68,7 @@ func _on_tick() -> void:
 
 
 func auto_solve() -> void:
-	for i in TICKS_NEEDED:
+	for i in int(_p("ticks_needed", TICKS_NEEDED)):
 		_check.pressed.emit()
 		await _wait_frames(1)
 

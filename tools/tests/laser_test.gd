@@ -1,5 +1,5 @@
 extends SceneTree
-## Laser force fields, computers and the puzzle popup, played in Level 1. Exits non-zero on failure.
+## Laser force fields, computers and the puzzle popup, played in level_01. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/laser_test.gd
 
 # The test plays the first floor's tunnel gate (laser 1) and its computer. Where they are is read from the map
@@ -22,8 +22,8 @@ func _check(name: String, cond: bool, detail := "") -> void:
 
 
 func _find_gate_one() -> void:
-	var rows := LevelData.level_1()
-	for t in LevelData.terminals("1"):
+	var rows := LevelData.map("level_01")
+	for t in LevelData.terminals("level_01"):
 		if t["laser"] == "1":
 			NEAR_X = (t["c"] + 1.0) * 70.0
 			FEET_Y = (t["r"] + 1) * 70.0
@@ -35,7 +35,7 @@ func _find_gate_one() -> void:
 
 func _initialize() -> void:
 	_find_gate_one()
-	OS.set_environment("SABOTAGE_LEVEL", "1")
+	OS.set_environment("SABOTAGE_LEVEL", "level_01")
 	HackPopup.force_game = "sequence"   # the level asks for a random puzzle; this test plays the memory one
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -129,7 +129,10 @@ func _main() -> void:
 	await _wait(40)
 
 	# Now the player can walk through.
-	_tp(NEAR_X + 90.0, FEET_Y)   # just short of the wall; the deep pit starts a little beyond it
+	for e in get_nodes_in_group("enemies"):   # the Bro beyond the gate would block the way (this test is about the laser)
+		e.queue_free()
+	await _wait(2)
+	_tp(NEAR_X + 90.0, FEET_Y)   # just short of the wall
 	await _wait(10)
 	Input.action_press("move_right")
 	await _wait(30)

@@ -26,7 +26,7 @@ func _ready() -> void:
 
 func begin() -> void:
 	_status.text = "...waiting..."
-	_start_clock(HOLD_TIME)
+	_start_clock(float(_p("hold_time", HOLD_TIME)))
 
 
 func _on_pressed() -> void:

@@ -24,8 +24,8 @@ func _check(name: String, cond: bool, detail := "") -> void:
 
 
 func _initialize() -> void:
-	_check("the default level is level 1", LevelData.DEFAULT_ID == "1")
-	_check("both levels are known", LevelData.has_level("1") and LevelData.has_level("test"))
+	_check("the default level is the first one", LevelData.DEFAULT_ID == "level_01")
+	_check("both levels are known", LevelData.has_level("level_01") and LevelData.has_level("test"))
 	_check("unknown ids are rejected", not LevelData.has_level("nope"))
 	_check("the test level is untouched (60 columns, 14 rows)",
 		LevelData.test_level().size() == 14 and LevelData.test_level()[0].length() == 60)

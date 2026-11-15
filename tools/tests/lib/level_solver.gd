@@ -1,12 +1,12 @@
-class_name LevelSolver
+﻿class_name LevelSolver
 extends RefCounted
 ## Kinematic reachability solver for a level map. It simulates the player's movement (same
 ## constants and per-frame order as Player) from every standable spot, using a set of
 ## representative inputs, and builds a graph of where the player can get to.
-## Used by tools/tests/level1_test.gd to prove a level can be finished, cannot trap the player,
+## Used by tools/tests/levels_test.gd to prove a level can be finished, cannot trap the player,
 ## and that its big gaps cannot simply be jumped. It is a model, not the engine: it is
 ## deliberately a little pessimistic (hazards are full-size, takeoff speed is limited to
-## what a run-up gives), and tools/tests/level1_test.gd also plays the route in the real engine.
+## what a run-up gives), and tools/tests/solver_calibration_test.gd checks its jump against the real Player.
 
 # T: tile size in pixels; must match Level.T.
 const T := 70
@@ -39,7 +39,7 @@ var _hazard_grid := PackedByteArray()   # 1 = floor spikes, 2 = ceiling spikes, 
 
 
 func _init(map: Array[String]) -> void:
-	rows = map
+	rows = TileRegistry.physics_rows(map)   # tiles the game has no built-in character for become what they do (solid or nothing)
 	cols = rows[0].length()
 	_solid_grid.resize(rows.size() * cols)
 	_oneway_grid.resize(rows.size() * cols)
@@ -48,7 +48,7 @@ func _init(map: Array[String]) -> void:
 		for c in cols:
 			var ch := rows[r][c]
 			var i := r * cols + c
-			if ch == "#" or ch == "X" or ch == "O":
+			if ch == "#" or ch == "X" or ch == "O" or ch == TileRegistry.SOLID_CHAR:
 				_solid_grid[i] = 1
 			if ch == "=" or (ch == "H" and (r == 0 or rows[r - 1][c] != "H")):
 				_oneway_grid[i] = 1
@@ -377,3 +377,4 @@ func route() -> Array[Vector2]:
 		out.push_front(nodes[k])
 		k = prev[k]
 	return out
+

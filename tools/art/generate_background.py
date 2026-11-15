@@ -1,6 +1,6 @@
 """Generates the data-center parallax background layers.
 
-Usage (needs Pillow):  python tools/art/generate_background.py assets/backgrounds/data_center
+Usage (needs Pillow):  python tools/art/generate_background.py levels/level_01/background
 
 Every layer is 1280px wide and tiles seamlessly on X, and is one STOREY tall (H px) and tiles on Y too
 (Godot repeats it with Parallax2D). A storey is a hall with a floor slab: server racks stand on the floor,
@@ -29,7 +29,7 @@ SLAB = 34   # thickness of a floor slab as seen edge-on
 BLUR_FAR = 1.8
 BLUR_MID = 2.4
 BLUR_NEAR = 1.0
-OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/backgrounds/data_center"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "levels/level_01/background"
 os.makedirs(OUT, exist_ok=True)
 
 LED_COLORS = [

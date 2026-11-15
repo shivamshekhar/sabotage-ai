@@ -111,6 +111,21 @@ enum State { PATROL, CHASE, RETURN }
 
 var max_health := 0
 var health := 0
+
+# The values below start as the constants above and may be changed for one Bro by a level file (see configure()).
+var health_fraction := HEALTH_FRACTION
+var contact_fraction := CONTACT_DAMAGE_FRACTION
+var patrol_speed := PATROL_SPEED
+var chase_speed := CHASE_SPEED
+var jump_speed := JUMP_VELOCITY
+var patrol_radius := PATROL_RADIUS
+var sight_range := SIGHT_RANGE
+var sight_height := SIGHT_HEIGHT
+var lose_range := LOSE_RANGE
+var hit_range := HIT_RANGE
+var hit_cooldown := HIT_COOLDOWN
+## The name shown above the health bar.
+var display_name := DISPLAY_NAME
 var state := State.PATROL
 
 var _home_x := 0.0
@@ -150,8 +165,25 @@ static func jump_height() -> float:
 	return JUMP_VELOCITY * JUMP_VELOCITY / (2.0 * GRAVITY)
 
 
+## Change this Bro's values from a level file entry: `values` uses the keys of the catalog entry "ai_bro".
+func configure(values: Dictionary, label: String = "") -> void:
+	if label != "":
+		display_name = label
+	health_fraction = float(values.get("health_fraction", health_fraction))
+	contact_fraction = float(values.get("contact_damage_fraction", contact_fraction))
+	patrol_speed = float(values.get("patrol_speed", patrol_speed))
+	chase_speed = float(values.get("chase_speed", chase_speed))
+	jump_speed = float(values.get("jump_velocity", jump_speed))
+	patrol_radius = float(values.get("patrol_radius", patrol_radius))
+	sight_range = float(values.get("sight_range", sight_range))
+	sight_height = float(values.get("sight_height", sight_height))
+	lose_range = float(values.get("lose_range", lose_range))
+	hit_range = float(values.get("hit_range", hit_range))
+	hit_cooldown = float(values.get("hit_cooldown", hit_cooldown))
+
+
 func _ready() -> void:
-	max_health = starting_health()
+	max_health = maxi(1, roundi(Player.MAX_HEALTH * health_fraction))
 	health = max_health
 	_home_x = global_position.x
 	_dir = 1 if randf() < 0.5 else -1
@@ -173,7 +205,7 @@ func _ready() -> void:
 	add_child(_visuals)
 	_bar = HealthBar.new()
 	_bar.position = BAR_OFFSET
-	_bar.set_title(DISPLAY_NAME)
+	_bar.set_title(display_name)
 	add_child(_bar)
 	_bar.set_ratio(1.0)
 
@@ -214,7 +246,7 @@ func _physics_process(delta: float) -> void:
 			_return_home()
 
 	if not is_on_floor():
-		velocity.y += GRAVITY * delta
+		velocity.y += GRAVITY * LevelData.gravity_scale * delta
 	move_and_slide()
 
 	if _player != null and _hit_timer <= 0.0 and _in_reach(_player):
@@ -245,9 +277,9 @@ func _sense() -> void:
 	if _player != null:
 		var dx := _player.global_position.x - global_position.x
 		var dy := _player.global_position.y - global_position.y
-		_sees_player = absf(dx) <= SIGHT_RANGE and absf(dy) <= SIGHT_HEIGHT and signf(dx) == float(_dir)
-		_lost_player = absf(dx) > LOSE_RANGE or absf(dy) > SIGHT_HEIGHT * 2.0
-		_player_above = dy < -60.0 and absf(dx) < HIT_RANGE * 2.0
+		_sees_player = absf(dx) <= sight_range and absf(dy) <= sight_height and signf(dx) == float(_dir)
+		_lost_player = absf(dx) > lose_range or absf(dy) > sight_height * 2.0
+		_player_above = dy < -60.0 and absf(dx) < hit_range * 2.0
 	if state == State.PATROL and _sees_player:
 		state = State.CHASE
 	elif state == State.CHASE and _lost_player:
@@ -264,7 +296,7 @@ func _sense() -> void:
 			heading = 1 if _player.global_position.x > global_position.x else -1
 		_wall_ahead = _blocked_at(heading, 20.0)
 		_ground_ahead = _wall_ahead or _floor_ahead(heading, EDGE_PROBE, DROP_LIMIT)   # a wall ahead is not a ledge
-		_can_climb = _wall_ahead and not _blocked_at(heading, jump_height() - 10.0)
+		_can_climb = _wall_ahead and not _blocked_at(heading, jump_speed * jump_speed / (2.0 * GRAVITY) - 10.0)
 		_can_hop_gap = not _ground_ahead and _floor_ahead(heading, GAP_JUMP_REACH, DROP_LIMIT)
 
 
@@ -288,13 +320,13 @@ func _neighbour_push() -> float:
 # ---------- behaviour (every frame, from the latest sensing) ----------
 
 func _patrol() -> void:
-	if absf(global_position.x - _home_x) >= PATROL_RADIUS:
+	if absf(global_position.x - _home_x) >= patrol_radius:
 		_dir = -1 if global_position.x > _home_x else 1   # past the edge of the beat: head back
 	elif is_on_wall() or _wall_ahead or not _ground_ahead:
 		_dir = -_dir                                     # a ledge or a wall: turn round
 		_wall_ahead = false
 		_ground_ahead = true
-	_walk(_dir * PATROL_SPEED)
+	_walk(_dir * patrol_speed)
 
 
 func _chase() -> void:
@@ -303,7 +335,7 @@ func _chase() -> void:
 		return
 	_dir = 1 if _player.global_position.x > global_position.x else -1
 	var gap := absf(_player.global_position.x - global_position.x)
-	if gap < HIT_RANGE * _standoff:
+	if gap < hit_range * _standoff:
 		_walk(0.0)
 		if _player_above and is_on_floor():
 			_jump()   # the player is on a ledge above: try to hop up to them
@@ -312,7 +344,7 @@ func _chase() -> void:
 		if not _ground_ahead:
 			if _can_hop_gap:
 				_jump()
-				_walk(_dir * CHASE_SPEED)
+				_walk(_dir * chase_speed)
 			else:
 				_walk(0.0)   # a real drop (or a deadly pit): stop at the edge
 			return
@@ -322,11 +354,11 @@ func _chase() -> void:
 			else:
 				_walk(0.0)   # too tall to climb
 				return
-	_walk(_dir * CHASE_SPEED)
+	_walk(_dir * chase_speed)
 
 
 func _return_home() -> void:
-	if absf(global_position.x - _home_x) < PATROL_RADIUS * 0.5:
+	if absf(global_position.x - _home_x) < patrol_radius * 0.5:
 		state = State.PATROL
 		return
 	_dir = -1 if global_position.x > _home_x else 1
@@ -334,12 +366,12 @@ func _return_home() -> void:
 		state = State.PATROL
 		_home_x = global_position.x   # can't get back: make this the new home
 		return
-	_walk(_dir * PATROL_SPEED)
+	_walk(_dir * patrol_speed)
 
 
 func _jump() -> void:
 	if is_on_floor() and _jump_timer <= 0.0:
-		velocity.y = JUMP_VELOCITY
+		velocity.y = jump_speed
 		_jump_timer = JUMP_COOLDOWN
 
 
@@ -351,7 +383,7 @@ func _walk(speed: float) -> void:
 func _in_reach(player: Player) -> bool:
 	var dx := absf(player.global_position.x - global_position.x)
 	var dy := absf(player.global_position.y - global_position.y)
-	return dx <= HIT_RANGE and dy <= SIGHT_HEIGHT / 2.0
+	return dx <= hit_range and dy <= sight_height / 2.0
 
 
 ## True if there is floor within `depth` pixels below the spot `ahead` pixels in front of the feet.
@@ -378,9 +410,9 @@ func _ignore_player(query: PhysicsRayQueryParameters2D) -> void:
 
 
 func _strike(player: Player) -> void:
-	_hit_timer = HIT_COOLDOWN
+	_hit_timer = hit_cooldown
 	_dir = 1 if player.global_position.x > global_position.x else -1
-	player.take_damage(contact_damage(), global_position.x)   # the player may be invulnerable: then nothing happens
+	player.take_damage(roundi(Player.MAX_HEALTH * contact_fraction), global_position.x)   # the player may be invulnerable: then nothing happens
 
 
 # ---------- being hurt ----------

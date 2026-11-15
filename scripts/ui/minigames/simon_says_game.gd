@@ -46,13 +46,13 @@ func _next_round() -> void:
 	_target = randi() % BUTTON_NAMES.size()
 	var says := _says[_round_no]
 	_prompt.text = ("Simon says: tap %s" if says else "Tap %s") % BUTTON_NAMES[_target]
-	_status.text = "%d / %d" % [_round_no, ROUNDS]
-	_start_clock(ROUND_TIME)
+	_status.text = "%d / %d" % [_round_no, int(_p("rounds", ROUNDS))]
+	_start_clock(float(_p("round_time", ROUND_TIME)))
 
 
 func _round_done() -> void:
 	_round_no += 1
-	if _round_no >= ROUNDS:
+	if _round_no >= int(_p("rounds", ROUNDS)):
 		_win()
 	else:
 		_next_round()
@@ -79,7 +79,7 @@ func _on_clock_done() -> void:
 
 
 func auto_solve() -> void:
-	for i in ROUNDS:
+	for i in int(_p("rounds", ROUNDS)):
 		if _says[_round_no]:
 			_buttons[_target].pressed.emit()
 		else:

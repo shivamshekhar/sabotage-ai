@@ -1,0 +1,20 @@
+﻿# Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `godot: command not found` | winget cannot create the alias without admin. Use the shell function in setup.md, or the full path. |
+| A program you just installed is "not found" | Fully quit and reopen VS Code / the terminal so it picks up the new `PATH`. |
+| `Could not find type "Player" (or Level, ...) in the current scope` | The script class cache is missing. Run `godot --headless --path . --import` twice. |
+| Export: `A valid Java SDK path is required in Editor Settings` | Set `export/android/java_sdk_path` (android.md, step 3.1e). |
+| Export: missing templates / `No export template found` | Install templates for exactly 4.7.2.stable (android.md, step 3.1c). |
+| A headless Godot command (`--import`, `--export-debug`, `--script`) never returns once Android is set up | Godot's "Shutdown ADB on Exit" runs `adb kill-server`, which blocks on Windows. Set `export/android/shutdown_adb_on_exit = false` (android.md, step 3.1e). You can recognise it: Godot sits at near-zero CPU, and Task Manager shows an `adb.exe kill-server` child that never ends. |
+| A command is stuck right now | Stop it by process id (`Stop-Process -Id <pid>` in PowerShell, or `taskkill //F //T //PID <pid>` in Git Bash), including its `adb.exe` child. Don't pipe Godot's output through a filter such as `Select-String`: it hides all progress until the process exits. |
+| Two Godot instances on the same project | Stop the stuck one first. Chained commands (`import; import; export`) keep launching the next step each time you kill one. |
+| Export: `ETC2/ASTC texture compression is required` | Enable `import_etc2_astc` (android.md, step 3.1f). Already on in this repo. |
+| `sdkmanager` says licences are not accepted | `yes \| sdkmanager --licenses` in Git Bash (piping from PowerShell does not answer the prompts). |
+| Unzipping the SDK tools fails on a long path | Extract directly into the SDK folder with a short path (use `unzip` in Git Bash). |
+| `adb devices` shows nothing / `unauthorized` | Turn on USB debugging, use a data cable, accept the prompt on the phone. |
+| Phone blocks installing the APK | Allow "install unknown apps" for the app you opened it from. |
+| Background looks too dark or too bright | Adjust the `*_TINT` constants in `scripts/level/background.gd`. |
+
+

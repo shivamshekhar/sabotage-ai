@@ -1,4 +1,4 @@
-class_name PlayerSprite
+﻿class_name PlayerSprite
 extends Sprite2D
 ## Visual for the player: picks a Kenney character pose from the movement state.
 ## Swap the hero by changing CHARACTER to "adventurer", "female", "soldier" or "zombie".
@@ -9,11 +9,15 @@ extends Sprite2D
 # Available: player, adventurer, female, soldier, zombie.
 const CHARACTER := "player"
 
-# SCALE: scale applied to the sprite: drawn size = source art size * SCALE. It also sets the
-# vertical offset that keeps the feet on the player's origin
-# (position.y = -art height * SCALE / 2). Visual only: the hitbox is Player.BODY_SIZE.
+# SCALE: scale applied to the sprite: drawn size = source art size * SCALE, for art that is ART_HEIGHT pixels tall (the
+# Kenney characters). Art of another height is scaled so it is drawn the same size, see
+# base_scale(). The same scale sets the vertical offset that keeps the feet on the player's origin
+# (position.y = -drawn height / 2). Visual only: the hitbox is Player.BODY_SIZE.
 # If you change it, update BODY_SIZE, the PlayerShadow sizes and HEALTH_BAR_OFFSET too.
 const SCALE := 1.2
+
+# ART_HEIGHT: the height in pixels of the Kenney character art that SCALE is defined for.
+const ART_HEIGHT := 110.0
 
 # WALK_FRAME_TIME: seconds each walk frame is shown. The walk alternates between two poses:
 #     frame = int(clock / WALK_FRAME_TIME) % 2
@@ -52,6 +56,7 @@ const BLINK_LOW := 0.2
 ## Which Kenney character this sprite shows; defaults to CHARACTER. AIBro sets it to "zombie".
 var character := CHARACTER
 
+var _base_scale := SCALE   # the scale at rest for the current art (see base_scale())
 var _pose_name := ""   # the pose currently shown, so an unchanged pose costs nothing
 var _clock := 0.0
 var _flinch_tween: Tween
@@ -61,7 +66,12 @@ var _blink_tween: Tween
 func _init() -> void:
 	scale = Vector2(SCALE, SCALE)
 	# Origin of the Player node is at the feet; art is 110px tall with feet on the bottom edge.
-	position = Vector2(0, -110.0 * SCALE / 2.0)
+	position = Vector2(0, -ART_HEIGHT * SCALE / 2.0)
+
+
+## The scale at which art of this texture's height is drawn the same size as the 110 px Kenney art at SCALE.
+static func base_scale(tex: Texture2D) -> float:
+	return SCALE * ART_HEIGHT / float(tex.get_height()) if tex != null else SCALE
 
 
 ## state: idle | walk | jump | fall | climb | climb_idle | hurt | throw_windup | throw_release
@@ -100,12 +110,12 @@ func flinch(facing: int) -> void:
 	if _flinch_tween:
 		_flinch_tween.kill()
 	rotation = -facing * FLINCH_LEAN
-	scale = Vector2(SCALE * 1.18, SCALE * 0.82)
+	scale = Vector2(_base_scale * 1.18, _base_scale * 0.82)
 	self_modulate = FLINCH_TINT
 	_flinch_tween = create_tween().set_parallel(true)
 	_flinch_tween.tween_property(self, "rotation", 0.0, FLINCH_TIME) \
 		.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	_flinch_tween.tween_property(self, "scale", Vector2(SCALE, SCALE), FLINCH_TIME) \
+	_flinch_tween.tween_property(self, "scale", Vector2(_base_scale, _base_scale), FLINCH_TIME) \
 		.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	_flinch_tween.tween_property(self, "self_modulate", Color.WHITE, FLINCH_TIME * 0.75)
 
@@ -115,3 +125,8 @@ func _set_pose(pose: String) -> void:
 		return
 	_pose_name = pose
 	texture = SpriteLibrary.character_pose(character, pose)
+	var s := base_scale(texture)
+	if not is_equal_approx(s, _base_scale):   # the first pose of art with another height than the Kenney art
+		_base_scale = s
+		scale = Vector2(s, s)
+

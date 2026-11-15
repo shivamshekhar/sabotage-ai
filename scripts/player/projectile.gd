@@ -128,7 +128,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = maxf(velocity.y, 0.0) * 0.5
 		return
 	global_position = to
-	velocity.y += GRAVITY * delta
+	velocity.y += GRAVITY * LevelData.gravity_scale * delta
 	_sprite.rotation += SPIN_SPEED * _spin_dir * delta
 
 

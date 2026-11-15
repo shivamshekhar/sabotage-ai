@@ -1,7 +1,8 @@
 extends SceneTree
 ## Prints what the solver finds for a level. Usage:
-##   SABOTAGE_LEVEL=test godot --headless --path . --script res://tools/solve_level.gd
-## Not a pass/fail test; use it while designing a level. See level1_test.gd for the checks.
+##   SABOTAGE_LEVEL=level_02 godot --headless --path . --script res://tools/solve_level.gd
+## Not a pass/fail test; use it while designing a level. See tools/tests/levels_test.gd for the checks. (The command-line tool's
+## `solve` command, tools/level_cli.sh solve <file>, does the same for any level file.)
 
 
 func _init() -> void:
@@ -9,10 +10,6 @@ func _init() -> void:
 	if id == "":
 		id = LevelData.DEFAULT_ID
 	var map := LevelData.map(id)
-	var floor_env := OS.get_environment("SABOTAGE_FLOOR")
-	if floor_env != "":
-		map = LevelData.l1_floor_map(int(floor_env))   # one floor of Level 1 on its own
-		id = "1 floor " + floor_env
 	if OS.get_environment("SABOTAGE_PRINT") != "":
 		for row in map:
 			print(row)

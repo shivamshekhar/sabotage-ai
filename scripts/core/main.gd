@@ -15,11 +15,15 @@ extends Node2D
 const TOUCH_SIDE_PADDING := 400
 
 
+var _level_id := ""
+
+
 func _ready() -> void:
 	InputSetup.register()
 
 	var level := Level.new()
-	level.level_id = _chosen_level_id()
+	_level_id = _chosen_level_id()
+	level.level_id = _level_id
 	if TouchControls.should_show():
 		# Let the camera scroll a little past each end so the player isn't hidden behind the
 		# D-pad (left) or the buttons (right) near the level's edges.
@@ -27,6 +31,7 @@ func _ready() -> void:
 	add_child(level)
 
 	var player := Player.new()
+	player.apply_tuning(level.player_tuning, level.terrain_tuning)
 	player.spawn = level.spawn
 	player.ladders = level.ladders
 	player.position = level.spawn
@@ -50,9 +55,23 @@ func _ready() -> void:
 		popup.solved.connect(func(id: String) -> void: level.set_laser(id, false)))
 
 
-## Which level to load: the environment variable SABOTAGE_LEVEL ("test" for the test level),
+## Which level to load, in this order: a level file given on the command line (`-- --level-file=path`) or in the environment
+## variable SABOTAGE_LEVEL_FILE; the level chosen by finishing the previous one (LevelData.selected_id); the environment
+## variable SABOTAGE_LEVEL (a folder name in levels/, such as "level_02", or "test" for the test level);
 ## otherwise the default level. An unknown value warns and falls back to the default.
 func _chosen_level_id() -> String:
+	var path := _level_file_path()
+	if path != "":
+		var loaded := LevelFile.load_file(path)
+		if (loaded["data"] as Dictionary).is_empty():
+			push_warning("Cannot play level file %s: %s" % [path, loaded["errors"]])
+		else:
+			for problem in loaded["errors"]:
+				push_warning("Level file %s: %s" % [path, problem])
+			LevelData.use_file(loaded["data"], path.get_base_dir())
+			return LevelData.FILE_ID
+	if LevelData.selected_id != "" and LevelData.has_level(LevelData.selected_id):
+		return LevelData.selected_id
 	var wanted := OS.get_environment("SABOTAGE_LEVEL")
 	if wanted == "":
 		return LevelData.DEFAULT_ID
@@ -60,6 +79,14 @@ func _chosen_level_id() -> String:
 		push_warning("Unknown SABOTAGE_LEVEL '%s'; using level %s" % [wanted, LevelData.DEFAULT_ID])
 		return LevelData.DEFAULT_ID
 	return wanted
+
+
+## The level file to play, if any: `--level-file=path` after `--` on the command line, or SABOTAGE_LEVEL_FILE.
+func _level_file_path() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--level-file="):
+			return arg.trim_prefix("--level-file=")
+	return OS.get_environment("SABOTAGE_LEVEL_FILE")
 
 
 func _setup_camera(level: Level, player: Player) -> void:
@@ -109,10 +136,17 @@ func _on_player_died(cause: String) -> void:
 
 
 func _on_goal_reached() -> void:
+	# Finishing a level loads the next one; after the last (or a level with no next) it starts again.
+	var next := LevelData.next_id(_level_id)
+	var again := next == ""
+	if again:
+		next = LevelData.DEFAULT_ID if LevelData.is_campaign(_level_id) else _level_id
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	var label := Label.new()
-	label.text = "DATA CENTER OFFLINE\nLEVEL COMPLETE"
+	label.text = "DATA CENTER OFFLINE\nLEVEL COMPLETE" if not again else "ALL DATA CENTERS OFFLINE\nTHE END (for now)"
+	if not again:
+		label.text += "\nNext: %s" % LevelData.title(next)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -122,4 +156,5 @@ func _on_goal_reached() -> void:
 	layer.add_child(label)
 	add_child(layer)
 	await get_tree().create_timer(3.0).timeout
+	LevelData.selected_id = next
 	get_tree().reload_current_scene()

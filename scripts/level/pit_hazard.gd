@@ -57,12 +57,15 @@ var kind := "toxic_waste"
 var _rect := Rect2()              # the liquid, in world pixels
 var _fx: Node2D                   # decoration: stops working while off screen
 var _surface_y := 0.0
+var _settings := {}
 
 
 ## `liquid` is the world rectangle of liquid cells (its top row is the surface).
-func _init(liquid_kind: String = "toxic_waste", liquid: Rect2 = Rect2()) -> void:
+## `settings` are optional values from a level file for a piranha tank: fish_count (0 = automatic), bite_fraction, respawn_time.
+func _init(liquid_kind: String = "toxic_waste", liquid: Rect2 = Rect2(), settings: Dictionary = {}) -> void:
 	kind = liquid_kind
 	_rect = liquid
+	_settings = settings
 
 
 func _ready() -> void:
@@ -204,8 +207,13 @@ func _build_motes(style: Dictionary) -> void:
 ## The tank's piranhas: enemies (see Piranha), each popping up at its own spot, spread evenly along the pit.
 func _build_fish() -> void:
 	var count := maxi(1, roundi(_rect.size.x / TILE) / FISH_PER_TILES)
+	if int(_settings.get("fish_count", 0)) > 0:
+		count = int(_settings["fish_count"])
 	var x0 := _rect.position.x + 40.0
 	var x1 := _rect.end.x - 40.0
 	for i in count:
 		var spot := lerpf(x0, x1, (i + 0.5) / count)
-		_fx.add_child(Piranha.new(_surface_y, spot, x0, x1))
+		var fish := Piranha.new(_surface_y, spot, x0, x1)
+		fish.bite_fraction = float(_settings.get("bite_fraction", fish.bite_fraction))
+		fish.respawn_time = float(_settings.get("respawn_time", fish.respawn_time))
+		_fx.add_child(fish)

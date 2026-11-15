@@ -190,7 +190,7 @@ func _main() -> void:
 	await _drop_world()
 
 	# ---- sleeping: Bros far from the player do no work (Level 1)
-	OS.set_environment("SABOTAGE_LEVEL", "1")
+	OS.set_environment("SABOTAGE_LEVEL", "level_01")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await _wait(40)

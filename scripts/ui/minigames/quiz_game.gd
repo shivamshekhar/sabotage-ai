@@ -24,6 +24,9 @@ var _used: Array[int] = []   # bank entries already asked this run
 
 
 func _ready() -> void:
+	var custom: Array = _p("questions", [])      # a level file may bring its own questions
+	if not custom.is_empty():
+		bank = custom
 	_build_frame()
 	_row = _make_row()
 	begin()
@@ -45,7 +48,7 @@ func _next_question() -> void:
 	_used.append(pick)
 	var entry: Dictionary = bank[pick]
 	_prompt.text = "%s\n%s" % [header, entry["q"]] if header != "" else str(entry["q"])
-	_status.text = "%d / %d" % [_round_no, ROUNDS]
+	_status.text = "%d / %d" % [_round_no, int(_p("rounds", ROUNDS))]
 	var answers: Array = [[entry["right"], true]]
 	var wrongs: Array = (entry["wrong"] as Array).duplicate()
 	wrongs.shuffle()
@@ -68,7 +71,7 @@ func _on_pick(right: bool) -> void:
 		return
 	if right == want_right:
 		_round_no += 1
-		if _round_no >= ROUNDS:
+		if _round_no >= int(_p("rounds", ROUNDS)):
 			_win()
 		else:
 			_next_question()
@@ -77,7 +80,7 @@ func _on_pick(right: bool) -> void:
 
 
 func auto_solve() -> void:
-	for i in ROUNDS:
+	for i in int(_p("rounds", ROUNDS)):
 		_buttons[_is_right.find(want_right)].pressed.emit()
 		await _wait_frames(1)
 

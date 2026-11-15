@@ -22,6 +22,10 @@ const BUTTON_MIN := 120.0
 # Higher: more time to read the joke. Lower: back to the puzzle faster.
 const RETRY_DELAY := 0.9
 
+## Settings for this puzzle from a level file (see tools/level_editor/catalog.json, "minigames"); empty = the built-in values.
+## Set before the puzzle is added to the tree. Read them with _p().
+var params := {}
+
 var _box: VBoxContainer
 var _status: Label
 var _prompt: Label
@@ -29,6 +33,11 @@ var _bar: ProgressBar
 var _over := false          # true once won, or while a lost round's message is showing
 var _clock_left := -1.0     # seconds left on the timer bar (negative = no timer running)
 var _clock_total := 1.0
+
+
+## One setting: the value given in params for `key`, or `fallback` (the puzzle's own default).
+func _p(key: String, fallback: Variant) -> Variant:
+	return params.get(key, fallback)
 
 
 ## Start (or restart) the puzzle from scratch.

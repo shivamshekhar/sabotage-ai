@@ -40,7 +40,7 @@ func _next_round() -> void:
 	while other == target:
 		other = NAMES[randi() % NAMES.size()]
 	_prompt.text = "Press the button that SAYS \"%s\"" % target
-	_status.text = "%d / %d" % [_round_no, ROUNDS]
+	_status.text = "%d / %d" % [_round_no, int(_p("rounds", ROUNDS))]
 	# the decoy is coloured like the target word but says something else; the real one is the other way round
 	_wrong = _word_button(other, COLORS[target])
 	_right = _word_button(target, COLORS[other])
@@ -66,7 +66,7 @@ func _on_pick(right: bool) -> void:
 		return
 	if right:
 		_round_no += 1
-		if _round_no >= ROUNDS:
+		if _round_no >= int(_p("rounds", ROUNDS)):
 			_win()
 		else:
 			_next_round()
@@ -75,7 +75,7 @@ func _on_pick(right: bool) -> void:
 
 
 func auto_solve() -> void:
-	for i in ROUNDS:
+	for i in int(_p("rounds", ROUNDS)):
 		_right.pressed.emit()
 		await _wait_frames(1)
 

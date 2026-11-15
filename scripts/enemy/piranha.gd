@@ -27,9 +27,9 @@ const SENSE_HEIGHT := 360.0
 # AIMED_CHANCE: when it notices the player, the chance (0 to 1) that the next appearance is a leap at them.
 const AIMED_CHANCE := 0.85
 
-# FISH_SCALE: size of a piranha relative to its 152 px sprite. HIDE_DEPTH: how far in pixels below the surface a
+# FISH_SCALE: size of a piranha relative to its 184 px sprite. HIDE_DEPTH: how far in pixels below the surface a
 # hidden fish waits (deep enough to be fully behind the liquid).
-const FISH_SCALE := 0.62
+const FISH_SCALE := 0.56
 const HIDE_DEPTH := 52.0
 
 # LEAP_HEIGHT_MIN / LEAP_HEIGHT_MAX: how high above the surface a leap peaks, in pixels. LEAP_REACH_MIN / MAX: how far
@@ -47,15 +47,19 @@ const PEEK_HEIGHT := 34.0
 const LURK_MIN := 0.3
 const LURK_MAX := 2.0
 
-# CHOMP_TIME: seconds one bite takes (jaw opens wide, hangs, then snaps shut, then a short rest); CHOMP_ANGLE: how wide the
-# jaw opens, in radians (positive swings it down). Higher angle: a bigger gape.
-const CHOMP_TIME := 0.55
-const CHOMP_ANGLE := 0.95
+# BITE_STEPS: one bite, as a list of [mouth pose, seconds it is shown]. The poses are the four drawn frames of the fish
+# (see SpriteLibrary.PIT_FISH_PARTS): 0 closed, 1 slightly open, 2 open, 3 wide open. The mouth rests shut, opens
+# in steps, hangs wide, then snaps shut again; the bite repeats for as long as the fish is awake. Longer times: a slower,
+# more menacing chomp; the last (closed) entry is the pause between bites.
+const BITE_STEPS := [[1, 0.06], [2, 0.06], [3, 0.16], [2, 0.05], [1, 0.04], [0, 0.4]]
 
-# JAW_HINGE / EYE_POSITION: where the lower jaw is hinged and where the glowing eye sits, in the body sprite's pixels
-# from its top-left corner (at 1x).
-const JAW_HINGE := Vector2(122, 60)
-const EYE_POSITION := Vector2(125, 43)
+# LEAP_BITE_STEPS: the same, for a fish that is leaping out of the water: it comes out with its jaws wide open, and snaps them
+# shut and open again while it flies, so the open mouth is what you see most of the time. The mouth only moves while the fish
+# is out of the water (peeking or leaping); a hidden one keeps it closed.
+const LEAP_BITE_STEPS := [[3, 0.3], [2, 0.05], [1, 0.04], [0, 0.07], [1, 0.04], [2, 0.05]]
+
+# EYE_POSITION: where the glowing eye sits, in the fish frame's pixels from its top-left corner (at 1x).
+const EYE_POSITION := Vector2(136, 44)
 
 # EYE_GLOW_MIN / EYE_GLOW_MAX: how strongly the eye's red glow shines at the dim and bright points of its pulse (0 to 1).
 # Keep MAX modest: the glow is additive, so a high value blows out the head.
@@ -63,7 +67,7 @@ const EYE_GLOW_MIN := 0.25
 const EYE_GLOW_MAX := 0.6
 
 # HURT_BOX: the size in pixels of the part of the fish that counts as touching (the player, or a thrown object).
-const HURT_BOX := Vector2(76, 46)
+const HURT_BOX := Vector2(84, 58)
 
 enum State { LURK, PEEK, LEAP, DEAD }
 
@@ -73,11 +77,17 @@ var home_x := 0.0          # where it pops up
 var x_min := 0.0           # the sideways limits of its leaps (the inside of the pit)
 var x_max := 0.0
 
+## The share of the player's health a bite takes, and seconds until a destroyed piranha returns (start as the constants above).
+var bite_fraction := BITE_FRACTION
+var respawn_time := RESPAWN_TIME
+
 var _timer := 0.0
 var _flip: Node2D
-var _jaw: Sprite2D
+var _body: Sprite2D
+var _frames: Array[Texture2D] = []
 var _eye: Sprite2D
 var _t := 0.0              # time inside the current peek or leap
+var _bite_t := 0.0         # time since it came out of the water, for the mouth
 var _leap_from := 0.0
 var _leap_to := 0.0
 var _leap_height := 0.0
@@ -106,34 +116,24 @@ func _ready() -> void:
 	add_to_group("enemies")
 	z_index = PitHazard.FISH_Z   # behind the liquid, in front of the player
 	_flip = Node2D.new()          # mirrors the fish when it swims left, so it is never upside down
-	var body := Sprite2D.new()
-	body.texture = SpriteLibrary.pit("piranha_tank", "fish_body")
-	body.centered = false
-	var half := body.texture.get_size() / 2.0
-	body.offset = -half
-	_jaw = Sprite2D.new()
-	_jaw.texture = SpriteLibrary.pit("piranha_tank", "fish_jaw")
-	_jaw.centered = false
-	_jaw.offset = Vector2(0, -9)                    # the hinge is at the jaw image's left edge, 9 px down
-	_jaw.position = JAW_HINGE - half
-	_jaw.z_index = -1                               # behind the body, so the upper jaw covers it when shut
+	for pose in ["closed", "slight", "open", "wide"]:
+		_frames.append(SpriteLibrary.pit("piranha_tank", "fish_" + pose))
+	_body = Sprite2D.new()
+	_body.texture = _frames[0]
+	_body.centered = false
+	var half := _frames[0].get_size() / 2.0
+	_body.offset = -half
 	_eye = Sprite2D.new()
 	_eye.texture = SpriteLibrary.pit("piranha_tank", "fish_eye")
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_eye.material = add
 	_eye.position = EYE_POSITION - half
-	_flip.add_child(_jaw)
-	_flip.add_child(body)
+	_flip.add_child(_body)
 	_flip.add_child(_eye)
 	add_child(_flip)
 	scale = Vector2.ONE * FISH_SCALE
-	# the jaw snaps open and shut all the time, and the eye pulses
-	var chomp := create_tween().set_loops()
-	chomp.tween_property(_jaw, "rotation", CHOMP_ANGLE, CHOMP_TIME * 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # open wide
-	chomp.tween_interval(CHOMP_TIME * 0.15)                                                                                     # hang
-	chomp.tween_property(_jaw, "rotation", 0.0, CHOMP_TIME * 0.12).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)           # snap shut
-	chomp.tween_interval(CHOMP_TIME * 0.45)                                                                                     # rest
+	# the eye pulses (the mouth is animated in _physics_process while the fish is out of the water)
 	var pulse := create_tween().set_loops()
 	pulse.tween_property(_eye, "modulate:a", EYE_GLOW_MIN, 0.5).set_trans(Tween.TRANS_SINE)
 	pulse.tween_property(_eye, "modulate:a", EYE_GLOW_MAX, 0.5).set_trans(Tween.TRANS_SINE)
@@ -149,6 +149,23 @@ func set_active(value: bool) -> void:
 	visible = value and _body_visible
 
 
+func _show_frame(index: int) -> void:
+	_body.texture = _frames[index]
+
+
+## The mouth pose (0 closed ... 3 wide open) at `t` seconds into a repeating list of [pose, seconds] steps.
+static func mouth_pose(steps: Array, t: float) -> int:
+	var total := 0.0
+	for step in steps:
+		total += float(step[1])
+	t = fmod(t, total)
+	for step in steps:
+		t -= float(step[1])
+		if t < 0.0:
+			return int(step[0])
+	return 0
+
+
 func _hide_and_lurk() -> void:
 	state = State.LURK
 	position = Vector2(home_x, surface_y + HIDE_DEPTH)
@@ -157,6 +174,8 @@ func _hide_and_lurk() -> void:
 	modulate = Color.WHITE
 	_body_visible = true
 	visible = _active
+	_bite_t = 0.0
+	_show_frame(0)
 	_timer = _rng.randf_range(LURK_MIN, LURK_MAX)
 
 
@@ -177,6 +196,8 @@ func _physics_process(delta: float) -> void:
 			if _timer <= 0.0:
 				_hide_and_lurk()
 	if state == State.PEEK or state == State.LEAP:
+		_bite_t += delta
+		_show_frame(mouth_pose(LEAP_BITE_STEPS if state == State.LEAP else BITE_STEPS, _bite_t))
 		_bite_check()
 
 
@@ -268,7 +289,7 @@ func _bite_check() -> void:
 	var feet := _player.global_position
 	var box := Rect2(feet.x - Player.BODY_SIZE.x / 2.0, feet.y - Player.BODY_SIZE.y, Player.BODY_SIZE.x, Player.BODY_SIZE.y)
 	if hurtbox().intersects(box):
-		(_player as Player).take_damage(bite_damage(), global_position.x)   # invulnerable for a moment after: no repeats
+		(_player as Player).take_damage(roundi(Player.MAX_HEALTH * bite_fraction), global_position.x)   # invulnerable for a moment after: no repeats
 
 
 # ---------- being hurt ----------
@@ -286,7 +307,7 @@ func take_hit(_fraction: float, _from_x: float = NAN) -> void:
 	if state == State.DEAD:
 		return
 	state = State.DEAD
-	_timer = RESPAWN_TIME
+	_timer = respawn_time
 	defeated.emit()
 	_splash(Vector2(global_position.x, surface_y))
 	var tw := create_tween()

@@ -195,7 +195,7 @@ func _main() -> void:
 	await _wait(5)
 
 	# ---- deadly pits kill whoever falls in (the first toxic-waste pit of Level 1, read from the map)
-	OS.set_environment("SABOTAGE_LEVEL", "1")
+	OS.set_environment("SABOTAGE_LEVEL", "level_01")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await _wait(5)
@@ -208,7 +208,7 @@ func _main() -> void:
 	# the first toxic-waste pit: its liquid starts at (pit_c, pit_r); the floor's walking surface is the row above
 	var pit_c := 0
 	var pit_r := 0
-	var map := LevelData.level_1()
+	var map := LevelData.map("level_01")
 	for r in map.size():
 		var c: int = map[r].find("A")
 		if c >= 0 and pit_r == 0:
