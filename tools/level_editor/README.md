@@ -70,7 +70,7 @@ A lock terminal's *Puzzle* value is a drop-down of `random`, the level's minigam
 ## How the registry and catalog drive the editor
 
 Every tile and placeable object is a kind in `levels/common/tile_registry.json` (see FORMAT.md); `catalog.json` lists the rest
-(player/terrain/meta values, puzzle kinds, the piranha tank settings). The editor has no per-tile code.
+(player/terrain/meta values, puzzle kinds, the pit creature settings). The editor has no per-tile code.
 
 * Each kind becomes a drawer item: `name`, `group` (the drawer section: groups with more than 24 kinds start folded and load their
   icons when opened, and the search box finds any kind, so thousands of tiles are fine), `sprite` (the icon and the picture on the

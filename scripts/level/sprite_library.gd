@@ -69,6 +69,14 @@ const PIT_KINDS := {
 }
 const PIT_PARTS := ["liquid"]
 const PIT_FISH_PARTS := ["fish_closed", "fish_slight", "fish_open", "fish_wide", "fish_eye"]
+# PIT_CREATURE_PARTS: the frames of the creatures of the other pits (see PitCreature.SPECIES), by pit kind: the toxic waste's puffer
+# fish (deflated, half, puffed up), the lava's lava ball (three flicker frames) and the nuclear waste's eel (four swimming frames).
+# tools/art/generate_pit_creatures.py writes these files.
+const PIT_CREATURE_PARTS := {
+	"toxic_waste": ["puffer_small", "puffer_mid", "puffer_big"],
+	"lava": ["ball_a", "ball_b", "ball_c"],
+	"nuclear_waste": ["eel_a", "eel_b", "eel_c", "eel_d"],
+}
 
 # PROJECTILE_DIR: folder of the throwable pixel-art objects, one subfolder per group.
 # projectile() builds <PROJECTILE_DIR>/<group>/projectile_<name>.png.

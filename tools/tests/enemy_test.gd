@@ -205,6 +205,10 @@ func _main() -> void:
 			player = n
 		elif n is Level:
 			level = n
+	for creature in get_nodes_in_group("enemies"):   # the creatures of the pits would bite and knock the player about: this test is about the liquid
+		if creature is PitCreature:
+			creature.queue_free()
+	await _wait(2)
 	# the first toxic-waste pit: its liquid starts at (pit_c, pit_r); the floor's walking surface is the row above
 	var pit_c := 0
 	var pit_r := 0

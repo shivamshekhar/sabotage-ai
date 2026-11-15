@@ -6,13 +6,13 @@
     {
       "type": "tank_settings",
       "char": "",
-      "name": "Piranha tank settings",
+      "name": "Pit creature settings",
       "group": "Enemies",
-      "attaches_to": "W",
+      "attaches_to": "AFNW",
       "props": [
         {
           "key": "fish_count",
-          "label": "Piranhas (0 = automatic)",
+          "label": "Creatures (0 = automatic)",
           "type": "int",
           "default": 0,
           "min": 0,
@@ -20,7 +20,7 @@
         },
         {
           "key": "bite_fraction",
-          "label": "Bite damage (fraction of the player's health)",
+          "label": "Hit damage (fraction of the player's health)",
           "type": "float",
           "default": 0.1,
           "min": 0.0,
@@ -29,7 +29,7 @@
         },
         {
           "key": "respawn_time",
-          "label": "Seconds until a destroyed piranha returns",
+          "label": "Seconds until a destroyed creature returns",
           "type": "float",
           "default": 6.0,
           "min": 0.5,

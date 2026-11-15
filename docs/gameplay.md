@@ -30,12 +30,22 @@ behind). Put a Bro in a level with `B` in the map; it needs enough flat ground t
 worked out from its patrol beat and width): the level builder reports a Bro placed where there is not enough room, a
 Bro that still ends up cramped is not spawned, and `levels_test.gd` checks every marker.
 
-**Robot piranhas** ([scripts/enemy/piranha.gd](../scripts/enemy/piranha.gd)) live in the `W` tanks: they hide under the liquid, pop up
-at their own spot and either peek out snapping their jaws or leap to one side, at you when you are near, and a bite takes 10% of
-your health. They have no health bar: one thrown object destroys one, and it returns at the same spot a few seconds later (only
-then). A tank that is off screen is hidden and does no work (its piranhas, bubbles and glow are switched off), and so is any enemy
-far from the player. `tools/tests/piranha_test.gd` checks all of this. Damage numbers are fractions of
-`Player.MAX_HEALTH` (see the constants in those scripts). `tools/tests/enemy_test.gd` checks all of this.
+**Pit creatures** ([scripts/enemy/pit_creature.gd](../scripts/enemy/pit_creature.gd)) live in every deadly pit. They hide under the
+liquid, pop up at their own spot and either peek out or leap to one side, at you when you are near, and hurt you if they hit. They have
+no health bar: one thrown object destroys one, and it returns at the same spot a few seconds later (only then). A pit that is off
+screen is silent: only pits on screen, or within `Level.PIT_ACTIVE_BUFFER` (700 px) of its edge in any direction, are awake, so one wakes up just before you reach it; every other pit's creatures, bubbles, gas and glow are hidden and do no work at all (`tools/tests/pit_sleep_test.gd`). Enemies far from the player sleep too. Each
+pit has its own:
+
+| Pit | Creature | What it does | Hit |
+|---|---|---|---|
+| toxic waste `A` | **poisonous puffer fish** | puffs up into a spiky ball as it leaps; the pit gives off drifting poison gas | 8% of your health, then poison: 4% four times, 0.7 s apart (it never kills; you turn green) |
+| lava `F` | **fireball** | jumps straight up and down out of the lava, a glowing head with a comet of flame. Thrown objects that hit it **burn up**; it cannot be put out | 15%, then **burning**: 1% every 0.7 s for 16 ticks (a quarter of the poison's rate for four times as long; never kills; you turn orange and catch fire) and **thrown objects only go half as far** while it lasts |
+| nuclear waste `N` | **glowing eel** | a long glowing eel that swims through the air; the pit glows and pulses | 12% |
+| piranha tank `W` | **robot piranha** ([piranha.gd](../scripts/enemy/piranha.gd)) | snaps its saw-toothed jaws, open while it leaps | 10% |
+
+`tools/tests/piranha_test.gd` and `tools/tests/pit_creature_test.gd` check all of this. Damage numbers are fractions of
+`Player.MAX_HEALTH` (the `SPECIES` table in `pit_creature.gd`). A level file can change how many creatures a pit holds, their damage and
+how fast they return, per pit (the "Pit creature settings" of the pit in the editor). `tools/tests/enemy_test.gd` checks the liquids.
 
 **Phone layout** ([scripts/ui/touch_controls.gd](../scripts/ui/touch_controls.gd)): an 8-way D-pad at
 the bottom-left (slide your thumb around it; up+right together makes a diagonal), and the four

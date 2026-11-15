@@ -4,7 +4,8 @@ extends Node2D
 ## true ballistic arc: constant horizontal speed, vertical speed changed by gravity every step,
 ##     position += velocity * dt;   velocity.y += GRAVITY * dt
 ## which is a parabola, like a thrown stone. It spins while it flies and disappears when it hits
-## a wall or floor, or an enemy (which takes HIT_FRACTION of its health).
+## a wall or floor, or an enemy (which takes HIT_FRACTION of its health). A thing made of fire (a lava ball, see
+## PitCreature.burns_projectiles()) is not hurt: the object burns up instead. A burning thrower throws shorter (see launch()).
 
 # THROW_SPEED: launch speed in pixels per second, along the throw angle.
 #     horizontal speed = THROW_SPEED * cos(THROW_ANGLE),   vertical = -THROW_SPEED * sin(THROW_ANGLE)
@@ -75,13 +76,15 @@ var _landed := false
 
 
 ## Create a projectile of the named object (see SpriteLibrary.PROJECTILES) at `from`, thrown towards
-## `facing` (1 right, -1 left) by someone moving at `thrower_velocity`, and add it under `parent`.
-static func launch(parent: Node, name: String, from: Vector2, facing: int, thrower_velocity: Vector2) -> Projectile:
+## `facing` (1 right, -1 left) by someone moving at `thrower_velocity`, and add it under `parent`. `range_scale` is how far it should
+## go compared with a normal throw (0.5 = half): the range of a ballistic throw grows with the square of its speed, so the whole
+## launch velocity is multiplied by the square root of it.
+static func launch(parent: Node, name: String, from: Vector2, facing: int, thrower_velocity: Vector2, range_scale: float = 1.0) -> Projectile:
 	var p := Projectile.new()
 	p.object_name = name
 	p.position = from
 	var angle := deg_to_rad(THROW_ANGLE_DEGREES)
-	p.velocity = Vector2(facing * THROW_SPEED * cos(angle) + thrower_velocity.x * INHERIT_VELOCITY, -THROW_SPEED * sin(angle))
+	p.velocity = Vector2(facing * THROW_SPEED * cos(angle) + thrower_velocity.x * INHERIT_VELOCITY, -THROW_SPEED * sin(angle)) * sqrt(range_scale)
 	p._spin_dir = float(facing)
 	parent.add_child(p)
 	return p
@@ -109,6 +112,9 @@ func _physics_process(delta: float) -> void:
 	# 1. Did this step pass through an enemy? Every enemy's hit box is tested against the step's line.
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if _segment_hits_rect(from, to, e.hurtbox().grow(HIT_RADIUS)):
+			if e.has_method("burns_projectiles") and e.burns_projectiles():
+				_burn_up()
+				return
 			e.take_hit(HIT_FRACTION, from.x)
 			_finish()
 			return
@@ -170,6 +176,42 @@ func _land(at: Vector2) -> void:
 	tw.tween_property(_sprite, "modulate:a", 0.15, BLINK_PERIOD / 2.0)
 	tw.tween_property(_sprite, "modulate:a", 1.0, BLINK_PERIOD / 2.0)
 	await tw.finished
+	queue_free()
+
+
+# BURN_TIME: seconds a thrown object takes to burn up when it flies into fire.
+const BURN_TIME := 0.5
+
+
+## Flew into fire: the object blackens, shrivels and burns away in a burst of embers (the fire is not hurt).
+func _burn_up() -> void:
+	_done = true
+	velocity = Vector2.ZERO
+	remove_from_group("projectiles")
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_sprite, "modulate", Color(0.25, 0.1, 0.05, 0.0), BURN_TIME).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(_sprite, "scale", Vector2(0.25, 0.25) * SPRITE_SCALE, BURN_TIME)
+	_sprite.self_modulate = Color(1.6, 0.7, 0.3)   # glows hot first
+	var p := CPUParticles2D.new()
+	p.texture = PitHazard.glow_texture()
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = add
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = 16
+	p.lifetime = 0.6
+	p.direction = Vector2(0, -1)
+	p.spread = 80.0
+	p.gravity = Vector2(0, -40)
+	p.initial_velocity_min = 40.0
+	p.initial_velocity_max = 130.0
+	p.scale_amount_min = 0.04
+	p.scale_amount_max = 0.12
+	p.color = Color(1.0, 0.55, 0.15, 1.0)
+	add_child(p)
+	p.emitting = true
+	await get_tree().create_timer(BURN_TIME + 0.1).timeout
 	queue_free()
 
 

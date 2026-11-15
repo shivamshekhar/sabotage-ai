@@ -3,7 +3,7 @@
 One JSON file describes one playable level. The **game** loads it (`scripts/level/level_file.gd`, class `LevelFile`) and the
 **level editor** (this folder) reads and writes it. Every kind of tile and placeable object is an entry in the **tile registry**
 (`levels/common/tile_registry.json`, see "Tiles" below); `catalog.json` (next to this file) lists the other things the editor can
-edit (player, terrain and meta values, puzzle kinds, the piranha tank settings). The editor builds its palette and its property
+edit (player, terrain and meta values, puzzle kinds, the pit creature settings). The editor builds its palette and its property
 panels from them, so a new tile or a new tunable value is a data entry, not an editor change.
 
 ## Top level
@@ -97,8 +97,8 @@ Catalog section `objects` lists each object type, the marker character it writes
 * `checkpoint` (`K`), `exit` (`E`), `player_spawn` (`P`): a name only.
 * `lock_terminal` (`L`): `laser` (`auto` = the nearest gate, or `1`-`9`) and `minigame` (`random`, a minigame `id` from the
   level's `minigames` list, or a built-in kind name such as `dont_press`).
-* `tank_settings` (a marker-less object keyed on the top-left tile of a `W` pit): fish_count (`0` = automatic), bite_fraction,
-  respawn_time.
+* `tank_settings` ("Pit creature settings": a marker-less object keyed on the top-left tile of any deadly pit): fish_count (the number of
+  creatures, `0` = automatic), bite_fraction (their hit damage), respawn_time.
 
 ## Player and terrain values
 

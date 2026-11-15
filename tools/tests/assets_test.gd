@@ -118,7 +118,11 @@ func _check_pits() -> void:
 	for part in SpriteLibrary.PIT_FISH_PARTS:
 		if SpriteLibrary.pit("piranha_tank", part) == null:
 			missing.append("piranha_tank/" + part)
-	_check("pit hazards: every kind has its liquid tile, and the piranha tank its fish parts", missing.is_empty(), str(missing))
+	for kind in SpriteLibrary.PIT_CREATURE_PARTS:
+		for part in SpriteLibrary.PIT_CREATURE_PARTS[kind]:
+			if SpriteLibrary.pit(kind, part) == null:
+				missing.append("%s/%s" % [kind, part])
+	_check("pit hazards: every kind has its liquid tile, and its creatures their frames", missing.is_empty(), str(missing))
 	var chars := {}
 	for kind in SpriteLibrary.PIT_KINDS:
 		chars[SpriteLibrary.PIT_KINDS[kind]] = true

@@ -23,7 +23,7 @@ import sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "assets", "pit_hazards")
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "levels", "common", "pit_hazards")
 SRC = os.path.join(HERE, "sources", "kenney_platformer_redux")
 
 

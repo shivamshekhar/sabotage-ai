@@ -250,6 +250,13 @@ var _facing := 1
 var _hurt_timer := 0.0
 var _invuln_timer := 0.0
 var _stun_timer := 0.0
+var _poison_ticks := 0       # how many more times the poison hurts (see apply_poison())
+var _poison_timer := 0.0     # seconds until the next tick
+var _poison_amount := 0      # health lost per tick
+var _burn_ticks := 0         # how many more times the burn hurts (see apply_burn())
+var _burn_timer := 0.0
+var _burn_amount := 0
+var _flames: CPUParticles2D  # the fire on a burning player
 var _visuals: PlayerSprite
 var _health_bar: HealthBar
 
@@ -305,6 +312,136 @@ func take_damage(amount: int, source_x: float = NAN) -> bool:
 	return true
 
 
+# POISON_TICK_TIME: seconds between the hurts of a poisoning (see apply_poison()). POISON_TINT: the colour the player is tinted
+# while poisoned.
+const POISON_TICK_TIME := 0.7
+const POISON_TINT := Color(0.62, 1.0, 0.45)
+
+
+# BURN_TINT: the colour a burning player is tinted. BURN_THROW_RANGE: how far a thrown object goes while burning, as a fraction of
+# the normal range (0.5 = half). Burning uses the same tick time as poison, see apply_burn().
+const BURN_TINT := Color(1.0, 0.66, 0.5)
+const BURN_THROW_RANGE := 0.5
+
+
+## Poisoned (by the toxic puffer fish): for the next `ticks` times, POISON_TICK_TIME seconds apart, lose `fraction` of the maximum
+## health, without being knocked back or made invulnerable. Poison never kills: it stops at 1 health point (the puffer's bite
+## does the killing, a pit or a fall does the rest). Another poisoning restarts the count. The player is tinted green meanwhile.
+func apply_poison(ticks: int, fraction: float) -> void:
+	if _pit_dying or health <= 0:
+		return
+	_poison_ticks = maxi(_poison_ticks, ticks)
+	_poison_amount = maxi(1, roundi(max_health * fraction))
+	_poison_timer = POISON_TICK_TIME
+	_update_status_look()
+
+
+## True while a poisoning is still hurting.
+func is_poisoned() -> bool:
+	return _poison_ticks > 0
+
+
+func _poison_step(delta: float) -> void:
+	if _poison_ticks <= 0:
+		return
+	_poison_timer -= delta
+	if _poison_timer > 0.0:
+		return
+	_poison_timer = POISON_TICK_TIME
+	_poison_ticks -= 1
+	if health > 1:
+		health = maxi(1, health - _poison_amount)
+		health_changed.emit(health, max_health)
+	if _poison_ticks == 0:
+		_clear_poison()
+
+
+func _clear_poison() -> void:
+	_poison_ticks = 0
+	_update_status_look()
+
+
+## Set on fire (by a lava ball): for the next `ticks` times, POISON_TICK_TIME seconds apart, lose `fraction` of the maximum health,
+## without being knocked back or made invulnerable, and for as long as it lasts thrown objects only go BURN_THROW_RANGE of their
+## usual distance. Like poison it never kills, and a new burning restarts the count. A burning player is tinted orange and has
+## flames. (A lava ball sets 1% per tick for 16 ticks: a quarter of the poison's rate for four times as long.)
+func apply_burn(ticks: int, fraction: float) -> void:
+	if _pit_dying or health <= 0:
+		return
+	_burn_ticks = maxi(_burn_ticks, ticks)
+	_burn_amount = maxi(1, roundi(max_health * fraction))
+	_burn_timer = POISON_TICK_TIME
+	_update_status_look()
+
+
+## True while a burning is still hurting.
+func is_burning() -> bool:
+	return _burn_ticks > 0
+
+
+## How far thrown objects go right now, as a fraction of the normal range (1, or BURN_THROW_RANGE while burning).
+func throw_range_scale() -> float:
+	return BURN_THROW_RANGE if _burn_ticks > 0 else 1.0
+
+
+func _burn_step(delta: float) -> void:
+	if _burn_ticks <= 0:
+		return
+	_burn_timer -= delta
+	if _burn_timer > 0.0:
+		return
+	_burn_timer = POISON_TICK_TIME
+	_burn_ticks -= 1
+	if health > 1:
+		health = maxi(1, health - _burn_amount)
+		health_changed.emit(health, max_health)
+	if _burn_ticks == 0:
+		_clear_burn()
+
+
+func _clear_burn() -> void:
+	_burn_ticks = 0
+	_update_status_look()
+
+
+## The tint (orange while burning, green while poisoned, burning wins) and the flames.
+func _update_status_look() -> void:
+	if _visuals != null:
+		var tint := Color.WHITE
+		if _burn_ticks > 0:
+			tint = BURN_TINT
+		elif _poison_ticks > 0:
+			tint = POISON_TINT
+		_visuals.modulate = Color(tint.r, tint.g, tint.b, _visuals.modulate.a)
+	if _burn_ticks > 0 and _flames == null:
+		_flames = CPUParticles2D.new()
+		_flames.texture = PitHazard.glow_texture()
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_flames.material = add
+		_flames.z_index = 3
+		_flames.position = Vector2(0, -BODY_SIZE.y * 0.45)
+		_flames.amount = 34
+		_flames.lifetime = 0.55
+		_flames.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		_flames.emission_rect_extents = Vector2(BODY_SIZE.x * 0.4, BODY_SIZE.y * 0.4)
+		_flames.direction = Vector2(0, -1)
+		_flames.spread = 25.0
+		_flames.gravity = Vector2(0, -60)
+		_flames.initial_velocity_min = 30.0
+		_flames.initial_velocity_max = 80.0
+		_flames.scale_amount_min = 0.12
+		_flames.scale_amount_max = 0.3
+		_flames.color = Color(1.0, 0.55, 0.15, 0.9)
+		var fade := Gradient.new()
+		fade.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
+		fade.colors = PackedColorArray([Color(1, 1, 0.6, 0.0), Color(1, 0.9, 0.5, 1.0), Color(1, 0.2, 0.05, 0.0)])
+		_flames.color_ramp = fade
+		add_child(_flames)
+	if _flames != null:
+		_flames.emitting = _burn_ticks > 0
+
+
 ## Interact with whatever is in reach. The player only announces it (the interacted signal); the
 ## level decides whether there is a computer in reach.
 func interact() -> void:
@@ -325,7 +462,7 @@ func attack_light() -> void:
 func _release_throw() -> void:
 	var names: Array = SpriteLibrary.PROJECTILES.keys()
 	var from := global_position + Vector2(_facing * THROW_HAND.x, THROW_HAND.y)
-	var obj := Projectile.launch(get_parent(), names[randi() % names.size()], from, _facing, velocity)
+	var obj := Projectile.launch(get_parent(), names[randi() % names.size()], from, _facing, velocity, throw_range_scale())
 	threw.emit(obj)
 
 
@@ -368,6 +505,8 @@ static func hazard_damage() -> int:
 func fall_in_pit() -> void:
 	if _pit_dying:
 		return
+	_clear_poison()
+	_clear_burn()
 	_pit_dying = true
 	_pit_timer = -1.0
 	health = 0
@@ -396,6 +535,8 @@ func _pit_step(delta: float) -> void:
 ## Out of health or a deadly fall: back to the last checkpoint with a full bar.
 func die(cause: String = "health") -> void:
 	_pit_dying = false
+	_clear_poison()
+	_clear_burn()
 	died.emit(cause)
 	_peak_y = spawn.y
 	health = max_health
@@ -418,6 +559,8 @@ func _physics_process(delta: float) -> void:
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_invuln_timer = maxf(0.0, _invuln_timer - delta)
 	_stun_timer = maxf(0.0, _stun_timer - delta)
+	_poison_step(delta)
+	_burn_step(delta)
 	_throw_timer = maxf(0.0, _throw_timer - delta)
 	_throw_pose_timer = maxf(0.0, _throw_pose_timer - delta)
 	if _windup >= 0.0:

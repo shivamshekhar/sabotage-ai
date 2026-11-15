@@ -173,6 +173,11 @@ signal hack_requested(laser_id: String, game: String)
 # cost). Lower: they freeze earlier and may be caught mid-air by a player who closes in quickly.
 const ENEMY_ACTIVE_RANGE := 1500.0
 
+# PIT_ACTIVE_BUFFER: pits (their glow, bubbles, gas and creatures) are only awake while they are on screen or within this many pixels
+# of the edge of the screen, in every direction, so one is already active just before you reach it. All others are silent: hidden and
+# doing no work (see PitHazard.set_active()). Higher: more pits awake at once (more cost); lower: they start closer to the screen.
+const PIT_ACTIVE_BUFFER := 700.0
+
 # ENEMY_TICK: seconds between checks of which enemies should be asleep. Higher: cheaper, slower to wake.
 const ENEMY_TICK := 0.25
 
@@ -181,6 +186,7 @@ const ENEMY_TICK := 0.25
 const TERMINAL_REACH := 40.0
 
 var _enemy_clock := 0.0
+var _pits: Array[PitHazard] = []
 var _player_node: Node2D
 var _lasers := {}      # id -> LaserField
 var _screens_at := {}  # Vector2i(column, row of a machine's letter) -> its MonitorScreens
@@ -501,6 +507,7 @@ func _process(delta: float) -> void:
 	if _enemy_clock >= ENEMY_TICK:
 		_enemy_clock = 0.0
 		_wake_nearby_enemies()
+		_wake_nearby_pits()
 
 
 # ---------- lasers and computers ----------
@@ -545,7 +552,28 @@ func _build_pits() -> void:
 			var tank_values := {}
 			if not _data.is_empty():
 				tank_values = LevelFile.object_at(_data, c, r).get("props", {})
-			add_child(PitHazard.new(kinds[ch], Rect2(c * T, r * T, w * T, h * T), tank_values))
+			var pit := PitHazard.new(kinds[ch], Rect2(c * T, r * T, w * T, h * T), tank_values)
+			_pits.append(pit)
+			add_child(pit)
+			for yy in h:   # the walls of the tank: whoever is in the pit is behind them, not drawn over them
+				_cover_pit_wall(c - 1, r + yy)
+				_cover_pit_wall(c + w, r + yy)
+
+
+## A second copy of the solid tile beside a pit, drawn in front of the player (at the liquid's depth, PitHazard.LIQUID_Z): the
+## player's sprite is wider than their body, so someone who has fallen into a pit next to its edge would otherwise show their arms
+## over the wall tile. The copy is only in the rows of the liquid, so anyone standing on the ground beside the pit is not covered.
+func _cover_pit_wall(c: int, r: int) -> void:
+	var tile := ""
+	match _cell(c, r):
+		"#":
+			tile = _ground_name(c, r)
+		"X":
+			tile = "block_metal_x"
+		"O":
+			tile = "block_metal_orange"
+	if tile != "":
+		_place(tile, c, r, PitHazard.LIQUID_Z)
 
 
 func _row_is(ch: String, c: int, r: int, w: int) -> bool:
@@ -619,7 +647,20 @@ func _wake_nearby_enemies() -> void:
 	if player == null:
 		return
 	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is PitCreature:
+			continue   # a pit's creatures sleep and wake with their pit (see _wake_nearby_pits)
 		e.set_active(absf(e.global_position.x - player.global_position.x) <= ENEMY_ACTIVE_RANGE)
+
+
+## Only pits on screen, or within PIT_ACTIVE_BUFFER pixels of it, are awake; the rest are silent until the player gets near.
+func _wake_nearby_pits() -> void:
+	if _pits.is_empty():
+		return
+	var viewport := get_viewport()
+	var screen: Rect2 = viewport.get_canvas_transform().affine_inverse() * viewport.get_visible_rect()   # the screen, in world pixels
+	var awake := screen.grow(PIT_ACTIVE_BUFFER)
+	for pit in _pits:
+		pit.set_active(awake.intersects(pit.liquid_rect()))
 
 
 func _update_terminal_hints() -> void:

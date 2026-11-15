@@ -77,7 +77,9 @@ level: `SABOTAGE_LEVEL=level_02 godot_console --headless --path . --script res:/
 ## Hazards, enemies, checkpoints
 
 - **Spikes** (`^` floor, `v` ceiling) hurt for 20% of health. **Deadly pits** (`A` toxic waste, `F` lava, `N` nuclear waste,
-  `W` piranha tank) kill. Falling further than the fall-death height also kills.
+  `W` piranha tank) kill, and each has creatures that leap out of it (puffer fish and poison gas in the toxic waste, lava balls in the
+  lava, glowing eels in the glowing nuclear waste, robot piranhas in the tank; see [gameplay.md](gameplay.md)). Falling further than the
+  fall-death height also kills.
 - **AI Bros** (`B`) need flat ground to pace on; the builder and the validator report a Bro without room.
 - **Checkpoints** (`K`) set where you respawn.
 

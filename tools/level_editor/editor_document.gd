@@ -821,7 +821,7 @@ func duplicate_selection() -> Dictionary:
 ## The type of the object whose marker is at (c, r) ("ai_bro", "tank_settings"...), or "" if none.
 func object_type_at(c: int, r: int) -> String:
 	var ch := get_cell(c, r)
-	if ch == "W":
+	if ch in ["A", "F", "N", "W"]:   # any deadly pit: the settings of its creatures
 		return "tank_settings"
 	var e := catalog.entry_for_char(ch)
 	if str(e.get("kind", "")) == "object":
