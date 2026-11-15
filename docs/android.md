@@ -1,4 +1,4 @@
-﻿# Build an Android APK
+# Build an Android APK
 
 This produces a **debug** APK you can install on your own phone. The export presets are already
 in [export_presets.cfg](../export_presets.cfg): "Android Debug (APK)" (arm64, no Gradle) and

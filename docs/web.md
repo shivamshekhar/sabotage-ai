@@ -1,4 +1,4 @@
-﻿# Play it in a browser (GitHub Pages)
+# Play it in a browser (GitHub Pages)
 
 The game also exports to the web, and a GitHub Action publishes it for free.
 

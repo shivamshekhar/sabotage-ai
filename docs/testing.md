@@ -1,4 +1,4 @@
-﻿# Automated checks
+# Automated checks
 
 Headless scripts in [tools/tests/](../tools/tests/) play the real game with simulated input.
 Run all of them (about 5 seconds; each has a hard time limit; logs go to `build/test_*.log`):

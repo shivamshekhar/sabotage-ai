@@ -1,4 +1,4 @@
-﻿# Project layout
+# Project layout
 
 ```
 export_presets.cfg          Android export presets (no secrets)

@@ -1,4 +1,4 @@
-﻿# Gameplay and controls
+# Gameplay and controls
 
 | Action | Keyboard (PC) | Phone |
 |---|---|---|

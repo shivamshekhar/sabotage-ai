@@ -1,4 +1,4 @@
-﻿class_name LevelSolver
+class_name LevelSolver
 extends RefCounted
 ## Kinematic reachability solver for a level map. It simulates the player's movement (same
 ## constants and per-frame order as Player) from every standable spot, using a set of

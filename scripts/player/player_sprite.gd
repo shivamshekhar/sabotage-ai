@@ -1,4 +1,4 @@
-﻿class_name PlayerSprite
+class_name PlayerSprite
 extends Sprite2D
 ## Visual for the player: picks a Kenney character pose from the movement state.
 ## Swap the hero by changing CHARACTER to "adventurer", "female", "soldier" or "zombie".
