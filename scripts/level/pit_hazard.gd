@@ -90,6 +90,7 @@ func _init(liquid_kind: String = "toxic_waste", liquid: Rect2 = Rect2(), setting
 
 
 func _ready() -> void:
+	add_to_group("pits")   # thrown objects look for the liquid they fall into (see Projectile)
 	_surface_y = _rect.position.y + SURFACE_PX
 	var style: Dictionary = STYLES[kind]
 
@@ -306,4 +307,5 @@ func _build_creatures() -> void:
 			creature = PitCreature.new(_surface_y, spot, x0, x1, species)
 		creature.bite_fraction = float(_settings.get("bite_fraction", creature.bite_fraction))
 		creature.respawn_time = float(_settings.get("respawn_time", creature.respawn_time))
+		creature.first_delay = creature.lurk_time() * float(i + 1) / count   # the first appearances are spread out along the pit
 		_fx.add_child(creature)

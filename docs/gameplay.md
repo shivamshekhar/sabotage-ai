@@ -32,7 +32,7 @@ Bro that still ends up cramped is not spawned, and `levels_test.gd` checks every
 
 **Pit creatures** ([scripts/enemy/pit_creature.gd](../scripts/enemy/pit_creature.gd)) live in every deadly pit. They hide under the
 liquid, pop up at their own spot and either peek out or leap to one side, at you when you are near, and hurt you if they hit. They have
-no health bar: one thrown object destroys one, and it returns at the same spot a few seconds later (only then). A pit that is off
+no health bar: one thrown object destroys one, and it returns at the same spot 5 seconds later (only then); between appearances they wait a fixed 2 seconds (the fireball 3.5 s, and it jumps 30% higher). A pit that is off
 screen is silent: only pits on screen, or within `Level.PIT_ACTIVE_BUFFER` (700 px) of its edge in any direction, are awake, so one wakes up just before you reach it; every other pit's creatures, bubbles, gas and glow are hidden and do no work at all (`tools/tests/pit_sleep_test.gd`). Enemies far from the player sleep too. Each
 pit has its own:
 

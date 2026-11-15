@@ -258,6 +258,17 @@ func _main() -> void:
 	_check("burning never takes the last health point either", player.health == 1, str(player.health))
 	await _drop_world()
 
+	# ---- an object thrown into a pit sinks and never lies at the bottom
+	_make_world("toxic_waste")
+	await _wait(5)
+	for x in [10.0, 100.0, 410.0]:   # at the walls and in the middle of the pit
+		var sinking := Projectile.launch(world, "paintbrush", Vector2(x, -150.0), 1, Vector2.ZERO)
+		sinking.velocity = Vector2.ZERO
+		await _wait(70)
+		_check("an object dropped into a pit (x=%d) sinks out of sight and is gone" % int(x), not is_instance_valid(sinking) or sinking._done)
+		_check("and does not lie at the bottom", not is_instance_valid(sinking) or not sinking.is_in_group("landed_projectiles"))
+	await _drop_world()
+
 	# ---- one hit destroys the other creatures, and they return at the same spot
 	_make_world("toxic_waste")
 	await _wait(5)

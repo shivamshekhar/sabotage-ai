@@ -5,7 +5,8 @@ extends Node2D
 ##     position += velocity * dt;   velocity.y += GRAVITY * dt
 ## which is a parabola, like a thrown stone. It spins while it flies and disappears when it hits
 ## a wall or floor, or an enemy (which takes HIT_FRACTION of its health). A thing made of fire (a lava ball, see
-## PitCreature.burns_projectiles()) is not hurt: the object burns up instead. A burning thrower throws shorter (see launch()).
+## PitCreature.burns_projectiles()) is not hurt: the object burns up instead. An object that falls into a deadly pit sinks out of
+## sight for good (it never lies at the bottom, where its edge would show past the liquid). A burning thrower throws shorter (see launch()).
 
 # THROW_SPEED: launch speed in pixels per second, along the throw angle.
 #     horizontal speed = THROW_SPEED * cos(THROW_ANGLE),   vertical = -THROW_SPEED * sin(THROW_ANGLE)
@@ -109,6 +110,9 @@ func _physics_process(delta: float) -> void:
 		return
 	var from := global_position
 	var to := from + velocity * delta
+	if _in_a_pit(to):
+		_sink()
+		return
 	# 1. Did this step pass through an enemy? Every enemy's hit box is tested against the step's line.
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if _segment_hits_rect(from, to, e.hurtbox().grow(HIT_RADIUS)):
@@ -175,6 +179,30 @@ func _land(at: Vector2) -> void:
 	var tw := create_tween().set_loops(cycles)
 	tw.tween_property(_sprite, "modulate:a", 0.15, BLINK_PERIOD / 2.0)
 	tw.tween_property(_sprite, "modulate:a", 1.0, BLINK_PERIOD / 2.0)
+	await tw.finished
+	queue_free()
+
+
+## True if the point is inside the liquid of a deadly pit.
+func _in_a_pit(point: Vector2) -> bool:
+	for pit in get_tree().get_nodes_in_group("pits"):
+		if (pit as PitHazard).liquid_rect().has_point(point):
+			return true
+	return false
+
+
+# SINK_TIME: seconds a thrown object takes to sink out of sight in a pit.
+const SINK_TIME := 0.18
+
+
+## Fell into a pit: it slips under the liquid and is gone.
+func _sink() -> void:
+	_done = true
+	velocity = Vector2.ZERO
+	remove_from_group("projectiles")
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_sprite, "modulate:a", 0.0, SINK_TIME)
+	tw.tween_property(_sprite, "scale", Vector2(0.6, 0.6) * SPRITE_SCALE, SINK_TIME)
 	await tw.finished
 	queue_free()
 

@@ -72,7 +72,20 @@ func _main() -> void:
 						found = true
 				if not found:
 					uncovered.append(Vector2i(cell_c, cell_r))
-	_check("the tile walls beside every pit are drawn in front of the player", uncovered.is_empty(), str(uncovered))
+	for pit in pits:   # and the floor under it (and the corners)
+		var rect2 := pit.liquid_rect()
+		var floor_r := roundi(rect2.end.y / Level.T)
+		for xx in range(-1, roundi(rect2.size.x / Level.T) + 1):
+			var cc := roundi(rect2.position.x / Level.T) + xx
+			if not level._is_solid(cc, floor_r):
+				continue
+			var found2 := false
+			for n in level.get_children():
+				if n is Sprite2D and (n as Sprite2D).z_index == PitHazard.LIQUID_Z and (n as Sprite2D).position == Vector2(cc * Level.T, floor_r * Level.T):
+					found2 = true
+			if not found2:
+				uncovered.append(Vector2i(cc, floor_r))
+	_check("the tile walls and floor around every pit are drawn in front of the player and the creatures", uncovered.is_empty(), str(uncovered))
 
 	var sleeper := asleep[0]
 	_check("a sleeping pit's decoration is hidden and its processing is off", not sleeper._fx.visible and sleeper._fx.process_mode == Node.PROCESS_MODE_DISABLED)

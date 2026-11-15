@@ -19,6 +19,7 @@ var _level_id := ""
 
 
 func _ready() -> void:
+	MusicPlayer.ensure_playing(get_tree())
 	InputSetup.register()
 
 	var level := Level.new()

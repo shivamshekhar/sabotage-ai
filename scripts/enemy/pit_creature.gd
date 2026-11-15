@@ -22,8 +22,8 @@ signal defeated
 # Higher: a more dangerous fish.
 const BITE_FRACTION := 0.1
 
-# RESPAWN_TIME: seconds a destroyed creature stays gone before it is back at its spot.
-const RESPAWN_TIME := 6.0
+# RESPAWN_TIME: seconds a destroyed creature stays gone; when they are up it is back at its spot and pops up at once. Fixed.
+const RESPAWN_TIME := 5.0
 
 # SENSE_RANGE: how far in pixels (sideways) from its spot the player is noticed, and SENSE_HEIGHT how far above the
 # surface they may be. A noticed player is leapt at; otherwise the creature leaps or peeks at random.
@@ -49,9 +49,9 @@ const LEAP_TIME_MIN := 0.85
 const LEAP_TIME_MAX := 1.3
 const PEEK_HEIGHT := 34.0
 
-# LURK_MIN / LURK_MAX: how long in seconds a creature stays hidden between appearances.
-const LURK_MIN := 0.3
-const LURK_MAX := 2.0
+# LURK_TIME: how long in seconds a creature stays hidden between one appearance and the next. Fixed. (The first appearance after the
+# level starts is staggered along the pit, see first_delay.)
+const LURK_TIME := 2.0
 
 # BITE_STEPS: one bite, as a list of [mouth pose, seconds it is shown]. The poses are the four drawn frames of the fish
 # (see SpriteLibrary.PIT_FISH_PARTS): 0 closed, 1 slightly open, 2 open, 3 wide open. The mouth rests shut, opens
@@ -83,7 +83,7 @@ const HURT_BOX := Vector2(84, 58)
 # (the piranha's glowing eye), `glow` (a colour: an additive copy of the picture that pulses), `trail` (particles it leaves while
 # it is out of the water: colour, how many per second, how long they live, whether they glow), `poison` ([ticks, share of health
 # per tick] a hit makes the player suffer, see Player.apply_poison()), `burn` (the same for Player.apply_burn()), `leap_height`,
-# `leap_reach`, `leap_time` ([min, max]), `vertical` (it only ever jumps straight up and down from its spot, never peeks or leaps
+# `leap_reach`, `leap_time` ([min, max]), `lurk` (seconds hidden between appearances, instead of LURK_TIME), `vertical` (it only ever jumps straight up and down from its spot, never peeks or leaps
 # sideways), `fire` (it is made of fire: a thrown object that hits it burns up and does not hurt it) and `anchor` (the pixel of the
 # picture that is the creature's position, if not the middle: the fireball's head, so its flame trails behind it).
 const SPECIES := {
@@ -94,7 +94,7 @@ const SPECIES := {
 		"poison": [4, 0.04], "trail": {"color": Color(0.55, 1.0, 0.25, 0.85), "rate": 14.0, "life": 0.9, "glow": false}},
 	"lava_ball": {"liquid": "lava", "parts": ["ball_a", "ball_b", "ball_c"], "scale": 0.8,
 		"hurt": Vector2(68, 68), "damage": 0.15, "anim": "flicker", "frame_time": 0.08, "hide": 66.0, "glow": Color(1.0, 0.5, 0.1),
-		"splash": Color(1.0, 0.6, 0.15, 0.95), "leap_height": [170.0, 270.0], "leap_time": [1.0, 1.35],
+		"splash": Color(1.0, 0.6, 0.15, 0.95), "leap_height": [221.0, 351.0], "leap_time": [1.95, 2.05], "lurk": 3.5,
 		"vertical": true, "fire": true, "burn": [16, 0.01], "anchor": Vector2(188, 62),
 		"trail": {"color": Color(1.0, 0.65, 0.2, 0.95), "rate": 30.0, "life": 0.7, "glow": true}},
 	"eel": {"liquid": "nuclear_waste", "parts": ["eel_a", "eel_b", "eel_c", "eel_d"], "scale": 0.4144,
@@ -118,6 +118,10 @@ var species: Dictionary = SPECIES["piranha"]
 ## The share of the player's health a hit takes, and seconds until a destroyed creature returns (start as the species' / the constants above).
 var bite_fraction := BITE_FRACTION
 var respawn_time := RESPAWN_TIME
+
+## Seconds until the first appearance after the level starts (PitHazard staggers the creatures of one pit, so they do not all jump at
+## once); negative = LURK_TIME.
+var first_delay := -1.0
 
 var _timer := 0.0
 var _flip: Node2D
@@ -193,7 +197,7 @@ func _ready() -> void:
 	scale = Vector2.ONE * float(species["scale"])
 	if species.has("trail"):
 		_build_trail(species["trail"])
-	_hide_and_lurk()
+	_hide_and_lurk(first_delay)
 
 
 func _additive() -> CanvasItemMaterial:
@@ -264,7 +268,13 @@ func _hide_depth() -> float:
 	return float(species.get("hide", HIDE_DEPTH))
 
 
-func _hide_and_lurk() -> void:
+## Seconds this kind waits under the liquid between appearances (LURK_TIME unless its species says otherwise).
+func lurk_time() -> float:
+	return float(species.get("lurk", LURK_TIME))
+
+
+## Go (back) under the liquid at its spot and wait `wait` seconds (lurk_time() if not given) before the next appearance.
+func _hide_and_lurk(wait: float = -1.0) -> void:
 	state = State.LURK
 	position = Vector2(home_x, surface_y + _hide_depth())
 	rotation = 0.0
@@ -276,7 +286,7 @@ func _hide_and_lurk() -> void:
 	_show_frame(0)
 	if _trail != null:
 		_trail.emitting = false
-	_timer = _rng.randf_range(LURK_MIN, LURK_MAX)
+	_timer = wait if wait >= 0.0 else lurk_time()
 
 
 func _physics_process(delta: float) -> void:
@@ -295,7 +305,7 @@ func _physics_process(delta: float) -> void:
 		State.DEAD:
 			_timer -= delta
 			if _timer <= 0.0:
-				_hide_and_lurk()
+				_hide_and_lurk(0.0)   # respawned: it pops up again at once
 	if state == State.PEEK or state == State.LEAP:
 		_bite_t += delta
 		_animate()
@@ -458,7 +468,7 @@ func burns_projectiles() -> bool:
 	return bool(species.get("fire", false))
 
 
-## A thrown object hit: one hit destroys it (whatever `fraction` is: a creature has no health). It returns after RESPAWN_TIME.
+## A thrown object hit: one hit destroys it (whatever `fraction` is: a creature has no health). It is back after RESPAWN_TIME (5 s).
 ## A creature of fire cannot be hurt at all.
 func take_hit(_fraction: float, _from_x: float = NAN) -> void:
 	if state == State.DEAD or burns_projectiles():

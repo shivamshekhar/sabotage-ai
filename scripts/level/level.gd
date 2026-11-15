@@ -558,11 +558,14 @@ func _build_pits() -> void:
 			for yy in h:   # the walls of the tank: whoever is in the pit is behind them, not drawn over them
 				_cover_pit_wall(c - 1, r + yy)
 				_cover_pit_wall(c + w, r + yy)
+			for xx in range(-1, w + 1):   # and its floor (and the corners): nothing that dives, like a fireball's flame, shows below the liquid
+				_cover_pit_wall(c + xx, r + h)
 
 
-## A second copy of the solid tile beside a pit, drawn in front of the player (at the liquid's depth, PitHazard.LIQUID_Z): the
-## player's sprite is wider than their body, so someone who has fallen into a pit next to its edge would otherwise show their arms
-## over the wall tile. The copy is only in the rows of the liquid, so anyone standing on the ground beside the pit is not covered.
+## A second copy of the solid tile beside or under a pit, drawn in front of the player and the creatures (at the liquid's depth,
+## PitHazard.LIQUID_Z): the player's sprite is wider than their body, so someone who has fallen into a pit next to its edge would
+## otherwise show their arms over the wall tile, and a creature leaping out (a fireball's long flame) would show past the floor of
+## the pit. The copies are only beside the rows of the liquid and under it, so anyone standing on the ground is not covered.
 func _cover_pit_wall(c: int, r: int) -> void:
 	var tile := ""
 	match _cell(c, r):
