@@ -1,9 +1,9 @@
 extends Control
 ## A preview of the "I am not a robot" captcha for looking at every question: it shows each question of the stockpile in turn, with new
 ## pictures each time you ask. Run it with  tools/captcha_preview.sh  (or: godot --path . res://tools/captcha_preview.tscn).
-##   Right / Left arrow, or the buttons: next / previous question      Space: new pictures for the same question
+##   Right / Left arrow, or the buttons: next / previous riddle      Space: new pictures for the same riddle
 ##   A (or the button): show the right answer (marks the right picture in gold; hold it up while you decide)
-## You can also just play it: tap a picture and press VERIFY. A right answer moves on to the next question.
+## You can also just play it: tap a picture and press VERIFY. A right answer moves on to the next riddle.
 
 var _index := 0
 var _game: CaptchaGame
@@ -58,7 +58,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _act(what: int) -> void:
-	var count: int = (CaptchaGame.manifest()["questions"] as Array).size()
+	var count: int = (CaptchaGame.manifest()["riddles"] as Array).size()
 	match what:
 		1:
 			_index = (_index + 1) % count
@@ -83,14 +83,13 @@ func _load() -> void:
 	_game.solved.connect(func() -> void:
 		await get_tree().create_timer(0.8).timeout
 		_act(1))
-	var questions: Array = CaptchaGame.manifest()["questions"]
-	var q: Dictionary = questions[_index]
-	_title.text = "Question %d of %d" % [_index + 1, questions.size()]
+	var riddles: Array = CaptchaGame.manifest()["riddles"]
+	_title.text = "Riddle %d of %d" % [_index + 1, riddles.size()]
 
 
 ## Mark the right picture with a gold border (or clear it).
 func _mark_answer() -> void:
 	for t in _game._tiles:
 		var b: Button = t["button"]
-		var right: bool = CaptchaGame.target_groups_of(_game._question).has(t["group"])
+		var right: bool = t["file"] == _game._riddle["answer"]
 		b.modulate = Color(1.0, 0.9, 0.35) if (_show_answer and right) else (Color(1, 1, 1, 0.45) if _show_answer else Color.WHITE)

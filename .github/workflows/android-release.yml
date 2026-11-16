@@ -1,0 +1,123 @@
+# Builds the Android APK and publishes it in the repository's Releases on every push to main (and by hand).
+# The release is named after the game's version (version/name in export_presets.cfg): v0.1.0, v0.2.0...
+#   - version not released yet  -> a new release v<version> is created with the APK
+#   - version already released  -> that release is UPDATED (its tag moves to this commit, the APK is replaced)
+# So bump version/name (and version/code) in BOTH Android presets of export_presets.cfg to cut a new release.
+# The APK is signed with a throw-away debug key, which is fine for sideloading. A Play Store build needs the release
+# preset and real signing credentials (see README.md, "Release builds").
+name: Build Android APK release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+env:
+  # Must match the Godot version the project is developed with (godot --version), e.g. 4.7.2.
+  GODOT_VERSION: "4.7.2"
+  ANDROID_BUILD_TOOLS: "35.0.1"
+  ANDROID_PLATFORM: "android-35"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the Android SDK parts Godot needs
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$sdk/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" "platforms;${ANDROID_PLATFORM}" > /dev/null
+          echo "ANDROID_SDK=$sdk" >> "$GITHUB_ENV"
+
+      - name: Install Godot and its export templates
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/bin"
+          unzip -q godot.zip -d godot_bin
+          mv "godot_bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/bin/godot"
+          chmod +x "$HOME/bin/godot"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q templates.tpz -d templates_tmp
+          mv templates_tmp/templates/* "$dest/"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Tell Godot where the Android SDK, Java and a debug signing key are
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -v -keystore "$HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.7.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_SDK"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^          //' "$HOME/.config/godot/editor_settings-4.7.tres"
+
+      - name: "Import the project twice (the second pass registers the script class names)"
+        run: |
+          godot --headless --path . --import || true
+          godot --headless --path . --import || true
+
+      - name: Read the game version
+        id: version
+        run: |
+          set -euo pipefail
+          v=$(grep -m1 '^version/name=' export_presets.cfg | sed -E 's/version\/name="(.*)"/\1/')
+          [ -n "$v" ] || { echo "version/name not found in export_presets.cfg"; exit 1; }
+          echo "name=$v" >> "$GITHUB_OUTPUT"
+          echo "Game version: $v"
+
+      - name: Export the APK
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Android Debug (APK)" build/sabotage-debug.apk
+          cp build/sabotage-debug.apk "build/sabotage-ai-${{ steps.version.outputs.name }}.apk"
+          ls -la build
+
+      - name: Publish the release (create it, or update it if this version is already released)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          apk="build/sabotage-ai-$VERSION.apk"
+          notes="Android build of sabotage.ai $VERSION, from commit ${GITHUB_SHA::7} (latest push to main). Sideload the APK onto an Android phone."
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # Same version as before: move its tag to this commit, replace the APK and the notes.
+            git tag -f "$tag" "$GITHUB_SHA"
+            git push -f origin "refs/tags/$tag"
+            gh release upload "$tag" "$apk" --clobber
+            gh release edit "$tag" --notes "$notes"
+            # drop APKs of older commits of this version that have a different file name
+            gh release view "$tag" --json assets --jq '.assets[].name' | grep -v "^$(basename "$apk")$" | while read -r old; do
+              gh release delete-asset "$tag" "$old" -y || true
+            done
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" --title "sabotage.ai $VERSION" --notes "$notes"
+          fi

@@ -91,7 +91,7 @@ phone) opens a puzzle popup; solving it switches the field off. In the editor th
 lowest unused id, and you can change it in the inspector.
 
 The 10 puzzles are `Minigame` subclasses in `scripts/ui/minigames/`: memory pads, a timing bar, "don't press the red button",
-"press the button that SAYS green", a picture captcha (six cartoon pictures, one right answer to a question with a definite answer such as "Which one goes on your feet?", "Beep boop. Which one is the robot?" or "Which one is NOT an instrument?"; a stockpile of questions and cartoon emoji pictures in `assets/captcha/`), "wrong answers only", a pun quiz, red-dot counting, button mashing and
+"press the button that SAYS green", a riddle captcha (a funny riddle told by the thing itself, such as "I have 88 keys but cannot open a single door. What am I?", and six cartoon pictures with one right answer; two riddles in a row; a stockpile of 28 riddles and 48 cartoon emoji pictures in `assets/captcha/`), "wrong answers only", a pun quiz, red-dot counting, button mashing and
 Simon says. To add one, subclass `Minigame` (or `QuizGame` for multiple choice), give it `auto_solve()` / `auto_fail()` test
 hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`); `tools/tests/minigame_test.gd` then checks it. Always put a
 computer where the player can reach it before its laser.
