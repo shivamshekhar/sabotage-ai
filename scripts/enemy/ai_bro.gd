@@ -77,6 +77,10 @@ const GAP_JUMP_REACH := 115.0
 const SEPARATION_RADIUS := 72.0
 const SEPARATION_SPEED := 110.0
 
+# MIN_GAP: the closest two Bros on the same level may stand, in pixels. The gentle push above can be cancelled out when several Bros
+# crowd together, so as a last resort the Bro with the higher id is moved sideways just far enough to restore this gap.
+const MIN_GAP := 26.0
+
 # STANDOFF_MIN / STANDOFF_MAX: each chasing Bro stops a random distance (a fraction of HIT_RANGE, between
 # these two) in front of the player, so several chasers line up at different spots instead of all
 # standing on the same pixel.
@@ -249,6 +253,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y += GRAVITY * LevelData.gravity_scale * delta
 	move_and_slide()
 
+	_keep_gap()
 	if _player != null and _hit_timer <= 0.0 and _in_reach(_player):
 		_strike(_player)
 	if global_position.y > 20000.0:
@@ -298,6 +303,21 @@ func _sense() -> void:
 		_ground_ahead = _wall_ahead or _floor_ahead(heading, EDGE_PROBE, DROP_LIMIT)   # a wall ahead is not a ledge
 		_can_climb = _wall_ahead and not _blocked_at(heading, jump_speed * jump_speed / (2.0 * GRAVITY) - 10.0)
 		_can_hop_gap = not _ground_ahead and _floor_ahead(heading, GAP_JUMP_REACH, DROP_LIMIT)
+
+
+## Step sideways, if needed, so no other Bro on the same level is closer than MIN_GAP (only the Bro with the higher id moves, so a pair
+## is never moved twice). It never walks into a wall or off a ledge to do it.
+func _keep_gap() -> void:
+	for other in get_tree().get_nodes_in_group("enemies"):
+		if other == self or not other is AIBro or other.get_instance_id() > get_instance_id():
+			continue
+		var dx: float = global_position.x - other.global_position.x
+		if absf(dx) >= MIN_GAP or absf(global_position.y - other.global_position.y) >= BODY_SIZE.y / 2.0:
+			continue
+		var away := 1 if dx >= 0.0 else -1
+		if not _floor_ahead(away, MIN_GAP, DROP_LIMIT):
+			away = -away     # not off a ledge: the other way
+		move_and_collide(Vector2(away * (MIN_GAP - absf(dx)), 0.0))
 
 
 ## Which way close neighbours push this Bro: the sum of the directions away from each Bro within
@@ -433,6 +453,7 @@ func take_hit(fraction: float, from_x: float = NAN) -> void:
 	_visuals.flinch(_dir)
 	_visuals.blink(0.3)
 	if health == 0:
+		GameStats.add_score(GameStats.KILL_SCORE)
 		_die()
 
 

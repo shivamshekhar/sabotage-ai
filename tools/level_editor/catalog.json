@@ -207,6 +207,18 @@
       "label": "Next level id (empty = restart)",
       "type": "string",
       "default": ""
+    },
+    {
+      "key": "stage",
+      "label": "HUD level number (empty = counted: 1-1, 1-2...)",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "key": "boss",
+      "label": "Boss (empty = none, salt_shaker)",
+      "type": "string",
+      "default": ""
     }
   ],
   "minigames": [
@@ -305,7 +317,7 @@
     },
     {
       "kind": "captcha",
-      "name": "I am not a robot",
+      "name": "I am not a robot (resting: not in the random choice)",
       "params": [
         {
           "key": "rounds",
@@ -325,41 +337,12 @@
           "key": "rounds",
           "label": "Questions",
           "type": "int",
-          "default": 2,
+          "default": 3,
           "min": 1,
           "max": 8
         }
       ],
       "questions": true
-    },
-    {
-      "kind": "jokes",
-      "name": "Pick the punchline",
-      "params": [
-        {
-          "key": "rounds",
-          "label": "Jokes",
-          "type": "int",
-          "default": 2,
-          "min": 1,
-          "max": 8
-        }
-      ],
-      "questions": true
-    },
-    {
-      "kind": "dot_count",
-      "name": "Count the red dots",
-      "params": [
-        {
-          "key": "rounds",
-          "label": "Rounds",
-          "type": "int",
-          "default": 2,
-          "min": 1,
-          "max": 8
-        }
-      ]
     },
     {
       "kind": "mash",
@@ -369,7 +352,7 @@
           "key": "taps_needed",
           "label": "Taps needed",
           "type": "int",
-          "default": 12,
+          "default": 4,
           "min": 3,
           "max": 60
         },
@@ -385,25 +368,116 @@
       ]
     },
     {
-      "kind": "simon_says",
-      "name": "Simon says",
+      "kind": "ring_lock",
+      "name": "Rotating lock",
       "params": [
         {
-          "key": "rounds",
-          "label": "Rounds",
+          "key": "hits_needed",
+          "label": "Hits needed",
           "type": "int",
-          "default": 4,
-          "min": 2,
-          "max": 10
+          "default": 3,
+          "min": 1,
+          "max": 8
         },
         {
-          "key": "round_time",
-          "label": "Seconds per round",
+          "key": "turn_time",
+          "label": "Seconds per turn at first",
           "type": "float",
-          "default": 2.5,
+          "default": 3.0,
+          "min": 0.8,
+          "max": 10.0,
+          "step": 0.1
+        },
+        {
+          "key": "arc_start",
+          "label": "Green arc at first (degrees)",
+          "type": "float",
+          "default": 80.0,
+          "min": 15.0,
+          "max": 200.0,
+          "step": 1.0
+        },
+        {
+          "key": "arc_shrink",
+          "label": "Arc shrink per hit (multiplier)",
+          "type": "float",
+          "default": 0.75,
+          "min": 0.3,
+          "max": 1.0,
+          "step": 0.05
+        },
+        {
+          "key": "speed_up",
+          "label": "Speed-up per hit (multiplier)",
+          "type": "float",
+          "default": 1.2,
           "min": 1.0,
-          "max": 8.0,
-          "step": 0.25
+          "max": 2.0,
+          "step": 0.05
+        }
+      ]
+    },
+    {
+      "kind": "safe_cracker",
+      "name": "Safe cracker",
+      "params": [
+        {
+          "key": "rings",
+          "label": "Rings to lock",
+          "type": "int",
+          "default": 3,
+          "min": 2,
+          "max": 4
+        },
+        {
+          "key": "turn_time",
+          "label": "Seconds per turn (outer ring)",
+          "type": "float",
+          "default": 3.0,
+          "min": 0.8,
+          "max": 10.0,
+          "step": 0.1
+        },
+        {
+          "key": "arc_start",
+          "label": "Green arc of the outer ring (degrees)",
+          "type": "float",
+          "default": 80.0,
+          "min": 15.0,
+          "max": 200.0,
+          "step": 1.0
+        }
+      ]
+    },
+    {
+      "kind": "stacker",
+      "name": "Stacker",
+      "params": [
+        {
+          "key": "levels",
+          "label": "Blocks to stack",
+          "type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "key": "speed",
+          "label": "Block speed (pixels per second)",
+          "type": "float",
+          "default": 300.0,
+          "min": 100.0,
+          "max": 1200.0,
+          "step": 10.0
+        },
+        {
+          "key": "min_overlap",
+          "label": "Share that must land on the tower",
+          "type": "float",
+          "default": 0.45,
+          "min": 0.1,
+          "max": 0.95,
+          "step": 0.05
         }
       ]
     }

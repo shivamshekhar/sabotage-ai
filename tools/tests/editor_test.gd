@@ -195,8 +195,8 @@ func _main() -> void:
 	_check("add a minigame", doc.minigames().size() == 1 and str(doc.minigames()[m]["kind"]) == "wrong_only")
 	_check("quiz kinds get a question", doc.questions(m).size() == 1)
 	doc.set_minigame_field(m, "name", "Riddles")
-	doc.set_minigame_param(m, "rounds", 3)
-	doc.set_minigame_param(m, "rounds", 2)   # default again
+	doc.set_minigame_param(m, "rounds", 2)
+	doc.set_minigame_param(m, "rounds", 3)   # default again
 	_check("default params are not stored", (doc.minigames()[m]["params"] as Dictionary).is_empty())
 	doc.set_minigame_param(m, "rounds", 4)
 	doc.set_question_text(m, 0, "q", "Is water wet?")

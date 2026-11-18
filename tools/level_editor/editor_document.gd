@@ -76,6 +76,9 @@ static func from_builtin(level_id: String) -> EditorDocument:
 	var rows: Array[String] = LevelData.map(level_id)
 	var d := LevelFile.new_level(8, 8)
 	d["meta"] = {"id": "copy_of_" + level_id, "title": LevelData.title(level_id), "next": ""}
+	var boss := str(LevelFile.value(LevelData.data_for(level_id), "meta", "boss", ""))
+	if boss != "":
+		(d["meta"] as Dictionary)["boss"] = boss   # (a copy of a boss level keeps its boss)
 	d["grid"] = {"cols": rows[0].length(), "rows": rows.size()}
 	var arr: Array = []
 	for row in rows:
@@ -1393,6 +1396,6 @@ func unplayable_reason() -> String:
 		exits += (row as String).count("E")
 	if spawns != 1:
 		return "The level needs exactly one player spawn (it has %d)." % spawns
-	if exits != 1:
+	if exits != 1 and not (exits == 0 and str((data.get("meta", {}) as Dictionary).get("boss", "")) != ""):
 		return "The level needs exactly one exit (it has %d)." % exits
 	return ""

@@ -751,7 +751,7 @@ static func _minigame_cmd(data: Dictionary, pos: Array, flags: Dictionary) -> Di
 				questions.append({"q": parts[0], "right": parts[1], "wrong": Array(parts.slice(2))})
 			if not questions.is_empty():
 				if not bool(spec.get("questions", false)):
-					return {"ok": false, "error": "Only the wrong_only and jokes kinds take questions."}
+					return {"ok": false, "error": "Only the wrong_only kind takes questions."}
 				def["questions"] = questions
 			list.append(def)
 			return {"ok": true, "added": def}

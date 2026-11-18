@@ -13,3 +13,6 @@ Thumbs.db
 
 # Build output (APK/AAB)
 build/
+
+# Python bytecode from the art tools
+__pycache__/

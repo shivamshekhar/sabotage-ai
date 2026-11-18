@@ -52,7 +52,7 @@ func _main() -> void:
 			moved.append(id)
 	_check("the game's own tiles keep their numbers (ground = 1, ladder = 3, AI Bro = 39 ...)", moved.is_empty(), str(moved))
 	var generic := kinds.filter(func(k: Dictionary) -> bool: return TileRegistry.is_generic(str(k["char"])))
-	_check("kinds without a built-in character have a behaviour and a sprite", generic.size() > 50 and generic.all(func(k: Dictionary) -> bool: return str(k.get("behavior", "")) in ["solid", "decor", "machine"] and (k.get("sprite", {}) as Dictionary).size() > 0), str(generic.size()))
+	_check("kinds without a built-in character have a behaviour and a sprite", generic.size() > 50 and generic.all(func(k: Dictionary) -> bool: return str(k.get("behavior", "")) in ["solid", "decor", "machine", "barrier", "powerup"] and (k.get("sprite", {}) as Dictionary).size() > 0), str(generic.size()))
 	_check("a generic kind's character is outside everything the game types", generic.all(func(k: Dictionary) -> bool: return str(k["char"]).unicode_at(0) >= TileRegistry.PRIVATE_BASE))
 	var solid := generic.filter(func(k: Dictionary) -> bool: return str(k["behavior"]) == "solid")
 	var decor := generic.filter(func(k: Dictionary) -> bool: return str(k["behavior"]) == "decor")

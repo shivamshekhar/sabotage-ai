@@ -174,7 +174,8 @@ static func validate(data: Dictionary) -> Array[String]:
 		exits += (row as String).count("E")
 	if spawns != 1:
 		errors.append("There must be exactly one player spawn (P); there are %d." % spawns)
-	if exits != 1:
+	var has_boss := str(value(data, "meta", "boss", "")) != ""
+	if exits != 1 and not (has_boss and exits == 0):   # (a boss level ends when the boss is beaten, so it has no exit)
 		errors.append("There must be exactly one exit (E); there are %d." % exits)
 	var rows_text: Array[String] = []
 	for row in tiles:

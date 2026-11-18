@@ -8,6 +8,10 @@ extends SceneTree
 # killed (a few frames of fading tweens and timers may still be alive). A real leak is hundreds.
 const MAX_LEAK := 10
 
+# CROWD_SEEDS: the random seeds the crowd checks are played with. MIN_SPACING: the least distance in pixels two Bros may end up apart.
+const CROWD_SEEDS := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const MIN_SPACING := 20.0
+
 var ok := true
 var world: Node2D
 var player: Player
@@ -50,6 +54,15 @@ func _make_world(blocks: Array, player_x: float, player_y: float) -> void:
 	player.position = Vector2(player_x, player_y)
 	player.spawn = player.position
 	world.add_child(player)
+
+
+## The smallest horizontal distance between any two of the Bros.
+func _closest_pair(bros: Array[AIBro]) -> float:
+	var m := 1e9
+	for i in bros.size():
+		for j in range(i + 1, bros.size()):
+			m = minf(m, absf(bros[i].global_position.x - bros[j].global_position.x))
+	return m
 
 
 func _bro(x: float, y: float) -> AIBro:
@@ -136,27 +149,26 @@ func _main() -> void:
 	_check("a Bro does not try to climb a wall taller than its jump", bro.state == AIBro.State.CHASE and bro.global_position.x < 600.0 and bro.global_position.y > -5.0, "x=%.0f y=%.0f" % [bro.global_position.x, bro.global_position.y])
 	await _drop_world()
 
-	# ---- crowds: Bros that start on the same spot, or all chase the player, do not end up as one sprite
-	_make_world([[-4000, 4000, 0]], 0.0, 0.0)
-	var crowd: Array[AIBro] = []
-	for i in 4:
-		crowd.append(_bro(600.0, 0.0))   # four Bros on exactly the same spot
-	await _wait(240)
-	var min_gap := 1e9
-	for i in crowd.size():
-		for j in range(i + 1, crowd.size()):
-			min_gap = minf(min_gap, absf(crowd[i].global_position.x - crowd[j].global_position.x))
-	_check("Bros that start on top of each other drift apart", min_gap >= 20.0, "closest pair %.0f px apart" % min_gap)
-	for b in crowd:
-		b.global_position = Vector2(player.global_position.x + 220.0, 0.0)   # all four chase at once, from the same spot
-		b._dir = -1
-	await _wait(300)
-	min_gap = 1e9
-	for i in crowd.size():
-		for j in range(i + 1, crowd.size()):
-			min_gap = minf(min_gap, absf(crowd[i].global_position.x - crowd[j].global_position.x))
-	_check("chasing Bros line up at different spots instead of overlapping", min_gap >= 20.0, "closest pair %.0f px apart" % min_gap)
-	await _drop_world()
+	# ---- crowds: Bros that start on the same spot, or all chase the player, do not end up as one sprite. Each Bro rolls its own random
+	# numbers (which way it faces, how close it stands), so this is played with several fixed seeds: it must hold for every one.
+	var worst_start := 1e9
+	var worst_chase := 1e9
+	for seed_value in CROWD_SEEDS:
+		seed(seed_value)
+		_make_world([[-4000, 4000, 0]], 0.0, 0.0)
+		var crowd: Array[AIBro] = []
+		for i in 4:
+			crowd.append(_bro(600.0, 0.0))   # four Bros on exactly the same spot
+		await _wait(240)
+		worst_start = minf(worst_start, _closest_pair(crowd))
+		for b in crowd:
+			b.global_position = Vector2(player.global_position.x + 220.0, 0.0)   # all four chase at once, from the same spot
+			b._dir = -1
+		await _wait(300)
+		worst_chase = minf(worst_chase, _closest_pair(crowd))
+		await _drop_world()
+	_check("Bros that start on top of each other drift apart (%d runs)" % CROWD_SEEDS.size(), worst_start >= MIN_SPACING, "closest pair in any run %.0f px apart" % worst_start)
+	_check("chasing Bros line up at different spots instead of overlapping (%d runs)" % CROWD_SEEDS.size(), worst_chase >= MIN_SPACING, "closest pair in any run %.0f px apart" % worst_chase)
 
 	# ---- point-blank: an object thrown from inside an enemy's hit box still hits it (it used to pass through)
 	_make_world([[-2000, 2000, 0]], 0.0, 0.0)

@@ -30,7 +30,7 @@ const TILE_CATEGORIES := {
 	"block": "structure", "ladder": "structure", "scaffold": "structure",
 	"pipe": "structure", "rail": "structure", "glass": "structure",
 	"monitor": "equipment", "panel": "equipment", "gear": "equipment", "canister": "equipment",
-	"spikes": "hazards", "hazard": "hazards", "barrier": "hazards",
+	"spikes": "hazards", "hazard": "hazards", "barrier": "hazards", "powerup": "powerups",
 	"siren": "lights", "lamp": "lights",
 	"arrow": "signage", "sign": "signage",
 }

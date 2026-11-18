@@ -40,6 +40,10 @@ const TITLE_COLOR := Color(1, 1, 1, 0.85)
 var ratio := 1.0
 var title := ""
 
+## The colours of the fill and of the empty part: a health bar is green on red; another kind of bar (the mech's fuel) sets its own.
+var fill_color := GREEN
+var back_color := RED
+
 
 ## The name drawn above the bar (empty for none).
 func set_title(text: String) -> void:
@@ -68,9 +72,9 @@ func set_ratio(value: float) -> void:
 func _draw() -> void:
 	var bar := Rect2(-SIZE.x / 2.0, -SIZE.y / 2.0, SIZE.x, SIZE.y)
 	draw_rect(bar.grow(2.0), OUTLINE)
-	draw_rect(bar, RED)
+	draw_rect(bar, back_color)
 	var fill := Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y))
-	draw_rect(fill, GREEN)
+	draw_rect(fill, fill_color)
 	draw_rect(Rect2(fill.position, Vector2(fill.size.x, 3.0)), Color(1, 1, 1, 0.25))
 	if title != "":
 		var font := ThemeDB.fallback_font

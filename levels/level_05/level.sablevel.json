@@ -6,7 +6,7 @@
 	},
 	"meta": {
 		"id": "level_05",
-		"next": "",
+		"next": "level_06",
 		"title": "THE MAINFRAME"
 	},
 	"minigames": [],

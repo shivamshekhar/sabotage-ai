@@ -90,10 +90,18 @@ the lock terminal `L`, which opens the nearest gate unless its `laser` value nam
 phone) opens a puzzle popup; solving it switches the field off. In the editor there is one "Laser gate" item: a new gate gets the
 lowest unused id, and you can change it in the inspector.
 
-The 10 puzzles are `Minigame` subclasses in `scripts/ui/minigames/`: memory pads, a timing bar, "don't press the red button",
-"press the button that SAYS green", a riddle captcha (a funny riddle told by the thing itself, such as "I have 88 keys but cannot open a single door. What am I?", and six cartoon pictures with one right answer; two riddles in a row; a stockpile of 28 riddles and 48 cartoon emoji pictures in `assets/captcha/`), "wrong answers only", a pun quiz, red-dot counting, button mashing and
-Simon says. To add one, subclass `Minigame` (or `QuizGame` for multiple choice), give it `auto_solve()` / `auto_fail()` test
-hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`); `tools/tests/minigame_test.gd` then checks it. Always put a
-computer where the player can reach it before its laser.
+**Invisible walls:** the tile `invisible_wall` (id 900, group "Boundaries" in the editor palette) fences the player in without a visible
+wall: only the player collides with it (physics layer `Player.LAYER_BARRIER`), enemies, thrown objects and the solver ignore it, and the
+editor shows it as a faint hatched block that is not drawn in the game.
+
+The 10 puzzles are `Minigame` subclasses in `scripts/ui/minigames/`: memory pads, a timing bar, a rotating lock (`ring_lock`: a
+turning arc and a still marker), a safe cracker (`safe_cracker`: nested rings locked one by one), a stacker (`stacker`: drop a sliding
+block onto a tower), "don't press the red button", "press the button that SAYS green" (three buttons), "wrong answers only" (3
+questions), button mashing (tap a small red arcade button 4 times while it hops around) and a riddle captcha (a funny riddle told by the thing itself, such as "I have 88 keys but
+cannot open a single door. What am I?", and six cartoon pictures with one right answer; a stockpile of 28 riddles and 48 cartoon emoji
+pictures in `assets/captcha/`). The captcha is *resting*: it is not in the "random" choice (`HackPopup.RESTING`) but can still be
+asked for by name. To add a puzzle, subclass `Minigame` (or `QuizGame` for multiple choice), give it `auto_solve()` / `auto_fail()` test
+hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`) and in `tools/level_editor/catalog.json`;
+`tools/tests/minigame_test.gd` then checks it. Always put a computer where the player can reach it before its laser.
 
 To swap the hero, change `CHARACTER` in `scripts/player/player_sprite.gd` to `adventurer`, `female`, `soldier` or `zombie`.

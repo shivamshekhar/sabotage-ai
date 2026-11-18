@@ -73,3 +73,37 @@ deck. You then snap onto the ladder's centre line and can only move up/down, wit
 is ignored), until you reach the top deck or the floor. At the top deck, Up jumps and Down climbs
 back down.
 
+## Boss level (level 6)
+
+The first boss, **RAM Saltman** (a salt shaker full of stolen hardware), is the last level of the game (`levels/level_06`, the level file names it with `meta.boss`; beating it finishes the game). It is a closed arena: invisible walls are its two ends and the camera stops at them. To play just this level run `tools/boss_stage.sh` (Left/Right move, Space or W jump, Q throws). Losing restarts the fight. The boss is 2.16 player-heights tall. While it **hovers** it drifts
+left and right and can be hit with thrown objects (28 hits defeat it). Every few seconds it **charges over the player, turns upside down and shakes
+itself like a real salt shaker (rocking and bouncing, the hardware inside rattling) while it sprays RAM sticks, CPUs and chipsets** out of the holes in its cap (each hit takes 12% of the player's health); it cannot be hurt
+while it attacks. Then it flips back up and hovers again. Below half health it sprays longer and faster.
+Code: `scripts/boss/` (`SaltShakerBoss`, `BossBullet`); the fight: `scripts/boss/boss_fight.gd` (`BossFight`); art: `assets/bosses/saltman/` (layers and five expressions: idle, charge, attack, hurt, dead; `pose_sheet.png` shows them), made by
+`python tools/art/generate_boss_shaker.py`; test: `tools/tests/boss_test.gd`.
+
+## Power-ups and the mech
+
+A **power-up box** (the `powerup_box` tile, `PowerUpBox`) floats and bobs in a level; the "?" on it glows in slowly changing colours, breathing and blinking, because what is inside is random. **Jump on it** (come down on its top; touching it from the side or below does nothing): you bounce off, it breaks apart in six frames and gives you the power-up inside (`PowerUps`; for now there is one kind, the mech). It cannot be opened while you are already in a vehicle. Place one with the level editor (group "Pickups") or the level tool.
+
+The **mech** (`scripts/vehicle/`: `Mech` the rules, `MechVisual` the look, the legs and the damage, `MechMissile`, `MechBeam`, `MechDebris`) is a four-legged walker with a yellow construction-crane body, tentacle legs like Doctor Octopus's, and you sitting in the cockpit. It is a child of the player, so hits, hazards, the camera and the level all treat it as the player:
+
+- **Size and durability:** 1.5 times the player's size. It has **no health bar and shows no numbers**: it survives **5 hits of any kind** (an enemy, spikes, anything that would hurt the player; the amount does not matter, and the usual short invulnerability after a hit applies). The damage shows on the mech itself: **hit 1** cracks across the body and the cockpit glass, **hit 2** the near front leg snaps (its end falls off and the stump hangs, sparking), **hit 3** smoke from the exhaust and the engine, **hit 4** fire on the engine and the roof and soot over the body, **hit 5** it explodes, its parts fly, and you drop out on foot with your own health untouched. Poison and burning cannot get in; a deadly pit still kills you, mech and all.
+- **Walking:** a little slower than on foot. The legs **climb steps** (up to 84 px) just by walking into them. It cannot climb ladders. If the mech stands where not all its legs have a floor (a narrow ledge, an edge), those legs curl up and the **booster burns low** (just for show): it is held up, not floating.
+- **Booster and fuel:** the only bar is a blue **fuel** bar above the mech. Hold the jump button and the booster lifts the mech (a tap is a hop) while there is fuel (a full tank is 1.2 s of burning); out of fuel it falls under gravity even with the button held. The tank fills back up progressively, in 3 s from empty, whenever the booster is off.
+- **Weapons:** the light attack (Q) fires a **missile** from the roof turret (an exhaust flame, glow, sparks and a smoke trail; slow start, homing a little, blast radius 110 px, kills a Bro); the heavy attack (S) fires a blue **laser** from the front turret (an instant glowing beam with energy rings along it and expanding rings and a starburst at the muzzle; 34% of an enemy's health per hit, 760 px reach). Both turrets aim at the nearest enemy in front of you, otherwise straight ahead.
+
+Art: `assets/powerups/` (the box, `box_base`, `box_question`, six `box_break_*` frames) and `assets/powerups/mech/` (body, canopy, turrets, leg links, joints, claw, hip, flame; `preview.png` shows them assembled) and the damage and weapon effects (cracks, broken link, smoke, fire, soot, missile and its flame, laser rings), made by `python tools/art/generate_powerup.py`, `python tools/art/generate_mech.py` and `python tools/art/generate_mech_effects.py` (run in that order). The box is drawn in the style of the level tiles (the metal crate: steel with a light top lip, rivets, cyan edge lights). Test: `tools/tests/mech_test.gd`. Level 1 has a box near the start.
+
+## HUD
+
+Floating text along the top of the screen, with no bar behind it (`scripts/ui/hud.gd`; thick outlines and a shadow keep it readable), shows the score (**SCORE:** on the left) and the level number (**WORLD:** on the right), both on one line in a small font, numbered like
+Super Mario Bros: 1-1, 1-2, 1-3, 1-4, then 2-1 (`LevelData.STAGES_PER_WORLD` levels per world; a level file can set its own with
+`meta.stage`). Defeating an AI Bro scores 100 (`GameStats`). More items will be added to the row later. The level's name is no longer
+drawn on the background.
+
+While RAM Saltman shakes and sprays in the boss stage, an AI Bro walks in from just beyond the edge of the screen, from the side the player
+is FARTHER from, so it never lands on them (at most one per side at a time; they are stand-ins for the real minions). The arena has no
+visible side walls: the floor runs on in both directions, but the player is fenced in by two columns of **invisible wall** tiles (Bros
+walk through them), and the fight starts calmly with the player and the boss far apart (the boss hovers for 7 seconds before its first
+attack). The two small ledges are cover: stand under one while he sprays.

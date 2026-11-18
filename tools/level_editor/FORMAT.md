@@ -24,7 +24,8 @@ panels from them, so a new tile or a new tunable value is a data entry, not an e
 
 * `format` is `2`. Version 1 (the tiles as rows of text characters) is still read and is written as version 2 the next time the
   level is saved (`tools/level_cli.sh upgrade <file>` does that without opening the editor).
-* `meta.id` is the level's id (letters, digits, `_` and `-`). `meta.title` is the name drawn faintly in the background.
+* `meta.id` is the level's id (letters, digits, `_` and `-`). `meta.title` is the level's name (shown in the editor and in the "Next:" line). `meta.stage` (optional) is the number the HUD shows for the level; without it the HUD counts the levels like Super Mario Bros: 1-1, 1-2, 1-3, 1-4, 2-1, ...
+  `meta.boss` (optional) puts a boss fight in the level (`"salt_shaker"` = RAM Saltman): the game adds the boss, takes over the camera (it stops at the first and last `invisible_wall` tiles of the row above the floor) and finishes the level when the boss is beaten. See `levels/level_06`.
   `meta.next` is the id of the level to play after this one is finished (`""` = the game restarts from the first level).
 * `grid.cols` x `grid.rows` is the size in tiles (one tile = 70 px, `Level.T`). `tiles` has exactly `rows` strings (row 0 is
   the top), each a CSV row of exactly `cols` tile numbers.
@@ -54,7 +55,7 @@ There is no limit on how many kinds of tile exist. They are listed in `levels/co
 * `id` is the number stored in level files. **Permanent: never change or reuse one.** Ids 0-99 are the game's own kinds, 100-999 solid
   blocks, 1000 and up decor and anything else (a convention; any unused number works).
 * `key` is the readable name (used by the command-line tool, `tile_keys`, and the editor).
-* `behavior` says what a kind without code of its own is: `solid` (a block the player stands on, drawn with `sprite`), `decor` (a
+* `behavior` says what a kind without code of its own is: `solid` (a block the player stands on, drawn with `sprite`), `barrier` (an invisible wall: only the player is stopped by it, nothing is drawn in the game, the editor shows its `sprite`; id 900 `invisible_wall`), `powerup` (a floating power-up box: jump on it to get a vehicle, see docs/gameplay.md; not solid; id 901 `powerup_box`), `decor` (a
   picture behind the player; optional `z` depth and `tint` [r, g, b]) or `machine` (a decor machine with a `footprint`).
   **A new tile of those three kinds is only a new entry here and its art: no code changes.** `name` and `group` decide how the
   editor's palette shows it.
@@ -109,7 +110,7 @@ player, enemies and thrown objects. `terrain.background` names the background fo
 
 A level's `minigames` list defines puzzles beyond the random built-ins. Each entry: `id` (unique, used by a terminal), `name`
 (a label), `kind` (one of the catalog `minigames` kinds) and `params` (only values that differ from the defaults). The quiz
-kinds `wrong_only` and `jokes` take `questions`: a list of `{ "q": "text", "right": "answer", "wrong": ["a", "b", "c"] }`.
+the kind `wrong_only` takes `questions`: a list of `{ "q": "text", "right": "answer", "wrong": ["a", "b", "c"] }`.
 
 ## Loading in the game
 

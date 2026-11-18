@@ -223,6 +223,7 @@ func _ready() -> void:
 	_build_tiles()
 	_build_solid_colliders()
 	_build_ledges()
+	_build_barriers()
 	_build_ladders()
 	_build_lasers()
 	_build_terminals()
@@ -362,6 +363,12 @@ func _build_generic(kind: Dictionary, c: int, r: int) -> void:
 				var t: Array = kind["tint"]
 				tint = Color(float(t[0]), float(t[1]), float(t[2]))
 			_decor(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
+		"barrier":   # an invisible wall: the collider comes from the '|' in the physics map; nothing is drawn
+			pass
+		"powerup":   # a floating box: jump on it for a vehicle (not solid, so nothing in the physics map)
+			var box := PowerUpBox.new()
+			box.position = Vector2((c + 0.5) * T, (r + 0.5) * T)
+			add_child(box)
 		"machine":   # a decor machine with a footprint, like the GPU rack
 			var fp: Array = kind.get("footprint", [1, 1])
 			_build_machine({"sprite": str(sprite.get("machine", "")), "w": int(fp[0]), "h": int(fp[1])}, c, r)
@@ -652,6 +659,8 @@ func _wake_nearby_enemies() -> void:
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if e is PitCreature:
 			continue   # a pit's creatures sleep and wake with their pit (see _wake_nearby_pits)
+		if e.has_meta("always_awake"):
+			continue   # (the boss stage's bros come from far away and must keep moving)
 		e.set_active(absf(e.global_position.x - player.global_position.x) <= ENEMY_ACTIVE_RANGE)
 
 
@@ -792,6 +801,21 @@ func _row_free(c: int, r: int, w: int, used: Dictionary) -> bool:
 	return true
 
 
+## Invisible walls ('|' in the physics map): a collider only the player is stopped by, and nothing to see. Tiles stacked in a column are
+## one collider.
+func _build_barriers() -> void:
+	for c in _map[0].length():
+		var r := 0
+		while r < _map.size():
+			if _map[r][c] == TileRegistry.BARRIER_CHAR:
+				var top := r
+				while r < _map.size() and _map[r][c] == TileRegistry.BARRIER_CHAR:
+					r += 1
+				_add_solid(Rect2(c * T, top * T, T, (r - top) * T), false, Player.LAYER_BARRIER)
+			else:
+				r += 1
+
+
 func _build_ledges() -> void:
 	for r in _map.size():
 		var c := 0
@@ -828,12 +852,10 @@ func _build_backdrop() -> void:
 	backdrop.dir = LevelData.background_dir(level_id)
 	add_child(backdrop)
 
-	# Light tint over the parallax art so gameplay tiles stay readable, plus the title.
+	# Light tint over the parallax art so gameplay tiles stay readable.
 	var bd := Node2D.new()
 	bd.z_index = -20
 	add_child(bd)
 	bd.draw.connect(func() -> void:
-		bd.draw_rect(Rect2(0, 0, world_w, world_h), Color(0.04, 0.06, 0.11, 0.30))
-		bd.draw_string(ThemeDB.fallback_font, LevelData.title_position(level_id), LevelData.title(level_id),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(1, 1, 1, 0.35)))
+		bd.draw_rect(Rect2(0, 0, world_w, world_h), Color(0.04, 0.06, 0.11, 0.30)))
 	bd.queue_redraw()

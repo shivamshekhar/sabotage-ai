@@ -870,7 +870,7 @@ func _draw_solids(rows: Array, c0: int, c1: int, r0: int, r1: int) -> void:
 					_tile("spikes_down", c, r)
 				_:
 					var kind := catalog.entry_for_char(row[c])
-					if str(kind.get("behavior", "")) == "solid":   # a block that is only a registry entry
+					if str(kind.get("behavior", "")) in ["solid", "barrier"]:   # a block that is only a registry entry (a barrier is invisible in the game, shown here)
 						_tile(str((kind.get("sprite", {}) as Dictionary).get("tile", "")), c, r)
 
 

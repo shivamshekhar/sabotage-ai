@@ -66,8 +66,9 @@ func _main() -> void:
 		seen[popup.game_name] = true
 		popup.close_popup()
 		await _wait(1)
-	_check("a random puzzle is picked each time (%d of %d seen in 40 uses)" % [seen.size(), HackPopup.GAME_NAMES.size()], seen.size() >= 6, str(seen.keys()))
+	_check("a random puzzle is picked each time (%d of %d seen in 40 uses)" % [seen.size(), HackPopup.random_pool().size()], seen.size() >= 6, str(seen.keys()))
 	_check("never the same puzzle twice in a row", repeats == 0, "%d repeats" % repeats)
+	_check("resting puzzles are never picked at random", not seen.has("captcha"), str(seen.keys()))
 
 	print("ALL PASS" if ok else "SOME FAILED")
 	quit(0 if ok else 1)

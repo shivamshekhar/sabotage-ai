@@ -87,6 +87,11 @@ func _main() -> void:
 			if r.length() != cols:
 				even = false
 		_check(tag + "all rows the same width", even)
+		if BossFight.boss_of(id) != "":
+			# A boss level is an arena: one spawn, no exit (beating the boss ends it), no pits, puzzles or route to solve.
+			_check(tag + "a boss arena has one spawn and no exit", _count(rows, "P") == 1 and _count(rows, "E") == 0)
+			_check(tag + "it is the last level", LevelData.next_id(id) == "")
+			continue
 		_check(tag + "exactly one spawn and one exit", _count(rows, "P") == 1 and _count(rows, "E") == 1)
 		_check(tag + "short enough (%d columns)" % cols, cols <= MAX_COLUMNS)
 		_check(tag + "has pits and enemies", _count(rows, "AFNW") > 0 and _count(rows, "B") >= MIN_ENEMIES, "%d pit cells, %d Bros" % [_count(rows, "AFNW"), _count(rows, "B")])

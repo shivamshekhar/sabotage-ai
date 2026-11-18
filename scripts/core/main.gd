@@ -17,19 +17,24 @@ const TOUCH_SIDE_PADDING := 400
 
 var _level_id := ""
 
+# fight: the boss fight, in a level that has a boss (null otherwise).
+var fight: BossFight
+
 
 func _ready() -> void:
-	MusicPlayer.ensure_playing(get_tree())
 	InputSetup.register()
+	_level_id = _chosen_level_id()
+	var boss_name := BossFight.boss_of(_level_id)
+	MusicPlayer.ensure_playing(get_tree(), MusicPlayer.BOSS_TRACK if boss_name != "" else MusicPlayer.TRACK)
 
 	var level := Level.new()
-	_level_id = _chosen_level_id()
 	level.level_id = _level_id
 	if TouchControls.should_show():
 		# Let the camera scroll a little past each end so the player isn't hidden behind the
 		# D-pad (left) or the buttons (right) near the level's edges.
 		level.side_padding = TOUCH_SIDE_PADDING
 	add_child(level)
+	Hud.add_to(self, LevelData.stage_label(_level_id))
 
 	var player := Player.new()
 	player.apply_tuning(level.player_tuning, level.terrain_tuning)
@@ -44,7 +49,17 @@ func _ready() -> void:
 		player.spawn = player.position
 	add_child(player)
 
-	_setup_camera(level, player)
+	if boss_name != "":
+		# A boss level: the fight has its own camera; beating the boss finishes the level.
+		fight = BossFight.new()
+		add_child(fight)
+		fight.setup(level, player)
+		fight.defeated.connect(_on_boss_defeated)
+		add_child(Vignette.new())
+		if TouchControls.should_show():
+			add_child(TouchControls.new())
+	else:
+		_setup_camera(level, player)
 	level.goal_reached.connect(_on_goal_reached)
 
 	player.died.connect(_on_player_died)
@@ -134,6 +149,33 @@ func _on_player_died(cause: String) -> void:
 	layer.add_child(label)
 	add_child(layer)
 	get_tree().create_timer(GAME_OVER_TIME).timeout.connect(layer.queue_free)
+	if fight != null:
+		# Losing to a boss starts the fight again from the beginning (the boss gets all its health back).
+		await get_tree().create_timer(GAME_OVER_TIME).timeout
+		LevelData.selected_id = _level_id
+		get_tree().reload_current_scene()
+
+
+# BOSS_DOWN_TIME: seconds the "boss defeated" message shows before the level is finished.
+const BOSS_DOWN_TIME := 2.5
+
+func _on_boss_defeated() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 19
+	var label := Label.new()
+	label.text = "BOSS DEFEATED\nRAM SALTMAN IS DOWN"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 12)
+	layer.add_child(label)
+	add_child(layer)
+	await get_tree().create_timer(BOSS_DOWN_TIME).timeout
+	layer.queue_free()
+	_on_goal_reached()
 
 
 func _on_goal_reached() -> void:
@@ -142,6 +184,7 @@ func _on_goal_reached() -> void:
 	var again := next == ""
 	if again:
 		next = LevelData.DEFAULT_ID if LevelData.is_campaign(_level_id) else _level_id
+		GameStats.reset()   # the game starts over, so does the score
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	var label := Label.new()

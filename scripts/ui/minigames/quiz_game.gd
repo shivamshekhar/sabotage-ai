@@ -1,11 +1,11 @@
 class_name QuizGame
 extends Minigame
-## Shared base of the multiple-choice puzzles (WrongOnlyGame, JokeGame). Each round shows a question and
+## Base of the multiple-choice puzzles (WrongOnlyGame). Each round shows a question and
 ## a few buttons. Subclasses fill `bank` with {"q": question, "right": the answer, "wrong": [other
 ## answers]} entries and say whether the goal is the right answer (want_right) or any wrong one.
 
 # ROUNDS: how many questions in a row must be answered properly. Higher: a longer puzzle.
-const ROUNDS := 2
+const ROUNDS := 3
 
 # OPTIONS: how many answer buttons each question shows (the right answer plus OPTIONS - 1 wrong ones).
 const OPTIONS := 3

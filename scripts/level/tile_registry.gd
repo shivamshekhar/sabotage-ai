@@ -10,6 +10,9 @@ extends RefCounted
 ## tile and there is room for over a million kinds. Kinds without a built-in character have a `behavior`:
 ##   "solid"  a block the player stands on and is stopped by, drawn with its `sprite`
 ##   "decor"  a picture behind the player, drawn with its `sprite`
+##   "barrier"  an invisible wall: only the player is stopped by it (enemies walk through), nothing is drawn in the game (the level
+##              editor shows its `sprite`)
+##   "powerup"  a floating power-up box (see PowerUpBox): jump on it and it breaks open and gives the player a vehicle; not solid
 ## The solver, the AI Bro checks and the physics only care about what a tile DOES, so physics_rows() turns a map into the
 ## handful of physical classes (solid, empty, ...) first.
 
@@ -23,6 +26,10 @@ const PRIVATE_BASE := 0xF0000
 # SOLID_CHAR: what physics_rows() puts for a generic solid block: solid like ground, but not drawn as ground by the older
 # tile code (Level draws it from its own sprite).
 const SOLID_CHAR := "@"
+
+# BARRIER_CHAR: what physics_rows() puts for an invisible wall: not solid for anyone but the player (Level builds its colliders on
+# Player.LAYER_BARRIER), so the solver and the enemies treat it as empty air.
+const BARRIER_CHAR := "|"
 
 static var _loaded := false
 static var _kinds: Array[Dictionary] = []
@@ -114,7 +121,12 @@ static func is_generic(ch: String) -> bool:
 static func physics_char(ch: String) -> String:
 	if not is_generic(ch):
 		return ch
-	return SOLID_CHAR if str(kind_for_char(ch).get("behavior", "")) == "solid" else "."
+	match str(kind_for_char(ch).get("behavior", "")):
+		"solid":
+			return SOLID_CHAR
+		"barrier":
+			return BARRIER_CHAR
+	return "."
 
 
 ## The rows of a map with every generic kind replaced by its physics_char() (what the solver, the AI Bro checks and the physics

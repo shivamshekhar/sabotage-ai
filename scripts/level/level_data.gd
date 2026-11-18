@@ -137,23 +137,31 @@ static func clear_cache() -> void:
 	_cache.clear()
 
 
-## The name drawn faintly on the background of the level.
+## The name of the level (shown by the level editor and in the "Next:" line when a level is finished; it is not drawn in the level).
 static func title(id: String) -> String:
 	if id == TEST_ID:
 		return "TEST LEVEL"
 	return str(LevelFile.value(data_for(id), "meta", "title", id.to_upper()))
 
 
-## Where the title is drawn, in world pixels (top-left of the text): above the player's spawn, so it is visible at the start.
-static func title_position(id: String) -> Vector2:
+# STAGES_PER_WORLD: how many levels make a world in the numbering shown on the HUD, as in Super Mario Bros: levels 1 to 4 are
+# 1-1 to 1-4, level 5 is 2-1, and so on. Higher: more levels per world.
+const STAGES_PER_WORLD := 4
+
+
+## The level's number as the HUD shows it, "world-stage" like Super Mario Bros ("1-1", "1-2", ...): the position of the level in the
+## game (see STAGES_PER_WORLD), unless the level file names its own in meta "stage" (the boss stage uses "BOSS"). The test level
+## is "TEST".
+static func stage_label(id: String) -> String:
 	if id == TEST_ID:
-		return Vector2(150, 260)
-	var rows := map(id)
-	for r in rows.size():
-		var c := rows[r].find("P")
-		if c >= 0:
-			return Vector2(150, maxf(60.0, (r + 1) * Level.T - 260.0))
-	return Vector2(150, 150)
+		return "TEST"
+	var own := str(LevelFile.value(data_for(id), "meta", "stage", ""))
+	if own != "":
+		return own
+	var index := level_ids().find(id)
+	if index < 0:
+		return "-"
+	return "%d-%d" % [index / STAGES_PER_WORLD + 1, index % STAGES_PER_WORLD + 1]
 
 
 ## The map of a level, as rows of text (top row first). An unknown id gives the test level.

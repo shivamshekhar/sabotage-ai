@@ -20,8 +20,12 @@ const CLOSE_SIZE := Vector2(64, 64)
 ## the same one twice in a row.
 const GAME_NAMES := [
 	"sequence", "timing", "dont_press", "color_word", "captcha",
-	"wrong_only", "jokes", "dot_count", "mash", "simon_says",
+	"wrong_only", "mash", "ring_lock", "safe_cracker", "stacker",
 ]
+
+## Puzzles kept in the game but left out of the "random" choice for now (they can still be asked for by name, e.g. from a level file).
+## The captcha's riddles are being reworked.
+const RESTING := ["captcha"]
 
 ## For tests: when not empty, this puzzle is used instead of a random one.
 static var force_game := ""
@@ -40,10 +44,16 @@ static func has_game(game_id: String) -> bool:
 
 ## A random puzzle name, different from the one used last time.
 static func random_game_name() -> String:
-	var pick: String = GAME_NAMES[randi() % GAME_NAMES.size()]
-	while pick == _last_game and GAME_NAMES.size() > 1:
-		pick = GAME_NAMES[randi() % GAME_NAMES.size()]
+	var pool: Array = random_pool()
+	var pick: String = pool[randi() % pool.size()]
+	while pick == _last_game and pool.size() > 1:
+		pick = pool[randi() % pool.size()]
 	return pick
+
+
+## The puzzles "random" chooses from: all of them except the resting ones.
+static func random_pool() -> Array:
+	return GAME_NAMES.filter(func(n: String) -> bool: return not RESTING.has(n))
 
 
 static func _make_game(game_id: String) -> Minigame:
@@ -58,14 +68,14 @@ static func _make_game(game_id: String) -> Minigame:
 			return CaptchaGame.new()
 		"wrong_only":
 			return WrongOnlyGame.new()
-		"jokes":
-			return JokeGame.new()
-		"dot_count":
-			return DotCountGame.new()
 		"mash":
 			return MashGame.new()
-		"simon_says":
-			return SimonSaysGame.new()
+		"ring_lock":
+			return RingLockGame.new()
+		"safe_cracker":
+			return SafeCrackerGame.new()
+		"stacker":
+			return StackerGame.new()
 	return SequenceGame.new()
 
 

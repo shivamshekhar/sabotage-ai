@@ -22,6 +22,10 @@ const LAYER_LADDER_DECK := 2
 # hurts you by touching, see AIBro), but thrown objects look for it (see Projectile).
 const LAYER_ENEMY := 4
 
+# LAYER_BARRIER: invisible walls (the "invisible_wall" tile). Only the player collides with this layer (it is in the player's
+# collision_mask), so a level can fence the player in while enemies and thrown objects pass through.
+const LAYER_BARRIER := 8
+
 # MOVEMENT TUNING. Units are pixels and seconds. Godot's Y axis points DOWN, so "up" is a
 # NEGATIVE velocity. Every formula is multiplied by delta (the physics step), so the feel
 # does not depend on frame rate.
@@ -259,19 +263,26 @@ var _burn_amount := 0
 var _flames: CPUParticles2D  # the fire on a burning player
 var _visuals: PlayerSprite
 var _health_bar: HealthBar
+var _body_shape: CollisionShape2D
+var _body_rect: RectangleShape2D
+
+## The vehicle the player is in (see Mech), or null on foot.
+var mech: Mech
 
 
 func _ready() -> void:
 	z_index = 2
 	add_to_group("player")
 	_peak_y = global_position.y
-	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK
+	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK | LAYER_BARRIER
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = BODY_SIZE
 	shape.shape = rect
 	shape.position = Vector2(0, -BODY_SIZE.y / 2.0)
 	add_child(shape)
+	_body_shape = shape
+	_body_rect = rect
 
 	add_child(PlayerShadow.new())  # added first so it draws behind the sprite
 
@@ -292,6 +303,8 @@ func _ready() -> void:
 func take_damage(amount: int, source_x: float = NAN) -> bool:
 	if _invuln_timer > 0.0 or _pit_dying:
 		return false
+	if mech != null:
+		return _mech_takes_damage(amount, source_x)
 	health = maxi(0, health - amount)
 	health_changed.emit(health, max_health)
 	if health == 0:
@@ -312,6 +325,68 @@ func take_damage(amount: int, source_x: float = NAN) -> bool:
 	return true
 
 
+## Which way the player faces: 1 right, -1 left.
+func facing() -> int:
+	return _facing
+
+
+## Resize the hit box to `factor` times the player's size (the feet stay where they are). Used by a vehicle.
+func set_body_scale(factor: float) -> void:
+	_body_rect.size = BODY_SIZE * factor
+	_body_shape.position = Vector2(0, -BODY_SIZE.y * factor / 2.0)
+
+
+## Get into the mech (a power-up): the player's own picture and health bar are hidden, the hit box grows and the mech fights, moves and
+## takes the damage until it is destroyed.
+func board_mech() -> void:
+	if mech != null:
+		return
+	_stop_climb()
+	_clear_poison()
+	_clear_burn()
+	_windup = -1.0
+	_throw_pose_timer = 0.0
+	global_position.y -= 2.0
+	mech = Mech.new()
+	add_child(mech)
+	mech.setup(self)
+	mech.destroyed.connect(_on_mech_destroyed)
+	_visuals.visible = false
+	_health_bar.visible = false
+	_invuln_timer = maxf(_invuln_timer, 0.8)
+
+
+func _on_mech_destroyed() -> void:
+	_leave_mech(true)
+	velocity = Vector2(-_facing * 160.0, -520.0)    # thrown out of the wreck
+	_invuln_timer = 1.5
+	_hurt_timer = HURT_TIME
+	_visuals.blink(1.5)
+
+
+## Out of the mech (it was destroyed, or the player died).
+func _leave_mech(explode: bool) -> void:
+	if mech == null:
+		return
+	var m := mech
+	mech = null
+	m.release(explode)
+	_visuals.visible = true
+	_health_bar.visible = true
+
+
+## A hit while in the mech: the mech takes it (the player's own health is untouched). Knocked back a little, then invulnerable briefly.
+func _mech_takes_damage(amount: int, source_x: float) -> bool:
+	var push := -_facing
+	if not is_nan(source_x) and not is_equal_approx(source_x, global_position.x):
+		push = 1 if global_position.x > source_x else -1
+	var broke := mech.take_damage(amount)
+	if not broke:
+		_invuln_timer = invuln_seconds
+		velocity = Vector2(push * knock_x * 0.5, knock_up * 0.4)
+	return true
+
+
 # POISON_TICK_TIME: seconds between the hurts of a poisoning (see apply_poison()). POISON_TINT: the colour the player is tinted
 # while poisoned.
 const POISON_TICK_TIME := 0.7
@@ -328,6 +403,8 @@ const BURN_THROW_RANGE := 0.5
 ## health, without being knocked back or made invulnerable. Poison never kills: it stops at 1 health point (the puffer's bite
 ## does the killing, a pit or a fall does the rest). Another poisoning restarts the count. The player is tinted green meanwhile.
 func apply_poison(ticks: int, fraction: float) -> void:
+	if mech != null:
+		return    # the mech's hull keeps it out
 	if _pit_dying or health <= 0:
 		return
 	_poison_ticks = maxi(_poison_ticks, ticks)
@@ -366,6 +443,8 @@ func _clear_poison() -> void:
 ## usual distance. Like poison it never kills, and a new burning restarts the count. A burning player is tinted orange and has
 ## flames. (A lava ball sets 1% per tick for 16 ticks: a quarter of the poison's rate for four times as long.)
 func apply_burn(ticks: int, fraction: float) -> void:
+	if mech != null:
+		return
 	if _pit_dying or health <= 0:
 		return
 	_burn_ticks = maxi(_burn_ticks, ticks)
@@ -451,6 +530,9 @@ func interact() -> void:
 ## The player's weapon: throw an everyday object, picked at random (see SpriteLibrary.PROJECTILES), in the
 ## direction the player faces. It flies in an arc (see Projectile).
 func attack_light() -> void:
+	if mech != null:
+		mech.fire_missile()    # in the mech the light attack is the missile turret
+		return
 	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0:
 		return
 	_throw_timer = throw_cooldown
@@ -468,7 +550,8 @@ func _release_throw() -> void:
 
 ## Slow, strong attack. Not implemented yet.
 func attack_heavy() -> void:
-	pass
+	if mech != null:
+		mech.fire_laser()      # in the mech the heavy attack is the laser turret
 
 
 ## Apply a level's values (see the "player" and "terrain" sections of a level file; tools/level_editor/catalog.json lists them).
@@ -505,6 +588,7 @@ static func hazard_damage() -> int:
 func fall_in_pit() -> void:
 	if _pit_dying:
 		return
+	_leave_mech(false)
 	_clear_poison()
 	_clear_burn()
 	_pit_dying = true
@@ -534,6 +618,7 @@ func _pit_step(delta: float) -> void:
 
 ## Out of health or a deadly fall: back to the last checkpoint with a full bar.
 func die(cause: String = "health") -> void:
+	_leave_mech(false)
 	_pit_dying = false
 	_clear_poison()
 	_clear_burn()
@@ -585,7 +670,7 @@ func _physics_process(delta: float) -> void:
 	# Up/down grabs a ladder when one is in reach: standing at its bottom, standing on its
 	# top deck (down only), or catching it mid-jump. Otherwise up falls through to a jump.
 	_regrab_timer = maxf(0.0, _regrab_timer - delta)
-	if not climbing and vdir != 0.0 and _stun_timer <= 0.0 and _regrab_timer <= 0.0:
+	if not climbing and mech == null and vdir != 0.0 and _stun_timer <= 0.0 and _regrab_timer <= 0.0:
 		var ladder := _find_ladder(vdir)
 		if ladder.has_area():
 			_start_climb(ladder)
@@ -604,7 +689,9 @@ func _physics_process(delta: float) -> void:
 	else:
 		# Weaker deceleration while stunned so the knockback actually carries.
 		var accel := 500.0 if _stun_timer > 0.0 else run_accel
-		velocity.x = move_toward(velocity.x, dir * SPEED, accel * delta)
+		if mech != null:
+			accel = 500.0 if _stun_timer > 0.0 else Mech.ACCEL
+		velocity.x = move_toward(velocity.x, dir * (Mech.SPEED if mech != null else SPEED), accel * delta)
 		if ladder_jump:
 			velocity.y = jump_speed
 		elif not is_on_floor():
@@ -613,8 +700,10 @@ func _physics_process(delta: float) -> void:
 			# "jump" (Space / the JUMP button) always jumps. On a keyboard "move_up" (W / Up)
 			# is both jump and climb: a ladder in reach was already grabbed above (so we'd be
 			# climbing, not here); otherwise it jumps. On a phone the D-pad's up never jumps.
-			velocity.y = JUMP_VELOCITY
+			velocity.y = mech.start_jump() if mech != null else JUMP_VELOCITY
 
+	if mech != null:
+		mech.before_move(dir, delta)   # climbs steps and works the booster
 	move_and_slide()
 
 	if climbing:
@@ -665,14 +754,14 @@ func _find_ladder(vdir: float) -> Rect2:
 func _start_climb(ladder: Rect2) -> void:
 	_ladder = ladder
 	climbing = true
-	collision_mask = LAYER_WORLD  # pass through the ladder's top deck both ways
+	collision_mask = LAYER_WORLD | LAYER_BARRIER  # pass through the ladder's top deck both ways
 	velocity = Vector2.ZERO
 	global_position.x = ladder.get_center().x  # snap onto the ladder's centre line
 
 
 func _stop_climb() -> void:
 	climbing = false
-	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK
+	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK | LAYER_BARRIER
 
 
 ## Keep the player on the ladder's centre line and step off at either end.
