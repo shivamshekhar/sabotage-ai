@@ -233,9 +233,7 @@ var _facing := 1
 var _hurt_timer := 0.0
 var _invuln_timer := 0.0
 var _stun_timer := 0.0
-var _poison := DamageOverTime.new()   # the toxic puffer's poison (see apply_poison())
-var _burn := DamageOverTime.new()     # a lava ball's fire (see apply_burn())
-var _flames: CPUParticles2D  # the fire on a burning player
+var _status: PlayerStatus     # the poison and the burning (made in _ready)
 var _visuals: PlayerSprite
 var _health_bar: HealthBar
 var _body_shape: CollisionShape2D
@@ -246,6 +244,7 @@ var mech: Mech
 
 
 func _ready() -> void:
+	_status = PlayerStatus.new(self)
 	z_index = 2
 	add_to_group(Groups.PLAYER)
 	_peak_y = global_position.y
@@ -380,50 +379,36 @@ func _mech_takes_damage(amount: int, source_x: float) -> bool:
 	return true
 
 
-# POISON_TINT: the colour the player is tinted while poisoned.
-const POISON_TINT := Color(0.62, 1.0, 0.45)
-
-
-# BURN_TINT: the colour a burning player is tinted. BURN_THROW_RANGE: how far a thrown object goes while burning, as a fraction of
-# the normal range (0.5 = half). Burning uses the same tick time as poison (DamageOverTime.TICK_TIME).
-const BURN_TINT := Color(1.0, 0.66, 0.5)
-const BURN_THROW_RANGE := 0.5
-
-
 ## Poisoned (by the toxic puffer fish): for the next `ticks` times, DamageOverTime.TICK_TIME seconds apart, lose `fraction` of the maximum
 ## health, without being knocked back or made invulnerable. Poison never kills: it stops at 1 health point (the puffer's bite
 ## does the killing, a pit or a fall does the rest). Another poisoning restarts the count. The player is tinted green meanwhile.
 func apply_poison(ticks: int, fraction: float) -> void:
-	if _immune_to_status():
-		return
-	_poison.apply(ticks, roundi(max_health * fraction))
-	_update_status_look()
+	if not _immune_to_status():
+		_status.apply(_status.poison, ticks, fraction)
 
 
 ## True while a poisoning is still hurting.
 func is_poisoned() -> bool:
-	return _poison.active()
+	return _status.is_poisoned()
 
 
 ## Set on fire (by a lava ball): for the next `ticks` times, DamageOverTime.TICK_TIME seconds apart, lose `fraction` of the maximum health,
-## without being knocked back or made invulnerable, and for as long as it lasts thrown objects only go BURN_THROW_RANGE of their
+## without being knocked back or made invulnerable, and for as long as it lasts thrown objects only go PlayerStatus.BURN_THROW_RANGE of their
 ## usual distance. Like poison it never kills, and a new burning restarts the count. A burning player is tinted orange and has
 ## flames. (A lava ball sets 1% per tick for 16 ticks: a quarter of the poison's rate for four times as long.)
 func apply_burn(ticks: int, fraction: float) -> void:
-	if _immune_to_status():
-		return
-	_burn.apply(ticks, roundi(max_health * fraction))
-	_update_status_look()
+	if not _immune_to_status():
+		_status.apply(_status.burn, ticks, fraction)
 
 
 ## True while a burning is still hurting.
 func is_burning() -> bool:
-	return _burn.active()
+	return _status.is_burning()
 
 
-## How far thrown objects go right now, as a fraction of the normal range (1, or BURN_THROW_RANGE while burning).
+## How far thrown objects go right now, as a fraction of the normal range.
 func throw_range_scale() -> float:
-	return BURN_THROW_RANGE if _burn.active() else 1.0
+	return _status.throw_range_scale()
 
 
 ## The mech's hull keeps poison and fire out, and a player who is dying cannot be set on fire.
@@ -431,59 +416,21 @@ func _immune_to_status() -> bool:
 	return mech != null or _pit_dying or health <= 0
 
 
-## One physics step of both effects: each one that is due hurts a little (never below 1 health point) and the look is updated when one ends.
+## One physics step of the poison and the burning: what they take off now (never below 1 health point).
 func _status_step(delta: float) -> void:
-	for effect in [_poison, _burn]:
-		var tick: int = (effect as DamageOverTime).step(delta)
-		if tick > 0 and health > 1:
-			health = maxi(1, health - tick)
-			health_changed.emit(health, max_health)
-		if tick > 0 and not (effect as DamageOverTime).active():
-			_update_status_look()
+	var lost := _status.step(delta)
+	if lost > 0 and health > 1:
+		health = maxi(1, health - lost)
+		health_changed.emit(health, max_health)
 
 
 func _clear_status() -> void:
-	_poison.clear()
-	_burn.clear()
-	_update_status_look()
+	_status.clear()
 
 
-## The tint (orange while burning, green while poisoned, burning wins) and the flames.
-func _update_status_look() -> void:
-	if _visuals != null:
-		var tint := Color.WHITE
-		if _burn.active():
-			tint = BURN_TINT
-		elif _poison.active():
-			tint = POISON_TINT
-		_visuals.modulate = Color(tint.r, tint.g, tint.b, _visuals.modulate.a)
-	if _burn.active() and _flames == null:
-		_flames = CPUParticles2D.new()
-		_flames.texture = PitHazard.glow_texture()
-		var add := CanvasItemMaterial.new()
-		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		_flames.material = add
-		_flames.z_index = 3
-		_flames.position = Vector2(0, -BODY_SIZE.y * 0.45)
-		_flames.amount = 34
-		_flames.lifetime = 0.55
-		_flames.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-		_flames.emission_rect_extents = Vector2(BODY_SIZE.x * 0.4, BODY_SIZE.y * 0.4)
-		_flames.direction = Vector2(0, -1)
-		_flames.spread = 25.0
-		_flames.gravity = Vector2(0, -60)
-		_flames.initial_velocity_min = 30.0
-		_flames.initial_velocity_max = 80.0
-		_flames.scale_amount_min = 0.12
-		_flames.scale_amount_max = 0.3
-		_flames.color = Color(1.0, 0.55, 0.15, 0.9)
-		var fade := Gradient.new()
-		fade.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
-		fade.colors = PackedColorArray([Color(1, 1, 0.6, 0.0), Color(1, 0.9, 0.5, 1.0), Color(1, 0.2, 0.05, 0.0)])
-		_flames.color_ramp = fade
-		add_child(_flames)
-	if _flames != null:
-		_flames.emitting = _burn.active()
+## The picture the player is shown with (PlayerStatus tints it).
+func visuals() -> PlayerSprite:
+	return _visuals
 
 
 ## Interact with whatever is in reach. The player only announces it (the interacted signal); the

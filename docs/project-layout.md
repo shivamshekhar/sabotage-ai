@@ -54,7 +54,7 @@ tools/
   art/                      Art generators (art.md)
   tests/                    Headless tests (testing.md); lib/ has the level solver, the generic level checks and the test arena
 build/                      Export output (git-ignored): APK, AAB, export.log
-tmp/                        Scratch space for temporary scripts, screenshots, logs and art previews (git-ignored; only .gitkeep is kept)
+tmp/                        Scratch space for temporary scripts, screenshots, logs and art previews (git-ignored; created on demand by the scripts that use it)
 .claude/                    Rules for AI agents working on the project (CLAUDE.md and rules/)
 ```
 

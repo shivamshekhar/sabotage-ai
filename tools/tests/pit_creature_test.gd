@@ -233,7 +233,7 @@ func _main() -> void:
 	await _wait(3)
 	var health_after_hit := player.health
 	_check("a lava ball takes 15% and sets the player on fire", health_after_hit == player.max_health - 15 and player.is_burning())
-	_check("a burning player is tinted orange and has flames", player._visuals.modulate.r > 0.99 and player._visuals.modulate.b < 0.6 and player._flames != null and player._flames.emitting)
+	_check("a burning player is tinted orange and has flames", player._visuals.modulate.r > 0.99 and player._visuals.modulate.b < 0.6 and player._status.flames != null and player._status.flames.emitting)
 	_check("burning halves the range of a throw", is_equal_approx(player.throw_range_scale(), 0.5))
 	var normal := Projectile.launch(world, "book", Vector2(0, -400), 1, Vector2.ZERO)
 	var short := Projectile.launch(world, "book", Vector2(0, -400), 1, Vector2.ZERO, player.throw_range_scale())
@@ -251,7 +251,7 @@ func _main() -> void:
 	var after_half := player.health
 	_check("the burn hurts a little at a time (1% a tick)", after_half < health_after_hit and health_after_hit - after_half <= 9, "%d -> %d after 8 ticks" % [health_after_hit, after_half])
 	await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 9.0))
-	_check("and goes on for 16 ticks, about 11 seconds, then it is over", not player.is_burning() and player.health == health_after_hit - 16 and player.throw_range_scale() == 1.0 and not player._flames.emitting, "health %d, burning %s" % [player.health, player.is_burning()])
+	_check("and goes on for 16 ticks, about 11 seconds, then it is over", not player.is_burning() and player.health == health_after_hit - 16 and player.throw_range_scale() == 1.0 and not player._status.flames.emitting, "health %d, burning %s" % [player.health, player.is_burning()])
 	player.health = 3
 	player.apply_burn(10, 0.5)
 	await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 11.0))

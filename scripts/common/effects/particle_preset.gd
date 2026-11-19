@@ -58,13 +58,13 @@ func build() -> CPUParticles2D:
 	return p
 
 
-## A gradient through `colors`, evenly spaced from the start of a particle's life to its end.
-static func fade_gradient(colors_list: Array) -> Gradient:
+## A gradient through `colors` from the start of a particle's life to its end: evenly spaced, or at the given `at` offsets (0 to 1, one each).
+static func fade_gradient(colors_list: Array, at: Array = []) -> Gradient:
 	var g := Gradient.new()
 	var offsets := PackedFloat32Array()
 	var cols := PackedColorArray()
 	for i in colors_list.size():
-		offsets.append(float(i) / float(maxi(1, colors_list.size() - 1)))
+		offsets.append(float(at[i]) if not at.is_empty() else float(i) / float(maxi(1, colors_list.size() - 1)))
 		cols.append(colors_list[i])
 	g.offsets = offsets
 	g.colors = cols
