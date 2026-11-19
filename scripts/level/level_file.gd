@@ -11,6 +11,9 @@ const OLDEST_FORMAT := 1
 # MAX_NAME_LENGTH: longest name an object or the player may have (the player's is cut to Player.MAX_NAME_LENGTH anyway).
 const MAX_NAME_LENGTH := 24
 
+# META_KEYS: the keys of a level file's "meta" section the game reads (the level editor must offer each: tools/tests/editor_sync_test.gd checks it).
+const META_KEYS := ["id", "title", "next", "stage", "boss"]
+
 
 ## A fresh, valid level: a floor with walls, the player at the left and the exit at the right.
 static func new_level(cols: int = 60, rows: int = 24) -> Dictionary:

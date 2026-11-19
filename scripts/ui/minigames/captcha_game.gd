@@ -26,8 +26,8 @@ const TILE_GAP := 8
 const RIDDLE_FONT_SIZE := 26
 
 # MANIFEST_PATH: the list of riddles and picture files, and PICTURE_DIR the folder of the pictures.
-const MANIFEST_PATH := "res://assets/captcha/manifest.json"
-const PICTURE_DIR := "res://assets/captcha/"
+const MANIFEST_PATH := AssetPaths.CAPTCHA_MANIFEST
+const PICTURE_DIR := AssetPaths.CAPTCHA
 
 const REMARKS := [
 	"A ROBOT WOULD SAY THAT. TRY AGAIN.",

@@ -63,7 +63,7 @@ const DPAD_GRAB_PADDING := 40.0
 # DPAD_ACTIONS: which input action each direction presses (names registered in InputSetup).
 # Change a value to rebind a direction; gameplay code only ever sees the actions.
 const DPAD_ACTIONS := {
-	"left": "move_left", "right": "move_right", "up": "move_up", "down": "move_down",
+	"left": InputActions.MOVE_LEFT, "right": InputActions.MOVE_RIGHT, "up": InputActions.MOVE_UP, "down": InputActions.MOVE_DOWN,
 }
 
 # DPAD_VECTORS: the unit vector of each direction, used only to place and point the arrows
@@ -98,10 +98,10 @@ const FACE_HIT_PADDING := 12.0
 #             FACE_SPREAD: (0, 1) is the bottom, (-1, 0) left, (1, 0) right, (0, -1) top
 # To add a button add an entry with a free offset. To swap positions, swap offsets.
 const FACE_BUTTONS := [
-	{"action": "jump", "label": "JUMP", "offset": Vector2(0, 1)},
-	{"action": "interact", "label": "USE", "offset": Vector2(-1, 0)},
-	{"action": "attack_light", "label": "LIGHT", "offset": Vector2(1, 0)},
-	{"action": "attack_heavy", "label": "HEAVY", "offset": Vector2(0, -1)},
+	{"action": InputActions.JUMP, "label": "JUMP", "offset": Vector2(0, 1)},
+	{"action": InputActions.INTERACT, "label": "USE", "offset": Vector2(-1, 0)},
+	{"action": InputActions.ATTACK_LIGHT, "label": "LIGHT", "offset": Vector2(1, 0)},
+	{"action": InputActions.ATTACK_HEAVY, "label": "HEAVY", "offset": Vector2(0, -1)},
 ]
 
 # LOOK.

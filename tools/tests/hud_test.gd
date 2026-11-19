@@ -54,7 +54,8 @@ func _main() -> void:
 	for id in ids:
 		if id != LevelData.TEST_ID:
 			labels.append(LevelData.stage_label(id))
-	_check("levels are numbered like Super Mario Bros", labels.slice(0, 5) == ["1-1", "1-2", "1-3", "1-4", "2-1"] and labels.back() == "BOSS", str(labels))
+	_check("the six levels of the game are numbered 1-1 to 1-6 (the boss level is 1-6, not called BOSS)", labels == ["1-1", "1-2", "1-3", "1-4", "1-5", "1-6"], str(labels))
+	_check("the world holds six stages, so the next level would be 2-1", LevelData.STAGES_PER_WORLD == 6)
 	_check("the test level is called TEST", LevelData.stage_label(LevelData.TEST_ID) == "TEST")
 
 	# the bar
@@ -94,7 +95,7 @@ func _main() -> void:
 	# the real game shows it
 	GameStats.reset()
 	LevelData.selected_id = ""
-	var main = load("res://scenes/main.tscn").instantiate()
+	var main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(5)
 	var game_hud = main.get_node_or_null("Hud")

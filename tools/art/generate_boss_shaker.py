@@ -1,7 +1,7 @@
 """Draws the first boss: a glass salt shaker with a glowing angry face, its belly full of stolen data-center hardware.
 
 Usage (from the repo root; needs Pillow and numpy):
-    python tools/art/generate_boss_shaker.py          writes assets/bosses/salt_shaker.png (and a 2x preview next to it)
+    python tools/art/generate_boss_shaker.py          writes the boss layers and what he sprays into assets/bosses/ (and a picture of him whole into tmp/art_previews/)
 
 HOW IT IS DRAWN (so the detail is real shading, not flat shapes stacked up): everything is rendered at 4x and shrunk with a
 high-quality filter. Each part is a mask; `lit()` turns a mask into a bevelled, lit surface (it blurs the mask into a height map,
@@ -17,132 +17,17 @@ import cv2
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
+from art_lib import (INK, LIGHT, ROOT, S, arr, blur, glow, gradient_x, gradient_y, lit, outline, paste, poly_mask, preview_path, rrect_mask, s, solid, to_img)
+
 OUT = os.path.join(ROOT, "assets", "bosses")
 
-S = 4                      # supersampling
 W, H = 600, 830            # the drawing canvas in pixels
 TRIM = 36                  # rows cut off the top at the end (the final picture is W x (H - TRIM))
 SEED = 7
-INK = (38, 38, 48)         # the dark outline colour
-LIGHT = np.array([-0.55, -0.65, 0.52])
-LIGHT = LIGHT / np.linalg.norm(LIGHT)
 
 
-def s(v):
-    return int(round(v * S))
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# helpers
-# ----------------------------------------------------------------------------------------------------------------------
 def new_mask(size=None):
     return Image.new("L", size or (W * S, H * S), 0)
-
-
-def blur(img, r):
-    return img.filter(ImageFilter.GaussianBlur(r * S))
-
-
-def arr(img):
-    return np.asarray(img, dtype=np.float32) / 255.0
-
-
-def to_img(a):
-    return Image.fromarray(np.clip(a * 255.0 + 0.5, 0, 255).astype(np.uint8))
-
-
-def lit(mask, base, radius=6.0, bump=2.2, spec=0.35, ambient=0.55, tint=None):
-    """A bevelled, lit surface for `mask` (an L image): returns RGBA. `base` is an (r,g,b) colour or a function (x,y arrays)->rgb array."""
-    m = arr(mask)
-    h = cv2.GaussianBlur(m, (0, 0), radius * S)      # a float blur: an 8-bit one leaves contour bands in the shading
-    gy, gx = np.gradient(h)
-    k = bump * radius * S
-    nx, ny, nz = -gx * k, -gy * k, np.ones_like(h)
-    n = np.sqrt(nx * nx + ny * ny + nz * nz)
-    nx, ny, nz = nx / n, ny / n, nz / n
-    lam = np.clip(nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2], 0, 1)
-    hh = np.array([LIGHT[0], LIGHT[1], LIGHT[2] + 1.0])
-    hh = hh / np.linalg.norm(hh)
-    sp = np.clip(nx * hh[0] + ny * hh[1] + nz * hh[2], 0, 1) ** 38 * spec
-    if callable(base):
-        yy, xx = np.mgrid[0:m.shape[0], 0:m.shape[1]]
-        col = base(xx, yy)
-    else:
-        col = np.zeros(m.shape + (3,), np.float32) + np.array(base, np.float32)
-    shade = (ambient + (1.0 - ambient) * 1.25 * lam)[..., None]
-    rgb = col * shade + sp[..., None] * 255.0
-    if tint is not None:
-        rgb = rgb * np.array(tint)
-    out = np.dstack([np.clip(rgb, 0, 255), m * 255.0]).astype(np.uint8)
-    return Image.fromarray(out, "RGBA")
-
-
-def outline(mask, width, color=INK):
-    """An RGBA outline (just the ring) `width` px wide around `mask`."""
-    big = mask.filter(ImageFilter.MaxFilter(max(3, s(width) // 2 * 2 + 1)))
-    big = blur(big, 0.25) if width >= 1 else big
-    ring = ImageChops.subtract(big, mask)
-    layer = Image.new("RGBA", mask.size, color + (0,))
-    layer.putalpha(ring)
-    return layer
-
-
-def solid(mask, color, alpha=1.0):
-    layer = Image.new("RGBA", mask.size, tuple(color) + (255,))
-    layer.putalpha(mask.point(lambda v: int(v * alpha)))
-    return layer
-
-
-def paste(base, layer, clip=None):
-    if clip is not None:
-        a = ImageChops.multiply(layer.getchannel("A"), clip)
-        layer = layer.copy()
-        layer.putalpha(a)
-    base.alpha_composite(layer)
-
-
-def glow(base, mask, color, radii=(2, 6, 16), strengths=(0.9, 0.6, 0.45), clip=None):
-    """Bloom: blurred copies of `mask` added over `base` in `color`."""
-    for r, st in zip(radii, strengths):
-        g = blur(mask, r).point(lambda v, st=st: int(min(255, v * st)))
-        layer = Image.new("RGBA", mask.size, color + (255,))
-        layer.putalpha(g)
-        paste(base, layer, clip)
-
-
-def gradient_x(x0, x1, stops):
-    """A colour function: horizontal gradient between x0..x1 (final px) through `stops` [(t, rgb), ...]."""
-    ts = np.array([t for t, _ in stops], np.float32)
-    cs = np.array([c for _, c in stops], np.float32)
-
-    def fn(xx, yy):
-        t = np.clip((xx / S - x0) / (x1 - x0), 0, 1)
-        return np.stack([np.interp(t, ts, cs[:, i]) for i in range(3)], -1)
-    return fn
-
-
-def gradient_y(y0, y1, stops):
-    ts = np.array([t for t, _ in stops], np.float32)
-    cs = np.array([c for _, c in stops], np.float32)
-
-    def fn(xx, yy):
-        t = np.clip((yy / S - y0) / (y1 - y0), 0, 1)
-        return np.stack([np.interp(t, ts, cs[:, i]) for i in range(3)], -1)
-    return fn
-
-
-def poly_mask(points, size):
-    m = Image.new("L", size, 0)
-    ImageDraw.Draw(m).polygon([(x, y) for x, y in points], fill=255)
-    return m
-
-
-def rrect_mask(size, box, r):
-    m = Image.new("L", size, 0)
-    ImageDraw.Draw(m).rounded_rectangle(box, radius=r, fill=255)
-    return m
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -800,7 +685,8 @@ def export_game_art():
     folder = os.path.join(OUT, "saltman")
     os.makedirs(folder, exist_ok=True)
     for f in os.listdir(folder):
-        os.remove(os.path.join(folder, f))
+        if f.endswith(".png"):                                  # (the engine's .import files stay: they hold each picture's id)
+            os.remove(os.path.join(folder, f))
     for name in ("back", "pile_back", "pile_mid", "pile_front", "front", "cap_glow"):
         shrink(base[name], box).save(os.path.join(folder, name + ".png"), optimize=True)
     for name, img in base["faces"].items():
@@ -815,12 +701,12 @@ def export_game_art():
     poses = []
     for e in EXPRESSIONS:
         pose = shrink(composite(base, e), box)
-        pose.save(os.path.join(folder, "pose_" + e + ".png"), optimize=True)
+        pose.save(preview_path("saltman_pose_" + e + ".png"), optimize=True)
         poses.append(pose)
     sheet = Image.new("RGBA", (width * len(poses), height), (236, 238, 244, 255))
     for i, pose in enumerate(poses):
         sheet.alpha_composite(pose, (i * width, 0))
-    sheet.convert("RGB").save(os.path.join(folder, "pose_sheet.png"))
+    sheet.convert("RGB").save(preview_path("saltman_pose_sheet.png"))
     # what it sprays
     for name, piece, size in (("ram_stick", ram_stick(seed=21), None), ("cpu", cpu(), (60, 60)), ("chipset", chipset(), (54, 54))):
         small = piece.resize(size or (piece.width // 4, piece.height // 4), Image.LANCZOS)
@@ -833,11 +719,8 @@ def main():
     layers = build(shadow=True)
     big = composite(layers, "idle", with_shadow=True).crop((0, s(TRIM), W * S, H * S))
     final = big.resize((W, H - TRIM), Image.LANCZOS)
-    path = os.path.join(OUT, "salt_shaker.png")
+    path = preview_path("salt_shaker.png")          # the whole boss in one picture: only for looking at (the game builds him from the layers)
     final.save(path, optimize=True)
-    prev = Image.new("RGBA", (W, H - TRIM), (236, 238, 244, 255))
-    prev.alpha_composite(final)
-    prev.convert("RGB").save(os.path.join(OUT, "salt_shaker_preview.png"))
     export_game_art()
     print("wrote", path, final.size, "%.0f KB" % (os.path.getsize(path) / 1024))
 

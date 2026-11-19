@@ -470,64 +470,17 @@ static func _convert(pos: Array) -> Dictionary:
 # commands that check a level
 # ---------------------------------------------------------------------------------------------------------------------
 
-static func _solve_report(rows: Array[String]) -> Dictionary:
+## Run the generic level checks (tools/tests/lib/level_checks.gd) on a level file's data: can the exit be reached, are there dead ends, do the laser
+## gates work and are sealed to the ceiling. {"ok": bool, "checks": [{"name", "ok", "detail"}], "failing": [names], "ms": int}.
+static func _solve_report(data: Dictionary) -> Dictionary:
 	var t0 := Time.get_ticks_msec()
-	var solver := LevelSolver.new(rows)
-	solver.solve()
-	var route := solver.route()
-	var stuck := solver.stuck_nodes()
-	var report := {"exit_reachable": not route.is_empty(), "route_steps": route.size(), "nodes": solver.nodes.size(),
-		"dead_end_spots": stuck.size(), "dead_end_examples": [] as Array}
-	for p in stuck.slice(0, 5):
-		(report["dead_end_examples"] as Array).append("tile column %d, row %d" % [int(p.x / 70.0), int(p.y / 70.0) - 1])
-	# laser gates: all on = no finish; the computer for gate k can be reached while gates k.. are on
-	var gate_ids := {}
-	for line in rows:
-		for ch in line:
-			if ch >= "1" and ch <= "9":
-				gate_ids[ch] = true
-	var ids: Array = gate_ids.keys()
-	ids.sort()
-	var gate_problems: Array = []
-	if not ids.is_empty():
-		if not _solve_rows(_gates_as_walls(rows, ids)).route().is_empty():
-			gate_problems.append("the exit can be reached with every laser gate on")
-		var terminals := LevelData.terminals_in(rows)
-		for k in ids.size():
-			var world := _solve_rows(_gates_as_walls(rows, ids.slice(k)))
-			var zone := Rect2()
-			for t in terminals:
-				if t["laser"] == ids[k]:
-					zone = Rect2(t["c"] * 70 - 40, (t["r"] - 2) * 70, 2 * 70 + 80, 3 * 70)
-			var reached := false
-			for key in world.nodes:
-				var p: Vector2 = world.nodes[key]
-				if Rect2(p.x - 30, p.y - 128, 60, 128).intersects(zone):
-					reached = true
-					break
-			if not reached:
-				gate_problems.append("the computer for gate %s cannot be reached before gate %s" % [ids[k], ids[k]])
-	report["laser_gate_problems"] = gate_problems
-	report["ms"] = Time.get_ticks_msec() - t0
-	report["ok"] = report["exit_reachable"] and stuck.is_empty() and gate_problems.is_empty()
-	return report
-
-
-static func _solve_rows(rows: Array[String]) -> LevelSolver:
-	var solver := LevelSolver.new(rows)
-	solver.solve()
-	return solver
-
-
-static func _gates_as_walls(rows: Array[String], on_ids: Array) -> Array[String]:
-	var out: Array[String] = []
-	for line in rows:
-		var a := line.split("")
-		for i in a.size():
-			if a[i] >= "1" and a[i] <= "9":
-				a[i] = "#" if on_ids.has(a[i]) else "."
-		out.append("".join(a))
-	return out
+	LevelData.use_file(data, "")
+	var checks := LevelChecks.run(LevelData.FILE_ID, false)     # (a level being drafted needs no power-up box yet)
+	var failing: Array = []
+	for c in checks:
+		if not c["ok"]:
+			failing.append("%s %s" % [c["name"], c["detail"]])
+	return {"ok": failing.is_empty(), "checks": checks, "failing": failing, "ms": Time.get_ticks_msec() - t0}
 
 
 static func _info(pos: Array, flags: Dictionary) -> Dictionary:
@@ -542,7 +495,7 @@ static func _info(pos: Array, flags: Dictionary) -> Dictionary:
 		"rows": rows.size(), "counts": _counts(rows), "player": data["player"], "terrain": data["terrain"],
 		"objects": (data["objects"] as Dictionary).size(), "minigames": (data["minigames"] as Array).size(), "problems": LevelFile.validate(data)}
 	if flags.has("solve") and (out["problems"] as Array).is_empty():
-		out["solve"] = _solve_report(rows)
+		out["solve"] = _solve_report(data)
 	return out
 
 
@@ -565,7 +518,7 @@ static func _solve(pos: Array) -> Dictionary:
 	var problems := LevelFile.validate(loaded["data"])
 	if not problems.is_empty():
 		return {"ok": false, "error": "The level has problems; fix them first.", "problems": problems}
-	return _solve_report(LevelFile.tiles(loaded["data"]))
+	return _solve_report(loaded["data"])
 
 
 static func _range(text: String, limit: int) -> Vector2i:

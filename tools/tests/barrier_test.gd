@@ -50,8 +50,8 @@ func _main() -> void:
 	var space := level.get_world_2d().direct_space_state
 	var from := Vector2(wall_x - 200.0, mid_y)
 	var to := Vector2(wall_x + 200.0, mid_y)
-	var hit_player_layer := space.intersect_ray(PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_BARRIER))
-	var hit_world_layer := space.intersect_ray(PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD | Player.LAYER_LADDER_DECK))
+	var hit_player_layer := space.intersect_ray(PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.BARRIER))
+	var hit_world_layer := space.intersect_ray(PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.FLOOR))
 	_check("the player's layer for it stops a ray", not hit_player_layer.is_empty())
 	_check("but the world layer (enemies, thrown objects, enemy sensing) does not see it", hit_world_layer.is_empty())
 
@@ -72,9 +72,9 @@ func _main() -> void:
 	bro.position = Vector2(wall_x - 150.0, 10.0 * Level.T)
 	root.add_child(bro)
 	bro.set_meta("always_awake", true)
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(240)
-	Input.action_release("move_right")
+	Input.action_release(InputActions.MOVE_RIGHT)
 	_check("the player running into it is stopped", player.global_position.x < wall_x, "player %.0f, wall %.0f" % [player.global_position.x, wall_x])
 	# put the player on the far side so the Bro (chasing) walks through the wall
 	player.global_position = Vector2(wall_x + 400.0, 10.0 * Level.T)

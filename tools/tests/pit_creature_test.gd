@@ -29,7 +29,7 @@ func _wait(frames: int) -> void:
 
 func _box(x0: float, x1: float, top: float) -> void:
 	var body := StaticBody2D.new()
-	body.collision_layer = Player.LAYER_WORLD
+	body.collision_layer = PhysicsLayers.WORLD
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = Vector2(x1 - x0, 600)
@@ -41,7 +41,7 @@ func _box(x0: float, x1: float, top: float) -> void:
 
 func _creatures() -> Array[PitCreature]:
 	var out: Array[PitCreature] = []
-	for n in get_nodes_in_group("enemies"):
+	for n in get_nodes_in_group(Groups.ENEMIES):
 		if n is PitCreature:
 			out.append(n)
 	return out
@@ -162,13 +162,13 @@ func _main() -> void:
 			player.global_position = Vector2(210, 0)   # the bite knocked the player about: back onto the pillar
 			player.velocity = Vector2.ZERO
 			var after_bite := player.health
-			await _wait(int(Player.POISON_TICK_TIME * 60.0 * 5.0) + 30)
+			await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 5.0) + 30)
 			_check("the poison keeps hurting a few times", player.health < after_bite and player.health >= 1, "%d -> %d" % [after_bite, player.health])
 			_check("and then it wears off", not player.is_poisoned() and player._visuals.modulate.r > 0.99, "poisoned %s" % player.is_poisoned())
 			# poison never kills
 			player.health = 3
 			player.apply_poison(6, 0.5)
-			await _wait(int(Player.POISON_TICK_TIME * 60.0 * 7.0))
+			await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 7.0))
 			_check("poison never takes the last health point", player.health == 1, str(player.health))
 			player.fall_in_pit()
 			_check("a player in a pit is not poisoned any more", not player.is_poisoned())
@@ -212,7 +212,7 @@ func _main() -> void:
 	ball.defeated.connect(func() -> void: destroyed[0] = true)
 	var thrown := Projectile.launch(world, "book", ball.global_position + Vector2(-60, 0), 1, Vector2.ZERO)
 	await _wait(10)
-	_check("a thrown object that flies into a fireball burns up", not thrown.is_in_group("projectiles") and thrown._done)
+	_check("a thrown object that flies into a fireball burns up", not thrown.is_in_group(Groups.PROJECTILES) and thrown._done)
 	_check("and the fireball is not put out", not destroyed[0] and ball.state != PitCreature.State.DEAD)
 	ball.take_hit(1.0)
 	_check("nothing hurts it", ball.state != PitCreature.State.DEAD and not destroyed[0])
@@ -247,14 +247,14 @@ func _main() -> void:
 		other._timer = 1.0e9
 	player.global_position = Vector2(210, 0)
 	player.velocity = Vector2.ZERO
-	await _wait(int(Player.POISON_TICK_TIME * 60.0 * 8.0))
+	await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 8.0))
 	var after_half := player.health
 	_check("the burn hurts a little at a time (1% a tick)", after_half < health_after_hit and health_after_hit - after_half <= 9, "%d -> %d after 8 ticks" % [health_after_hit, after_half])
-	await _wait(int(Player.POISON_TICK_TIME * 60.0 * 9.0))
+	await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 9.0))
 	_check("and goes on for 16 ticks, about 11 seconds, then it is over", not player.is_burning() and player.health == health_after_hit - 16 and player.throw_range_scale() == 1.0 and not player._flames.emitting, "health %d, burning %s" % [player.health, player.is_burning()])
 	player.health = 3
 	player.apply_burn(10, 0.5)
-	await _wait(int(Player.POISON_TICK_TIME * 60.0 * 11.0))
+	await _wait(int(DamageOverTime.TICK_TIME * 60.0 * 11.0))
 	_check("burning never takes the last health point either", player.health == 1, str(player.health))
 	await _drop_world()
 
@@ -266,7 +266,7 @@ func _main() -> void:
 		sinking.velocity = Vector2.ZERO
 		await _wait(70)
 		_check("an object dropped into a pit (x=%d) sinks out of sight and is gone" % int(x), not is_instance_valid(sinking) or sinking._done)
-		_check("and does not lie at the bottom", not is_instance_valid(sinking) or not sinking.is_in_group("landed_projectiles"))
+		_check("and does not lie at the bottom", not is_instance_valid(sinking) or not sinking.is_in_group(Groups.LANDED_PROJECTILES))
 	await _drop_world()
 
 	# ---- one hit destroys the other creatures, and they return at the same spot

@@ -91,7 +91,7 @@ phone) opens a puzzle popup; solving it switches the field off. In the editor th
 lowest unused id, and you can change it in the inspector.
 
 **Invisible walls:** the tile `invisible_wall` (id 900, group "Boundaries" in the editor palette) fences the player in without a visible
-wall: only the player collides with it (physics layer `Player.LAYER_BARRIER`), enemies, thrown objects and the solver ignore it, and the
+wall: only the player collides with it (physics layer `PhysicsLayers.BARRIER`), enemies, thrown objects and the solver ignore it, and the
 editor shows it as a faint hatched block that is not drawn in the game.
 
 The 10 puzzles are `Minigame` subclasses in `scripts/ui/minigames/`: memory pads, a timing bar, a rotating lock (`ring_lock`: a
@@ -104,4 +104,10 @@ asked for by name. To add a puzzle, subclass `Minigame` (or `QuizGame` for multi
 hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`) and in `tools/level_editor/catalog.json`;
 `tools/tests/minigame_test.gd` then checks it. Always put a computer where the player can reach it before its laser.
 
-To swap the hero, change `CHARACTER` in `scripts/player/player_sprite.gd` to `adventurer`, `female`, `soldier` or `zombie`.
+The hero is the Kenney `player` character and the AI Bro the `zombie`; only the ten poses the game shows are kept in `assets/characters/` (`tools/audit_rules.json` lists them). To use another character, add its poses there and point `PlayerSprite.CHARACTER` at it.
+
+## Laser gates and power-up boxes
+
+A laser gate must close its corridor completely: the gate fills the corridor from the floor to the slab above it, and above the slab a pillar of ground tiles runs on up to the ceiling (a vehicle with a booster could otherwise fly over the slab). `tools/tests/powerup_levels_test.gd` checks that every gate column is solid from the ceiling down to the gate and that a flying mech cannot get past any gate.
+
+Every level has exactly one power-up box (tile `powerup_box`, group "Pickups"), placed as a challenge: over a pit or gap, a tile or two past a ledge's end and two rows above the ledge (105 px above its top), so the player has to jump from the ledge and come down on it. The test checks that a player on foot can reach it and that it cannot be reached from the floor far below.

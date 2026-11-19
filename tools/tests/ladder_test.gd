@@ -19,7 +19,7 @@ var mark_y := 0.0
 
 func _initialize() -> void:
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 
 
@@ -59,7 +59,7 @@ func _process(_d: float) -> bool:
 
 	match step:
 		0:  # Up away from a ladder = jump
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			if t == 6:
 				_check("Up away from a ladder jumps", not player.climbing and player.global_position.y < 835.0,
 					"y=%d climbing=%s" % [int(player.global_position.y), player.climbing])
@@ -67,20 +67,20 @@ func _process(_d: float) -> bool:
 				_tp(LX + 25.0, 840.0)
 				_next(1)
 		1:  # 25px off-centre (<75%): no grab -> up jumps instead
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			if t == 6:
 				_check("25px off-centre does not grab (jumps)", not player.climbing and player.global_position.y < 835.0)
 				_release_all()
 				_tp(LX + 15.0, 840.0)
 				_next(2)
 		2:  # >= 75% overlap at the bottom: Up climbs instead of jumping
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			if t == 10:
 				_check("Up at the ladder bottom climbs", player.climbing)
 				_check("snaps to the centre line", is_equal_approx(player.global_position.x, LX), "x=%s" % player.global_position.x)
 				_next(3)
 		3:  # sideways input ignored while climbing; climb to the top
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			Input.action_press("move_right" if (t / 20) % 2 == 0 else "move_left")
 			xs.append(player.global_position.x)
 			if not player.climbing or t > 600:
@@ -97,7 +97,7 @@ func _process(_d: float) -> bool:
 			if t == 15:
 				_check("stands on the deck", player.is_on_floor())
 			if t >= 15:
-				Input.action_press("move_up")
+				Input.action_press(InputActions.MOVE_UP)
 			if t == 22:
 				_check("Up on the top deck jumps", not player.climbing and player.global_position.y < 415.0,
 					"y=%s climbing=%s" % [player.global_position.y, player.climbing])
@@ -106,7 +106,7 @@ func _process(_d: float) -> bool:
 				_next(5)
 		5:  # Down on the deck grabs the ladder and climbs down; no jumping on the ladder
 			if t < 40:
-				Input.action_press("move_down")
+				Input.action_press(InputActions.MOVE_DOWN)
 				if t == 10:
 					_check("Down on the deck climbs down", player.climbing and player.global_position.y > 420.0,
 						"climbing=%s y=%s" % [player.climbing, player.global_position.y])
@@ -115,13 +115,13 @@ func _process(_d: float) -> bool:
 				mark_y = player.global_position.y
 			elif t == 44:
 				_check("holds still on the ladder when no key is pressed", player.climbing and is_equal_approx(player.global_position.y, mark_y))
-				Input.action_press("move_up")  # up on a ladder climbs; it must not launch the player
+				Input.action_press(InputActions.MOVE_UP)  # up on a ladder climbs; it must not launch the player
 			elif t == 52:
 				_check("Up while on a ladder climbs, doesn't jump",
 					player.climbing and absf(player.velocity.y) <= Player.CLIMB_SPEED + 1.0 and player.global_position.y < mark_y,
 					"vy=%s y=%s (was %s)" % [player.velocity.y, player.global_position.y, mark_y])
 				_release_all()
-				Input.action_press("move_down")
+				Input.action_press(InputActions.MOVE_DOWN)
 			if t > 52 and (not player.climbing or t > 600):
 				_check("reaches the bottom and steps off", not player.climbing and is_equal_approx(player.global_position.y, 840.0),
 					"y=%s" % player.global_position.y)
@@ -129,7 +129,7 @@ func _process(_d: float) -> bool:
 				_tp(LX, 600.0)  # in the air beside/in the ladder
 				_next(6)
 		6:  # Catch the ladder mid-air by holding Up
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			if t == 6:
 				_check("catching the ladder mid-air starts climbing", player.climbing and is_equal_approx(player.global_position.x, LX),
 					"climbing=%s x=%s" % [player.climbing, player.global_position.x])
@@ -140,10 +140,10 @@ func _process(_d: float) -> bool:
 		7:  # Jump button while climbing leaps off the ladder
 			if t == 3:
 				mark_y = player.global_position.y
-				Input.action_press("jump")
-				Input.action_press("move_right")
+				Input.action_press(InputActions.JUMP)
+				Input.action_press(InputActions.MOVE_RIGHT)
 			if t == 4:
-				Input.action_release("jump")
+				Input.action_release(InputActions.JUMP)
 			if t == 8:
 				_check("jump leaves the ladder", not player.climbing)
 				_check("and goes up", player.global_position.y < mark_y, "y=%s was %s" % [player.global_position.y, mark_y])
@@ -153,11 +153,11 @@ func _process(_d: float) -> bool:
 				_next(8)
 		8:  # On a phone the D-pad's up must not jump (keyboard up still does, tested above)
 			OS.set_environment("SABOTAGE_TOUCH", "1")
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			if t == 12:
 				_check("phone: D-pad up does not jump", player.global_position.y > 835.0, "y=%s" % player.global_position.y)
 				_release_all()
-				Input.action_press("jump")
+				Input.action_press(InputActions.JUMP)
 			if t == 16:
 				_check("phone: the JUMP button still jumps", player.global_position.y < 835.0, "y=%s" % player.global_position.y)
 				_release_all()

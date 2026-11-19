@@ -93,7 +93,7 @@ static func launch(parent: Node, name: String, from: Vector2, facing: int, throw
 
 func _ready() -> void:
 	z_index = 3
-	add_to_group("projectiles")
+	add_to_group(Groups.PROJECTILES)
 	_sprite = Sprite2D.new()
 	_sprite.texture = SpriteLibrary.projectile(object_name)
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -114,8 +114,8 @@ func _physics_process(delta: float) -> void:
 		_sink()
 		return
 	# 1. Did this step pass through an enemy? Every enemy's hit box is tested against the step's line.
-	for e in get_tree().get_nodes_in_group("enemies"):
-		if _segment_hits_rect(from, to, e.hurtbox().grow(HIT_RADIUS)):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if Geom.segment_hits_rect(from, to, e.hurtbox().grow(HIT_RADIUS)):
 			if e.has_method("burns_projectiles") and e.burns_projectiles():
 				_burn_up()
 				return
@@ -123,8 +123,8 @@ func _physics_process(delta: float) -> void:
 			_finish()
 			return
 	# 2. Did it run into a wall, a floor, a crate or a ledge? (A ray from here to there: it can't skip through.)
-	var query := PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD)
-	for p in get_tree().get_nodes_in_group("player"):
+	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
+	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
 		query.exclude.append((p as CollisionObject2D).get_rid())   # the thrower is on the world layer too
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
@@ -142,28 +142,6 @@ func _physics_process(delta: float) -> void:
 	_sprite.rotation += SPIN_SPEED * _spin_dir * delta
 
 
-## True if the straight line from a to b touches the rectangle (the line is clipped against each of the
-## rectangle's two pairs of sides in turn).
-static func _segment_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
-	var t0 := 0.0
-	var t1 := 1.0
-	var d := b - a
-	for axis in 2:
-		var lo: float = r.position[axis]
-		var hi: float = r.end[axis]
-		if absf(d[axis]) < 0.00001:
-			if a[axis] < lo or a[axis] > hi:
-				return false
-		else:
-			var ta: float = (lo - a[axis]) / d[axis]
-			var tb: float = (hi - a[axis]) / d[axis]
-			t0 = maxf(t0, minf(ta, tb))
-			t1 = minf(t1, maxf(ta, tb))
-			if t0 > t1:
-				return false
-	return true
-
-
 ## Come to rest on the surface point `at`, stay visible for REST_TIME, then blink for BLINK_TIME and disappear.
 func _land(at: Vector2) -> void:
 	_landed = true
@@ -172,8 +150,8 @@ func _land(at: Vector2) -> void:
 	global_position = at + Vector2(0.0, -half + REST_SINK)
 	reset_physics_interpolation()
 	_sprite.rotation = randf_range(-0.25, 0.25)   # settle, slightly askew
-	remove_from_group("projectiles")   # no longer in flight
-	add_to_group("landed_projectiles")
+	remove_from_group(Groups.PROJECTILES)   # no longer in flight
+	add_to_group(Groups.LANDED_PROJECTILES)
 	await get_tree().create_timer(REST_TIME).timeout
 	var cycles := maxi(1, roundi(BLINK_TIME / BLINK_PERIOD))
 	var tw := create_tween().set_loops(cycles)
@@ -185,7 +163,7 @@ func _land(at: Vector2) -> void:
 
 ## True if the point is inside the liquid of a deadly pit.
 func _in_a_pit(point: Vector2) -> bool:
-	for pit in get_tree().get_nodes_in_group("pits"):
+	for pit in get_tree().get_nodes_in_group(Groups.PITS):
 		if (pit as PitHazard).liquid_rect().has_point(point):
 			return true
 	return false
@@ -199,7 +177,7 @@ const SINK_TIME := 0.18
 func _sink() -> void:
 	_done = true
 	velocity = Vector2.ZERO
-	remove_from_group("projectiles")
+	remove_from_group(Groups.PROJECTILES)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(_sprite, "modulate:a", 0.0, SINK_TIME)
 	tw.tween_property(_sprite, "scale", Vector2(0.6, 0.6) * SPRITE_SCALE, SINK_TIME)
@@ -215,7 +193,7 @@ const BURN_TIME := 0.5
 func _burn_up() -> void:
 	_done = true
 	velocity = Vector2.ZERO
-	remove_from_group("projectiles")
+	remove_from_group(Groups.PROJECTILES)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(_sprite, "modulate", Color(0.25, 0.1, 0.05, 0.0), BURN_TIME).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(_sprite, "scale", Vector2(0.25, 0.25) * SPRITE_SCALE, BURN_TIME)

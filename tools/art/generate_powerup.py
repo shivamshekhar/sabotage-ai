@@ -5,12 +5,11 @@ that glow. The box adds a cross of cuts, four glowing corner brackets and a "?" 
 Usage (from the repo root; needs Pillow):
     python tools/art/generate_powerup.py      writes
         levels/common/tiles/data_center/powerups/powerup_box.png   70x70, the picture the level editor shows (amber "?")
-        assets/powerups/box.png                                    the box with its amber "?" (560x560; the game draws it at 0.25)
         assets/powerups/box_base.png                               the box without the "?"
         assets/powerups/box_question.png                           just the "?" and its halo, in white: the game tints it, so it can
                                                                    fade slowly through colours and blink (see PowerUpBox)
         assets/powerups/box_break_1.png .. box_break_6.png         the break-apart frames, same size as box.png
-        assets/powerups/box_sheet.png                              all of them in a row (for looking at)
+        tmp/art_previews/box.png, box_sheet.png                    the whole box and all the frames in a row (for looking at only)
 
 The box is cut along its cross into four pieces; the break frames move, turn and fade those pieces (1: a crack of light, 2: the
 cut opens in a flash, 3-4: the pieces fly apart, 5-6: they shrink and fade among small sparks).
@@ -20,6 +19,8 @@ import os
 import random
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+
+import art_lib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -295,7 +296,7 @@ def main():
     os.makedirs(OUT_ASSETS, exist_ok=True)
     os.makedirs(OUT_TILE, exist_ok=True)
     box_img = draw_box()
-    big = finish(box_img, os.path.join(OUT_ASSETS, "box.png"))
+    big = finish(box_img, art_lib.preview_path("box.png"))          # (the whole box with its amber "?": the editor tile is cut from it; the game uses box_base + box_question)
     finish(draw_box(with_question=False), os.path.join(OUT_ASSETS, "box_base.png"))
     finish(draw_question_layer(), os.path.join(OUT_ASSETS, "box_question.png"))
     px = BOX * K
@@ -312,7 +313,7 @@ def main():
     sheet = Image.new("RGBA", (half * len(frames), half), (24, 28, 42, 255))
     for i, f in enumerate(frames):
         sheet.alpha_composite(f.resize((half, half), Image.LANCZOS), (i * half, 0))
-    sheet.save(os.path.join(OUT_ASSETS, "box_sheet.png"))
+    sheet.save(art_lib.preview_path("box_sheet.png"))
     print("frames:", len(frames))
 
 

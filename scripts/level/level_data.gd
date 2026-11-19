@@ -43,7 +43,7 @@ extends RefCounted
 ## The `_s_*` pieces and seq_build_plan() further down are the level builder behind `tools/level_cli.sh from-plan`.
 
 # LEVELS_DIR / LEVEL_FILE_NAME: where the levels are (one folder each) and what the file in each folder is called.
-const LEVELS_DIR := "res://levels/"
+const LEVELS_DIR := AssetPaths.LEVELS
 const LEVEL_FILE_NAME := "level.sablevel.json"
 
 # COMMON_FOLDER: the folder inside LEVELS_DIR that holds the art shared by all levels; it is not a level.
@@ -144,13 +144,13 @@ static func title(id: String) -> String:
 	return str(LevelFile.value(data_for(id), "meta", "title", id.to_upper()))
 
 
-# STAGES_PER_WORLD: how many levels make a world in the numbering shown on the HUD, as in Super Mario Bros: levels 1 to 4 are
-# 1-1 to 1-4, level 5 is 2-1, and so on. Higher: more levels per world.
-const STAGES_PER_WORLD := 4
+# STAGES_PER_WORLD: how many levels make a world in the numbering shown on the HUD, as in Super Mario Bros: the six levels of the first world
+# (the five data centers and the boss) are 1-1 to 1-6, and the next level would be 2-1. Higher: more levels per world.
+const STAGES_PER_WORLD := 6
 
 
 ## The level's number as the HUD shows it, "world-stage" like Super Mario Bros ("1-1", "1-2", ...): the position of the level in the
-## game (see STAGES_PER_WORLD), unless the level file names its own in meta "stage" (the boss stage uses "BOSS"). The test level
+## game (see STAGES_PER_WORLD), unless the level file names its own in meta "stage" (for a level that is not part of the count). The test level
 ## is "TEST".
 static func stage_label(id: String) -> String:
 	if id == TEST_ID:
@@ -247,12 +247,13 @@ static func _s_pit(grid: LevelGrid, c: int, g: int, w: int, liquid: String) -> i
 	return c + w
 
 
-## A low-ceilinged tunnel with a strip of spikes, then a lock terminal and its laser gate.
+## A low-ceilinged tunnel with a strip of spikes, then a lock terminal and its laser gate (sealed up to the ceiling).
 static func _s_tunnel(grid: LevelGrid, c: int, g: int, laser_id: String) -> int:
 	grid.fill(c, g - 5, c + 11, g - 5, "#")
 	grid.spikes(c + 3, c + 4, g - 1)
 	grid.put(c + 7, g - 1, "L")
 	grid.laser(c + 10, g - 4, g - 1, laser_id)
+	grid.fill(c + 10, 2, c + 10, g - 6, "#")     # a pillar from the slab up to the ceiling: nothing can fly over the gate
 	return c + 12
 
 

@@ -29,7 +29,7 @@ func _wait(frames: int) -> void:
 
 func _box(x0: float, x1: float, top: float) -> void:
 	var body := StaticBody2D.new()
-	body.collision_layer = Player.LAYER_WORLD
+	body.collision_layer = PhysicsLayers.WORLD
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = Vector2(x1 - x0, 600)
@@ -41,7 +41,7 @@ func _box(x0: float, x1: float, top: float) -> void:
 
 func _fish() -> Array[Piranha]:
 	var out: Array[Piranha] = []
-	for n in get_nodes_in_group("enemies"):
+	for n in get_nodes_in_group(Groups.ENEMIES):
 		if n is Piranha:
 			out.append(n)
 	return out
@@ -111,7 +111,7 @@ func _main() -> void:
 	target._t = 0.5
 	target.position = Vector2(target.home_x, target.surface_y - 10.0)
 	_check("a piranha above the surface can be hit", target.hurtbox().size != Vector2.ZERO)
-	var path_hits := Projectile._segment_hits_rect(Vector2(target.home_x - 200.0, target.position.y), Vector2(target.home_x + 200.0, target.position.y), target.hurtbox().grow(Projectile.HIT_RADIUS))
+	var path_hits := Geom.segment_hits_rect(Vector2(target.home_x - 200.0, target.position.y), Vector2(target.home_x + 200.0, target.position.y), target.hurtbox().grow(Projectile.HIT_RADIUS))
 	_check("a thrown object's path through it counts as a hit", path_hits)
 	var destroyed := [false]
 	target.defeated.connect(func() -> void: destroyed[0] = true)

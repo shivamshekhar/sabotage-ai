@@ -70,7 +70,7 @@ func _main() -> void:
 
 	# ---- playing it: the game reads the tuned values
 	OS.set_environment("SABOTAGE_LEVEL_FILE", path)
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(8)
 	var level: Level

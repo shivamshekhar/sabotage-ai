@@ -1,6 +1,6 @@
 extends SceneTree
 ## The power-up box and the first vehicle, the four-legged mech: the box tile and its art, jumping on it, the mech's size, five-hit
-## durability and the damage it shows, steps, hovering, the fuel and the booster, missiles, laser and legs, and getting out again. Played in level_01 (it has a box near the start).
+## durability and the damage it shows, steps, hovering, the fuel and the booster, missiles, laser and legs, and getting out again. Played in the test arena (tools/tests/lib/test_arena.gd), not in a real level.
 ## Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd
 
@@ -47,14 +47,18 @@ func _main() -> void:
 	_check("the registry has the power-up box tile", not kind.is_empty() and str(kind["behavior"]) == "powerup", str(kind.get("id")))
 	_check("it is not solid (nothing in the physics map)", TileRegistry.physics_char(str(kind["char"])) == ".")
 	_check("the editor has a picture for it", SpriteLibrary.tile("powerup_box") != null and SpriteLibrary.tile("powerup_box").get_width() == 70)
-	var files := ["box", "box_base", "box_question"]
+	var files := ["box_base", "box_question"]
 	for i in 6:
 		files.append("box_break_%d" % (i + 1))
 	_check("the box and its six break-apart frames exist", files.all(func(f: String) -> bool: return ResourceLoader.exists("res://assets/powerups/%s.png" % f)))
 	var mech_parts := ["body", "canopy", "missile_turret", "laser_turret", "link", "joint", "claw", "hip", "flame_1", "flame_2", "flame_3", "missile",
-			"body_cracks", "canopy_cracks", "link_broken", "spark", "smoke_1", "smoke_2", "smoke_3", "fire_1", "fire_2", "fire_3", "fire_4", "body_burn",
-			"missile_flame_1", "missile_flame_2", "missile_flame_3", "missile_glow", "laser_halo", "laser_burst"]
-	_check("every mech part has its picture", mech_parts.all(func(f: String) -> bool: return ResourceLoader.exists("res://assets/powerups/mech/%s.png" % f)))
+			"body_cracks", "canopy_cracks", "link_broken", "body_burn", "missile_flame_1", "missile_flame_2", "missile_flame_3"]
+	_check("every mech part has its picture", mech_parts.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.MECH + f + ".png")))
+	var effects := ["spark", "spark_blue", "smoke_1", "smoke_2", "smoke_3", "fire_1", "fire_2", "fire_3", "fire_4", "missile_glow", "laser_orb"]
+	for i in Explosion.FRAMES:
+		effects.append("explosion_%d" % (i + 1))
+	_check("every generic effect (explosion, smoke, fire, sparks, glows) has its picture in assets/effects", effects.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.EFFECTS + f + ".png")))
+
 	var q0 := PowerUpBox.question_color(0.0)
 	var colors := {}
 	var blinked := false
@@ -67,16 +71,21 @@ func _main() -> void:
 	_check("the question mark's colour slowly changes through many hues, breathes and blinks", colors.size() >= 6 and blinked and dim, "%d hues" % colors.size())
 
 	# ---- the box in the game
-	LevelData.selected_id = "level_01"
-	var main = load("res://scenes/main.tscn").instantiate()
+	TestArena.use()
+	var main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(5)
 	LevelData.selected_id = ""
 	var player: Player = null
-	for p in get_nodes_in_group("player"):
+	for p in get_nodes_in_group(Groups.PLAYER):
 		player = p
-	var boxes := get_nodes_in_group("powerup_boxes")
-	_check("level 1 has a power-up box", boxes.size() == 1)
+	# a box of the test's own, a tile and a half above the floor near the spawn
+	var own_box := PowerUpBox.new()
+	own_box.position = Vector2(8.5 * Level.T, (TestArena.FLOOR_ROW - 0.5) * Level.T)
+	main.add_child(own_box)
+	await _wait(2)
+	var boxes := get_nodes_in_group(Groups.POWERUP_BOXES)
+	_check("the box is in the level", boxes.size() == 1)
 	var box: PowerUpBox = boxes[0]
 	_check("the player starts on foot", player != null and player.mech == null)
 	var ground_y := player.spawn.y
@@ -85,9 +94,9 @@ func _main() -> void:
 	# walking under or beside it does nothing
 	player.global_position = Vector2(box.position.x - 200.0, ground_y)
 	player.velocity = Vector2.ZERO
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(60)
-	Input.action_release("move_right")
+	Input.action_release(InputActions.MOVE_RIGHT)
 	_check("walking into it from the side does nothing", player.mech == null and is_instance_valid(box) and not box._breaking)
 
 	# jumping on it
@@ -133,7 +142,7 @@ func _main() -> void:
 	# walking: the feet step (they do not just slide along)
 	var start_x := player.global_position.x
 	var feet_before := vis.feet.duplicate()
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(25)
 	var stepping := 0
 	var max_lift := 0.0
@@ -144,7 +153,7 @@ func _main() -> void:
 		for t in vis._step_t:
 			if float(t) >= 0.0:
 				stepping += 1
-	Input.action_release("move_right")
+	Input.action_release(InputActions.MOVE_RIGHT)
 	_check("walking: the feet take steps, lifting off the ground", stepping > 5 and max_lift > 14.0, "%d step frames, lift %.0f" % [stepping, max_lift])
 	_check("and the mech moved on", player.global_position.x > start_x + 150.0)
 	var moved := 0
@@ -162,9 +171,9 @@ func _main() -> void:
 	await _wait(20)
 	_check("the tank starts full", is_equal_approx(mech.fuel, 1.0))
 	var peak_tap := ground_y
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	await _wait(2)
-	Input.action_release("jump")
+	Input.action_release(InputActions.JUMP)
 	var flame_seen := false
 	for k in 90:
 		await process_frame
@@ -175,7 +184,7 @@ func _main() -> void:
 	var peak_hold := ground_y
 	var feet_tucked := true
 	var fuel_at_half := 1.0
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	for k in 60:
 		await process_frame
 		peak_hold = minf(peak_hold, player.global_position.y)
@@ -194,12 +203,17 @@ func _main() -> void:
 		if player.velocity.y > 100.0:
 			fell = true
 	_check("out of fuel the mech drops, even with the button held", mech.fuel < 0.25 and fell, "fuel %.2f" % mech.fuel)
-	Input.action_release("jump")
+	Input.action_release(InputActions.JUMP)
 	_check("the flame shows on a jump", flame_seen)
 	_check("in the air the legs curl up under the belly", feet_tucked)
 	_check("it flew a long way up on one tank (%.0f px)" % (ground_y - apex_y), ground_y - apex_y > 220.0)
 	await _wait(150)
 	_check("it lands", player.is_on_floor())
+	await _wait(30)
+	var planted := true
+	for f in vis.feet:
+		planted = planted and absf(f.y - ground_y) < 8.0
+	_check("after landing all four feet come down onto the floor (the legs do not stay curled)", planted, str(vis.feet))
 	mech.fuel = 0.0
 	await _wait(90)
 	_check("the fuel fills back up progressively (about half after 1.5 s)", mech.fuel > 0.35 and mech.fuel < 0.65, "%.2f" % mech.fuel)
@@ -208,7 +222,7 @@ func _main() -> void:
 
 	# hovering: on a narrow platform not all the legs have a floor, so the booster burns low (just for show) and those legs curl up
 	var plat := StaticBody2D.new()
-	plat.collision_layer = Player.LAYER_WORLD
+	plat.collision_layer = PhysicsLayers.WORLD
 	plat.collision_mask = 0
 	var ps := CollisionShape2D.new()
 	var pr := RectangleShape2D.new()
@@ -235,7 +249,7 @@ func _main() -> void:
 
 	# steps: two steps of one tile each, climbed by walking
 	var steps := StaticBody2D.new()
-	steps.collision_layer = Player.LAYER_WORLD
+	steps.collision_layer = PhysicsLayers.WORLD
 	steps.collision_mask = 0
 	player.global_position = Vector2(150.0, ground_y)
 	player.velocity = Vector2.ZERO
@@ -250,14 +264,18 @@ func _main() -> void:
 		steps.add_child(shape)
 	root.add_child(steps)
 	var before_x := player.global_position.x
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	var best_y := ground_y
 	var jumped := false
+	var longest_leg := 0.0
 	for k in 130:
 		await process_frame
 		best_y = minf(best_y, player.global_position.y)
-	Input.action_release("move_right")
+		for i in 4:
+			longest_leg = maxf(longest_leg, vis.feet[i].distance_to(vis.hip_world(i)))
+	Input.action_release(InputActions.MOVE_RIGHT)
 	_check("the legs climb a one-tile step and then a two-tile step without a jump", ground_y - best_y > 120.0 and player.global_position.x > x0 + 60.0, "x %.0f -> %.0f, highest %.0f px" % [before_x, player.global_position.x, ground_y - best_y])
+	_check("climbing, no leg stretches beyond its limit (%.0f px)" % longest_leg, longest_leg <= MechVisual.MAX_REACH + 0.5)
 	steps.queue_free()
 	player.global_position = Vector2(150.0, ground_y)
 	player.velocity = Vector2.ZERO
@@ -275,15 +293,18 @@ func _main() -> void:
 	_check("the laser's reach is limited", mech.LASER_RANGE < 900.0)
 	var beam_seen := false
 	for n in main.get_children():
-		beam_seen = beam_seen or n is MechBeam
+		beam_seen = beam_seen or n is LaserBeam
 	_check("a beam is drawn", beam_seen)
-	var halos := 0
+	var flares := 0
+	var ember_nodes := 0
 	for n in main.get_children():
-		if n is MechBeam:
+		if n is LaserBeam:
 			for c in n.get_children():
-				if c is Sprite2D and (c as Sprite2D).texture.resource_path.ends_with("laser_halo.png"):
-					halos += 1
-	_check("the laser is blue and glows, with rings at the muzzle", MechBeam.BLUE.b > 0.9 and MechBeam.BLUE.r < 0.4 and halos >= 2, "%d rings" % halos)
+				if c is Sprite2D and (c as Sprite2D).texture.resource_path.ends_with("laser_orb.png"):
+					flares += 1
+				if c is CPUParticles2D:
+					ember_nodes += 1
+	_check("the laser is blue and glows: a flare at both ends, blue embers and sparks along it", LaserBeam.BLUE.b > 0.9 and LaserBeam.BLUE.r < 0.4 and flares >= 2 and ember_nodes >= 1, "%d flares, %d particle emitters" % [flares, ember_nodes])
 	await _wait(40)
 	player.attack_light()
 	await _wait(3)
@@ -295,7 +316,12 @@ func _main() -> void:
 	var detailed := false
 	for n in main.get_children():
 		if n is MechMissile:
-			detailed = n._flame != null and n._trail != null and n._sparks != null and n._glow != null and n._sprite.texture.get_width() >= 128
+			var sprites := 0
+			var emitters := 0
+			for c in n.get_children():
+				sprites += 1 if c is Sprite2D else 0
+				emitters += 1 if c is CPUParticles2D else 0
+			detailed = sprites >= 3 and emitters >= 2 and n._flame != null and n._glow != null
 	_check("the missile has an exhaust flame, a glow, sparks and a smoke trail", detailed)
 	await _wait(150)
 	_check("the missile blows up the Bro", not is_instance_valid(bro) or bro.health == 0 or bro._dead)
@@ -316,7 +342,7 @@ func _main() -> void:
 	await _wait(5)
 	var pieces := 0
 	for n in main.get_children():
-		if n is MechDebris:
+		if n is Debris:
 			pieces += 1
 	_check("hit 2: a leg breaks (a big hit counts the same as a small one)", mech.hits == 2 and vis2._broken == MechVisual.BROKEN_LEG and pieces >= 3, "hits %d, %d pieces fell" % [mech.hits, pieces])
 	var tip_gap := vis2.break_tip.distance_to(vis2.hip_world(MechVisual.BROKEN_LEG))
@@ -342,8 +368,8 @@ func _main() -> void:
 	var wreck_seen := false
 	var parts := 0
 	for n in main.get_children():
-		wreck_seen = wreck_seen or n is MechBeam
-		if n is MechDebris:
+		wreck_seen = wreck_seen or n is Explosion
+		if n is Debris:
 			parts += 1
 	_check("there was an explosion and the parts flew", wreck_seen and parts >= 8, "%d parts" % parts)
 

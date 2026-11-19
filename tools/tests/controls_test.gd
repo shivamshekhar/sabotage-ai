@@ -13,7 +13,7 @@ var ok := true
 
 func _initialize() -> void:
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 
 
@@ -41,7 +41,7 @@ func _has_key(action: String, keycode: Key) -> bool:
 
 
 func _release_all() -> void:
-	for a in ["move_left", "move_right", "move_up", "move_down", "jump", "interact", "attack_light", "attack_heavy"]:
+	for a in InputActions.ALL:
 		Input.action_release(a)
 
 
@@ -62,19 +62,19 @@ func _main() -> void:
 			player = n
 
 	# ---- key bindings
-	_check("Space and W are bound to jump", _has_key("jump", KEY_SPACE) and _has_key("jump", KEY_W))
-	_check("Up is bound to move_up", _has_key("move_up", KEY_UP))
-	_check("E is bound to interact", _has_key("interact", KEY_E))
-	_check("Q is bound to light attack", _has_key("attack_light", KEY_Q))
-	_check("S is bound to heavy attack", _has_key("attack_heavy", KEY_S))
-	_check("the arrow keys move", _has_key("move_left", KEY_LEFT) and _has_key("move_right", KEY_RIGHT) and _has_key("move_down", KEY_DOWN))
-	_check("A and D no longer move the player (they are free)", not _has_key("move_left", KEY_A) and not _has_key("move_right", KEY_D))
+	_check("Space and W are bound to jump", _has_key(InputActions.JUMP, KEY_SPACE) and _has_key(InputActions.JUMP, KEY_W))
+	_check("Up is bound to move_up", _has_key(InputActions.MOVE_UP, KEY_UP))
+	_check("E is bound to interact", _has_key(InputActions.INTERACT, KEY_E))
+	_check("Q is bound to light attack", _has_key(InputActions.ATTACK_LIGHT, KEY_Q))
+	_check("S is bound to heavy attack", _has_key(InputActions.ATTACK_HEAVY, KEY_S))
+	_check("the arrow keys move", _has_key(InputActions.MOVE_LEFT, KEY_LEFT) and _has_key(InputActions.MOVE_RIGHT, KEY_RIGHT) and _has_key(InputActions.MOVE_DOWN, KEY_DOWN))
+	_check("A and D no longer move the player (they are free)", not _has_key(InputActions.MOVE_LEFT, KEY_A) and not _has_key(InputActions.MOVE_RIGHT, KEY_D))
 
 	# ---- Space jumps
 	_tp(300.0, 840.0)
 	await _wait(8)
 	var floor_y := player.global_position.y
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	await _wait(8)
 	_check("Space (jump) lifts the player off the floor", player.global_position.y < floor_y - 20.0,
 		"y=%d from %d" % [int(player.global_position.y), int(floor_y)])
@@ -84,7 +84,7 @@ func _main() -> void:
 	# ---- Up still jumps too
 	_tp(300.0, 840.0)
 	await _wait(8)
-	Input.action_press("move_up")
+	Input.action_press(InputActions.MOVE_UP)
 	await _wait(8)
 	_check("Up still jumps (when no ladder is in reach)", player.global_position.y < floor_y - 20.0)
 	_release_all()
@@ -93,7 +93,7 @@ func _main() -> void:
 	# ---- jump never grabs a ladder, Up does
 	_tp(LX + 15.0, 840.0)
 	await _wait(8)
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	await _wait(8)
 	_check("Space at a ladder's bottom jumps (does not climb)", not player.climbing and player.global_position.y < 835.0,
 		"climbing=%s y=%d" % [player.climbing, int(player.global_position.y)])
@@ -101,7 +101,7 @@ func _main() -> void:
 	await _wait(80)
 	_tp(LX + 15.0, 840.0)
 	await _wait(8)
-	Input.action_press("move_up")
+	Input.action_press(InputActions.MOVE_UP)
 	await _wait(8)
 	_check("Up at a ladder's bottom climbs", player.climbing)
 	_release_all()
@@ -109,7 +109,7 @@ func _main() -> void:
 	# ---- jump while on a ladder leaps off it
 	await _wait(5)
 	var y_on_ladder := player.global_position.y
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	await _wait(10)
 	_check("jump leaves the ladder", not player.climbing and player.global_position.y < y_on_ladder - 2.0,
 		"climbing=%s y=%d (was %d)" % [player.climbing, int(player.global_position.y), int(y_on_ladder)])

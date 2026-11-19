@@ -5,13 +5,13 @@ extends AudioStreamPlayer
 ## SABOTAGE_NO_MUSIC=1 to play without it. There is no music in a headless run (the automated tests).
 
 # TRACK: the music file. It is copyright-free music ("The Mountain" by the_mountain on Pixabay, retro game style; see assets/audio/CREDITS.md).
-const TRACK := "res://assets/audio/music/the_mountain_retro_game.mp3"
+const TRACK := AssetPaths.MUSIC_LEVEL
 
 # VOLUME_DB: how loud the music is (0 = the file as it is, lower = quieter). Keep it under the sound effects, if the game gets any.
 const VOLUME_DB := -12.0
 
 # BOSS_TRACK: the music of the boss stage ("Video Game Boss Fight" by ihatetuesdays on Pixabay; see assets/audio/CREDITS.md).
-const BOSS_TRACK := "res://assets/audio/music/ihatetuesdays_boss_fight.mp3"
+const BOSS_TRACK := AssetPaths.MUSIC_BOSS
 
 var track := TRACK
 

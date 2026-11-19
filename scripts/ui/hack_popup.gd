@@ -125,7 +125,7 @@ func _build(chosen_name: String) -> void:
 	get_tree().paused = true
 	# Anything the player was holding must not carry on through the pause.
 	Input.flush_buffered_events()
-	for a in ["move_left", "move_right", "move_up", "move_down", "jump", "interact", "attack_light", "attack_heavy"]:
+	for a in InputActions.ALL:
 		Input.action_release(a)
 
 	var dim := ColorRect.new()

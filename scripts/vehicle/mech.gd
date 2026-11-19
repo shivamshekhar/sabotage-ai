@@ -26,12 +26,13 @@ const SPEED := 340.0
 const ACCEL := 1500.0
 
 # KICK_SPEED: the upward speed the booster gives at the moment of a jump from the ground (a tap on the button is a hop of about this).
-const KICK_SPEED := -700.0
+const KICK_SPEED := -520.0
 
 # THRUST: how hard the booster pushes while the jump button is held and there is fuel (pixels per second squared, against gravity's 2000).
-# RISE_SPEED: the upward speed the mech settles at while the booster burns, in pixels per second.
-const THRUST := 3200.0
-const RISE_SPEED := 340.0
+# RISE_SPEED: the upward speed the mech settles at while the booster burns, in pixels per second. (Close to KICK_SPEED, so a held jump
+# lifts off smoothly instead of kicking and then slowing.)
+const THRUST := 2400.0
+const RISE_SPEED := 400.0
 
 # BURN_TIME: seconds of fuel in a full tank (the booster burns it while the button is held). REFILL_TIME: seconds the tank takes to fill
 # up again from empty, progressively, whenever the booster is off. RESTART_FUEL: after the tank has run dry the booster only lights again
@@ -40,8 +41,9 @@ const BURN_TIME := 1.2
 const REFILL_TIME := 3.0
 const RESTART_FUEL := 0.2
 
-# STEP_HEIGHT: the tallest step the legs climb without a jump, in pixels (one tile is 70). STEP_LIFT_SPEED: how fast the body rises over it.
-const STEP_HEIGHT := 84.0
+# STEP_HEIGHT: the tallest step the legs climb without a jump, in pixels (one tile is 70; the body's underside is about 80 above the floor, so
+# a step has to be lower than that). STEP_LIFT_SPEED: how fast the body rises over it.
+const STEP_HEIGHT := 76.0
 const STEP_LIFT_SPEED := 560.0
 
 # MISSILE_COOLDOWN / LASER_COOLDOWN: seconds between shots.
@@ -51,6 +53,7 @@ const LASER_COOLDOWN := 0.5
 # LASER_RANGE: how far the laser reaches (pixels). LASER_FRACTION / MISSILE_FRACTION: the share of an enemy's health a laser hit /
 # a missile blast takes (see take_hit() of the enemies; a thrown object takes 0.5). The blast reaches BLAST_RADIUS pixels.
 const LASER_RANGE := 760.0
+const BEAM_MARGIN := 6.0          # how far round an enemy's hit box the laser still hits, in pixels
 const LASER_FRACTION := 0.34
 const MISSILE_FRACTION := 1.0
 const BLAST_RADIUS := 110.0
@@ -59,6 +62,20 @@ const BLAST_RADIUS := 110.0
 const AIM_RANGE := 950.0
 const AIM_UP := -0.85
 const AIM_DOWN := 0.6
+
+# CHASSIS_SIZE: the solid body of the mech (the cab, the engine block and the hull, as drawn) as a second collision box, so it is stopped by walls and
+# gates where it is drawn instead of sinking into them; the legs are not solid. BARREL_SIZE: the laser's barrel, which sticks out in front of the
+# chassis (it follows the way the mech faces). Both are in pixels.
+const CHASSIS_SIZE := Vector2(150.0, 104.0)
+const BARREL_SIZE := Vector2(46.0, 14.0)
+
+# FUEL_BAR_CEILING_GAP: when a ceiling is closer than this above the mech's top, the fuel bar moves down under the hull so it is not drawn inside the ceiling.
+const FUEL_BAR_CEILING_GAP := 50.0
+
+# MUZZLE_PUFF: the size of the puff of fire at the missile turret's muzzle when it fires (see Explosion). EXPLOSION_OFFSET: where the mech's own
+# explosion is, from its feet (the middle of its body).
+const MUZZLE_PUFF := 0.2
+const EXPLOSION_OFFSET := Vector2(0.0, -90.0)
 
 # FUEL_COLOR / FUEL_BACK: the colours of the fuel bar (blue on dark blue).
 const FUEL_COLOR := Color("#3aa0ff")
@@ -71,6 +88,9 @@ var fuel := 1.0                 # 0 = empty, 1 = full
 var thrusting := false          # the booster is burning this step
 
 var _fuel_bar: HealthBar
+var _chassis: CollisionShape2D
+var _barrel: CollisionShape2D
+var _bar_timer := 0
 var _step_lift := 0.0
 var _missile_timer := 0.0
 var _laser_timer := 0.0
@@ -83,6 +103,7 @@ func setup(the_player: Player) -> void:
 	name = "Mech"
 	player = the_player
 	player.set_body_scale(SIZE_IN_PLAYERS)
+	_make_shapes()
 	visual = MechVisual.new()
 	visual.mech = self
 	add_child(visual)
@@ -94,12 +115,42 @@ func setup(the_player: Player) -> void:
 	add_child(_fuel_bar)
 
 
+## The body's solid parts, added to the player (a collision shape must be a child of the body it belongs to).
+func _make_shapes() -> void:
+	_chassis = CollisionShape2D.new()
+	var box := RectangleShape2D.new()
+	box.size = CHASSIS_SIZE
+	_chassis.shape = box
+	_chassis.position = MechVisual.BODY_MIDDLE
+	player.add_child(_chassis)
+	_barrel = CollisionShape2D.new()
+	var bar := RectangleShape2D.new()
+	bar.size = BARREL_SIZE
+	_barrel.shape = bar
+	_barrel.position = _barrel_position()
+	player.add_child(_barrel)
+	# the bigger body must not start inside a wall: slide out of it if it does
+	for i in 12:
+		if not player.test_move(player.global_transform, Vector2.ZERO):
+			break
+		var side := 1.0 if i % 2 == 0 else -1.0
+		player.global_position.x += side * 6.0 * float(i / 2 + 1)
+
+
+func _barrel_position() -> Vector2:
+	var reach := CHASSIS_SIZE.x / 2.0 + BARREL_SIZE.x / 2.0
+	return Vector2(float(facing()) * reach, MechVisual.BODY_MIDDLE.y + MechVisual.LASER_MOUNT.y)
+
+
 func facing() -> int:
 	return player.facing()
 
 
 func _jump_held() -> bool:
-	return Input.is_action_pressed("jump") or (Input.is_action_pressed("move_up") and not TouchControls.should_show())
+	if Input.is_action_pressed(InputActions.JUMP):
+		return true
+	# (on a keyboard Up also jumps, but not at a ladder: the mech cannot climb, so Up there must not light the booster)
+	return Input.is_action_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not player.ladder_in_reach()
 
 
 ## Called by the player every physics step just before it moves: the legs climb steps and the booster burns fuel while the button is held.
@@ -107,6 +158,10 @@ func before_move(dir: float, delta: float) -> void:
 	_missile_timer = maxf(0.0, _missile_timer - delta)
 	_laser_timer = maxf(0.0, _laser_timer - delta)
 	_work_booster(delta)
+	_barrel.position = _barrel_position()
+	_bar_timer += 1
+	if _bar_timer % 6 == 0:
+		_place_fuel_bar()
 	if _step_lift > 0.0:
 		var lift := minf(_step_lift, STEP_LIFT_SPEED * delta)
 		if not player.test_move(player.global_transform, Vector2(0.0, -lift)):
@@ -132,6 +187,15 @@ func _work_booster(delta: float) -> void:
 	_fuel_bar.set_ratio(fuel)
 
 
+## The fuel bar floats above the mech; under a low ceiling it moves down beneath the hull instead of being drawn inside the ceiling.
+func _place_fuel_bar() -> void:
+	var top := player.global_position + Vector2(0.0, -SIZE_IN_PLAYERS * Player.BODY_SIZE.y)
+	var query := PhysicsRayQueryParameters2D.create(top, top + Vector2(0.0, -(FUEL_BAR_CEILING_GAP + 24.0)), PhysicsLayers.WORLD)
+	query.exclude.append(player.get_rid())
+	var low_ceiling := not player.get_world_2d().direct_space_state.intersect_ray(query).is_empty()
+	_fuel_bar.position = Vector2(0.0, -64.0) if low_ceiling else Vector2(0.0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
+
+
 ## A wall ahead that is low enough to step over: find how high it is and start rising over it.
 func _try_step(dir: float) -> void:
 	var ahead := Vector2(signf(dir) * 6.0, 0.0)
@@ -152,6 +216,25 @@ func _try_step(dir: float) -> void:
 func start_jump() -> float:
 	visual.burst()
 	return KICK_SPEED
+
+
+## Back to full: no damage on the body, a full tank (a power-up box opened while already in the mech).
+func repair() -> void:
+	hits = 0
+	_dead = false
+	fuel = 1.0
+	_dry = false
+	visual.clear_damage()
+	_fuel_bar.set_ratio(1.0)
+
+
+## Take over a state carried from the previous level: `hit_count` hits already taken (their damage showing at once) and `fuel_level` in the tank.
+func set_state(hit_count: int, fuel_level: float) -> void:
+	hits = clampi(hit_count, 0, HITS_TO_DESTROY - 1)
+	fuel = clampf(fuel_level, 0.0, 1.0)
+	_dry = fuel <= 0.0
+	visual.set_damage(hits, true)
+	_fuel_bar.set_ratio(fuel)
 
 
 ## A hit (any kind: the amount does not matter): the mech shows the damage, and on the last hit it is destroyed. Returns true if it was.
@@ -179,7 +262,7 @@ func fire_missile() -> void:
 	var from := visual.missile_muzzle()
 	var dir := visual.missile_direction()
 	MechMissile.launch(player.get_parent(), from, dir, self)
-	MechBeam.explosion(player.get_parent(), from, 0.2)    # a puff of fire and smoke at the muzzle
+	Explosion.spawn(player.get_parent(), from, MUZZLE_PUFF)    # a puff of fire and smoke at the muzzle
 	visual.recoil(&"missile")
 
 
@@ -192,7 +275,7 @@ func fire_laser() -> void:
 	var dir := visual.laser_direction()
 	var to := from + dir * LASER_RANGE
 	var space := player.get_world_2d().direct_space_state
-	var query := PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD)
+	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
 	query.exclude.append(player.get_rid())
 	var wall := space.intersect_ray(query)
 	if not wall.is_empty():
@@ -200,42 +283,23 @@ func fire_laser() -> void:
 	# the first enemy along the beam
 	var best: Node = null
 	var best_t := INF
-	for e in get_tree().get_nodes_in_group("enemies"):
-		var t := _beam_hits(from, to, (e.hurtbox() as Rect2).grow(6.0))
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		var t := Geom.segment_entry(from, to, (e.hurtbox() as Rect2).grow(BEAM_MARGIN))
 		if t >= 0.0 and t < best_t:
 			best_t = t
 			best = e
 	if best != null:
 		to = from + (to - from) * best_t
 		best.take_hit(LASER_FRACTION, from.x)
-	MechBeam.show_beam(player.get_parent(), from, to, best != null)
+	LaserBeam.show_beam(player.get_parent(), from, to, best != null)
 	visual.recoil(&"laser")
-
-
-## Where along the segment a-b (0 to 1) it first enters the rectangle, or -1.
-func _beam_hits(a: Vector2, b: Vector2, r: Rect2) -> float:
-	var t0 := 0.0
-	var t1 := 1.0
-	var d := b - a
-	for axis in 2:
-		if absf(d[axis]) < 0.00001:
-			if a[axis] < r.position[axis] or a[axis] > r.end[axis]:
-				return -1.0
-		else:
-			var ta: float = (r.position[axis] - a[axis]) / d[axis]
-			var tb: float = (r.end[axis] - a[axis]) / d[axis]
-			t0 = maxf(t0, minf(ta, tb))
-			t1 = minf(t1, maxf(ta, tb))
-			if t0 > t1:
-				return -1.0
-	return t0
 
 
 ## The nearest living enemy in front of `from` within AIM_RANGE (its middle), or null.
 func nearest_target(from: Vector2) -> Node:
 	var best: Node = null
 	var best_d := AIM_RANGE
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		var c := (e.hurtbox() as Rect2).get_center()
 		var dx := (c.x - from.x) * facing()
 		var d := from.distance_to(c)
@@ -247,7 +311,7 @@ func nearest_target(from: Vector2) -> Node:
 
 ## Blast every enemy near `at` (a missile exploding).
 func blast(at: Vector2) -> void:
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		var r: Rect2 = e.hurtbox()
 		var nearest := Vector2(clampf(at.x, r.position.x, r.end.x), clampf(at.y, r.position.y, r.end.y))
 		if nearest.distance_to(at) <= BLAST_RADIUS:
@@ -258,6 +322,8 @@ func blast(at: Vector2) -> void:
 func release(explode: bool) -> void:
 	if explode:
 		visual.shatter()
-		MechBeam.explosion(player.get_parent(), player.global_position + Vector2(0.0, -90.0))
+		Explosion.spawn(player.get_parent(), player.global_position + EXPLOSION_OFFSET)
 	player.set_body_scale(1.0)
+	_chassis.queue_free()
+	_barrel.queue_free()
 	queue_free()

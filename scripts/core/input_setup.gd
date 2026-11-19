@@ -15,14 +15,14 @@ extends RefCounted
 
 
 static func register() -> void:
-	_add_action("move_left", [KEY_LEFT])
-	_add_action("move_right", [KEY_RIGHT])
-	_add_action("move_up", [KEY_UP])
-	_add_action("move_down", [KEY_DOWN])
-	_add_action("jump", [KEY_SPACE, KEY_W])
-	_add_action("interact", [KEY_E])
-	_add_action("attack_light", [KEY_Q])
-	_add_action("attack_heavy", [KEY_S])
+	_add_action(InputActions.MOVE_LEFT, [KEY_LEFT])
+	_add_action(InputActions.MOVE_RIGHT, [KEY_RIGHT])
+	_add_action(InputActions.MOVE_UP, [KEY_UP])
+	_add_action(InputActions.MOVE_DOWN, [KEY_DOWN])
+	_add_action(InputActions.JUMP, [KEY_SPACE, KEY_W])
+	_add_action(InputActions.INTERACT, [KEY_E])
+	_add_action(InputActions.ATTACK_LIGHT, [KEY_Q])
+	_add_action(InputActions.ATTACK_HEAVY, [KEY_S])
 
 
 static func _add_action(action: StringName, keys: Array) -> void:

@@ -3,7 +3,7 @@ extends Node2D
 ## A floating power-up box (the "powerup_box" tile): a flat slate cube with a "?" because what is inside is random. It hovers and
 ## bobs. Jump on it (come down on its top) and the player bounces off it, it breaks apart in a few frames (assets/powerups/box_break_*.png,
 ## made by tools/art/generate_powerup.py) and the power-up inside, picked at random (see PowerUps), is given to the player. Walking
-## into it from the side or from below does nothing. A player who already has a vehicle cannot open it.
+## into it from the side or from below does nothing. A player who already has that vehicle gets it mended and refuelled, and 500 points.
 
 signal opened(kind: String)
 
@@ -51,18 +51,12 @@ func _ready() -> void:
 	kind = PowerUps.random_kind()
 	_home = position
 	_t = _home.x * 0.013       # each box bobs at its own phase
-	_sprite = Sprite2D.new()
-	_sprite.texture = load("res://assets/powerups/box_base.png")
-	_sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
-	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_sprite = Sprites.make(AssetPaths.powerup("box_base"), SPRITE_SCALE)
 	add_child(_sprite)
-	_question = Sprite2D.new()
-	_question.texture = load("res://assets/powerups/box_question.png")
-	_question.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
-	_question.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_question = Sprites.make(AssetPaths.powerup("box_question"), SPRITE_SCALE)
 	add_child(_question)
 	_glow_question()
-	add_to_group("powerup_boxes")
+	add_to_group(Groups.POWERUP_BOXES)
 
 
 ## The area that counts as the box (its collision rectangle in the world).
@@ -90,9 +84,9 @@ func _physics_process(delta: float) -> void:
 		return
 	_glow_question()
 	position = _home + Vector2(0.0, sin(_t * BOB_SPEED) * BOB_HEIGHT)
-	for p in get_tree().get_nodes_in_group("player"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
 		var player := p as Player
-		if player != null and player.mech == null and _stomped_by(player):
+		if player != null and _stomped_by(player):
 			_open(player)
 			return
 
@@ -111,8 +105,8 @@ func _open(player: Player) -> void:
 	opened.emit(kind)
 	_question.visible = false          # the break frames carry the (amber) "?" themselves
 	for i in 6:
-		_sprite.texture = load("res://assets/powerups/box_break_%d.png" % (i + 1))
+		_sprite.texture = AssetPaths.powerup("box_break_%d" % (i + 1))
 		if i == GRANT_FRAME and is_instance_valid(player):
-			PowerUps.grant(player, kind)
+			PowerUps.grant(player, kind, position + Vector2(0.0, -50.0))
 		await get_tree().create_timer(FRAME_TIME).timeout
 	queue_free()

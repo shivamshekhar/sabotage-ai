@@ -122,7 +122,7 @@ func setup(open_area: Rect2, floor_level: float) -> void:
 func _ready() -> void:
 	name = "SaltShakerBoss"
 	z_index = 1
-	add_to_group("enemies")
+	add_to_group(Groups.ENEMIES)
 	visual = SaltmanVisual.new()
 	add_child(visual)       # (its layers are built in its _ready, so its size is known from here on)
 	_scale = SIZE_IN_PLAYERS * Player.BODY_SIZE.y / visual.size.y
@@ -169,11 +169,17 @@ func take_hit(_fraction: float, from_x: float = NAN) -> void:
 	_bar.set_ratio(float(health) / HITS_TO_DEFEAT)
 	_hurt_flash = 0.25
 	_hurt_face = HURT_FACE_TIME
-	GameStats.add_score(GameStats.BOSS_HIT_SCORE)
+	GameStats.add_score(GameStats.BOSS_HIT_SCORE, _score_spot())
 	var push := 1.0 if is_nan(from_x) or global_position.x > from_x else -1.0
 	_wobble = 0.28 * push                  # knocked, he rocks away from where it hit
 	if health == 0:
 		_die()
+
+
+## Where the points text of a hit appears: just above his top.
+func _score_spot() -> Vector2:
+	var r := body_rect()
+	return Vector2(r.get_center().x, r.position.y - 8.0)
 
 
 ## Below half health he sprays for longer and faster.
@@ -198,7 +204,7 @@ func _enter(next: State) -> void:
 
 func _find_player() -> Player:
 	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Player
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Player
 	return _player
 
 
@@ -373,10 +379,10 @@ func _touch_player(delta: float) -> void:
 # ---------- defeat ----------
 
 func _die() -> void:
-	GameStats.add_score(GameStats.BOSS_SCORE)
+	GameStats.add_score(GameStats.BOSS_SCORE, _score_spot())
 	_enter(State.DEAD)
-	remove_from_group("enemies")
-	for b in get_tree().get_nodes_in_group("boss_bullets"):
+	remove_from_group(Groups.ENEMIES)
+	for b in get_tree().get_nodes_in_group(Groups.BOSS_BULLETS):
 		b.queue_free()
 	defeated.emit()
 

@@ -49,7 +49,7 @@ id 1-9, keep `drop` to 6 rows or fewer, flats with a Bro (`B`) need at least 7 c
 | `minigame <file> add --id --kind [--name] [--param k=v]... [--question "q\|right\|wrong1\|wrong2"]...` | also `list`, `remove --id` |
 | `info <file> [--solve]` | counts, values, problems |
 | `validate <file>` | problems only |
-| `solve <file>` | reachability, dead ends, laser order |
+| `solve <file>` | the generic level checks: exit reachable, no dead ends, gates have computers and block the way, sealed to the ceiling, the power-up box reachable (exit code 1 if any fails) |
 | `show <file> [--rows a-b] [--cols a-b]` | the map as text with a column ruler |
 
 Rows count from the top (row 0); a tile's `(col, row)` is where its object stands. Editing commands save in place and return the

@@ -34,7 +34,7 @@ func _awake_zone() -> Rect2:
 func _main() -> void:
 	InputSetup.register()
 	OS.set_environment("SABOTAGE_LEVEL", "level_05")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(40)
 	for n in main.get_children():

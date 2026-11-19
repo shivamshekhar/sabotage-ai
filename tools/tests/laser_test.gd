@@ -37,7 +37,7 @@ func _initialize() -> void:
 	_find_gate_one()
 	OS.set_environment("SABOTAGE_LEVEL", "level_01")
 	HackPopup.force_game = "sequence"   # the level asks for a random puzzle; this test plays the memory one
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	_main()
 
@@ -71,7 +71,7 @@ func _main() -> void:
 	_check("laser 1 starts on", level.laser_is_on("1"))
 	_tp(NEAR_X, FEET_Y)
 	await _wait(10)
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(120)
 	_release_all()
 	var lock_screens: Array = level._lock_screens["1"]
@@ -89,7 +89,7 @@ func _main() -> void:
 	_check("far from a computer, use does nothing", not level.try_interact(player.global_position))
 	_tp(NEAR_X, FEET_Y)
 	await _wait(10)
-	Input.action_press("interact")
+	Input.action_press(InputActions.INTERACT)
 	await _wait(3)
 	_release_all()
 	await _wait(3)
@@ -129,12 +129,12 @@ func _main() -> void:
 	await _wait(40)
 
 	# Now the player can walk through.
-	for e in get_nodes_in_group("enemies"):   # the Bro beyond the gate would block the way (this test is about the laser)
+	for e in get_nodes_in_group(Groups.ENEMIES):   # the Bro beyond the gate would block the way (this test is about the laser)
 		e.queue_free()
 	await _wait(2)
 	_tp(NEAR_X + 90.0, FEET_Y)   # just short of the wall
 	await _wait(10)
-	Input.action_press("move_right")
+	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(30)
 	_release_all()
 	_check("with the laser off the player walks through", player.global_position.x > LASER_LEFT_EDGE + 20.0,

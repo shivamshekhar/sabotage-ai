@@ -20,6 +20,9 @@ var _level_id := ""
 # fight: the boss fight, in a level that has a boss (null otherwise).
 var fight: BossFight
 
+# _player: the player of this level (what is carried to the next level is read from it, see GameStats.save_player()).
+var _player: Player
+
 
 func _ready() -> void:
 	InputSetup.register()
@@ -37,6 +40,7 @@ func _ready() -> void:
 	Hud.add_to(self, LevelData.stage_label(_level_id))
 
 	var player := Player.new()
+	_player = player
 	player.apply_tuning(level.player_tuning, level.terrain_tuning)
 	player.spawn = level.spawn
 	player.ladders = level.ladders
@@ -48,6 +52,7 @@ func _ready() -> void:
 		player.position = Vector2((float(start_at[0]) + 0.5) * Level.T, (float(start_at[1]) + 1.0) * Level.T)
 		player.spawn = player.position
 	add_child(player)
+	GameStats.apply_to(player)    # the health and the vehicle (in the state it was in) from the last level; nothing in a new game
 
 	if boss_name != "":
 		# A boss level: the fight has its own camera; beating the boss finishes the level.
@@ -184,7 +189,9 @@ func _on_goal_reached() -> void:
 	var again := next == ""
 	if again:
 		next = LevelData.DEFAULT_ID if LevelData.is_campaign(_level_id) else _level_id
-		GameStats.reset()   # the game starts over, so does the score
+		GameStats.reset()   # the game starts over: the score, the health and the vehicle too
+	elif _player != null and is_instance_valid(_player):
+		GameStats.save_player(_player)   # the health and the vehicle (with its damage and fuel) go with the player into the next level
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	var label := Label.new()

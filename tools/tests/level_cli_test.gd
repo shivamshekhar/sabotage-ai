@@ -51,7 +51,7 @@ func _initialize() -> void:
 	r = LevelCli.run(["from-plan", plan_file, "--plan", PLAN, "--id", "demo"])
 	_check("from-plan builds a valid level", r["ok"] and r["problems"].is_empty(), str(r))
 	r = LevelCli.run(["solve", plan_file])
-	_check("and it can be solved", r["ok"] and r["exit_reachable"], str(r))
+	_check("and it can be solved", r["ok"], str(r))
 	r = LevelCli.run(["from-plan", plan_file, "--plan", '[["warp"],["exit"]]'])
 	_check("an unknown piece is refused", not r["ok"])
 	r = LevelCli.run(["from-plan", plan_file, "--plan", '[["flat",8,"PK"]]'])

@@ -39,31 +39,31 @@ func _main() -> void:
 	var use_at := touch.face_center(INTERACT)
 
 	await _tap(use_at, true)
-	_check("USE presses the interact action", Input.is_action_pressed("interact"))
+	_check("USE presses the interact action", Input.is_action_pressed(InputActions.INTERACT))
 	# The puzzle popup opens now and pauses the game; the finger is lifted while it is paused.
 	paused = true
 	await process_frame
 	await _tap(use_at, false)
 	await process_frame
-	_check("pausing lets the touch controls go", not Input.is_action_pressed("interact"))
+	_check("pausing lets the touch controls go", not Input.is_action_pressed(InputActions.INTERACT))
 	paused = false
 	await process_frame
 	await process_frame
 	await _tap(use_at, true)
-	_check("USE works again after the popup closes", Input.is_action_pressed("interact"))
+	_check("USE works again after the popup closes", Input.is_action_pressed(InputActions.INTERACT))
 	await _tap(use_at, false)
-	_check("and releases normally", not Input.is_action_pressed("interact"))
+	_check("and releases normally", not Input.is_action_pressed(InputActions.INTERACT))
 	# ...and again, to be sure it isn't a one-off.
 	paused = true
 	await process_frame
 	await _tap(use_at, true)
-	_check("taps during a pause are ignored (they belong to the popup)", not Input.is_action_pressed("interact"))
+	_check("taps during a pause are ignored (they belong to the popup)", not Input.is_action_pressed(InputActions.INTERACT))
 	await _tap(use_at, false)
 	paused = false
 	await process_frame
 	await process_frame
 	await _tap(use_at, true)
-	_check("USE works a third time", Input.is_action_pressed("interact"))
+	_check("USE works a third time", Input.is_action_pressed(InputActions.INTERACT))
 	await _tap(use_at, false)
 
 	OS.set_environment("SABOTAGE_TOUCH", "")

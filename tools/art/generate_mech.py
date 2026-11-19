@@ -2,20 +2,19 @@
 tentacles, with a missile turret and a laser turret and a rocket booster under its belly.
 
 Usage (from the repo root; needs Pillow, numpy and opencv):
-    python tools/art/generate_mech.py       writes assets/powerups/mech/*.png, meta.json and preview.png
+    python tools/art/generate_mech.py       writes assets/powerups/mech/*.png (and a picture of the mech assembled into tmp/art_previews/)
 
 THE PARTS (every picture faces right; the game flips them to face left; they are drawn at twice the size they are shown at):
     body.png          the crane cab, engine block, counterweight and hull. The cockpit window is a TRANSPARENT hole: the game puts the
                       player's picture behind it (and canopy.png, the glass, in front of it).
     canopy.png        the glass of the cockpit, a reflection over the player
-    missile_turret.png, laser_turret.png   the two turrets; they turn about their pivot (see meta.json)
+    missile_turret.png, laser_turret.png   the two turrets; they turn about their pivot (their pivots and muzzles are constants of MechVisual)
     link.png, joint.png, claw.png, hip.png the pieces of a leg. The game draws each leg as a chain of links along a smooth curve from the
                       hip to the foot (that is what gives the octopus movement), a joint between every two links and the claw at the end
     flame_1..3.png    the rocket booster's flame (pointing down), shown while jumping
     (the missile, the damage effects and the weapon effects are drawn by generate_mech_effects.py)
 HOW IT IS DRAWN: like the boss (generate_boss_shaker.py): every part is a mask, lit into a bevelled surface at 4x and shrunk.
 """
-import json
 import math
 import os
 import sys
@@ -25,10 +24,10 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import generate_boss_shaker as bs  # noqa: E402
-from generate_boss_shaker import S, INK, lit, outline, paste, solid  # noqa: E402
+import art_lib  # noqa: E402
+from art_lib import S, INK, lit, outline, paste, solid  # noqa: E402
 
-OUT = os.path.join(bs.ROOT, "assets", "powerups", "mech")
+OUT = os.path.join(art_lib.ROOT, "assets", "powerups", "mech")
 
 YEL = (255, 198, 26)
 YEL_D = (214, 140, 10)
@@ -168,7 +167,7 @@ def draw_body():
     beacon = ell(mk(BW, BH), 92, 55, 10, 10)
     beacon = ImageChops.multiply(beacon, rr(mk(BW, BH), (70, 40, 120, 56), 1))
     part(c, beacon, (255, 140, 30), radius=3.0, bump=2.6, spec=0.9)
-    bs.glow(c, ell(mk(BW, BH), 92, 50, 5, 5), (255, 170, 60), radii=(2, 6, 14), strengths=(0.9, 0.55, 0.35))
+    art_lib.glow(c, ell(mk(BW, BH), 92, 50, 5, 5), (255, 170, 60), radii=(2, 6, 14), strengths=(0.9, 0.55, 0.35))
 
     # the cab (the nose): a sloped, rounded yellow shell
     cab_pts = [(116, 142), (116, 70), (138, 46), (234, 46), (276, 82), (294, 118), (294, 142)]
@@ -183,7 +182,7 @@ def draw_body():
     # the headlight and the front bumper
     lamp = rr(mk(BW, BH), (278, 110, 296, 128), 5)
     part(c, lamp, (250, 250, 235), radius=1.6, bump=1.6, spec=0.9, outline_w=0.9)
-    bs.glow(c, lamp, (255, 245, 190), radii=(2, 6, 16), strengths=(0.6, 0.45, 0.35))
+    art_lib.glow(c, lamp, (255, 245, 190), radii=(2, 6, 16), strengths=(0.6, 0.45, 0.35))
     bumper = rr(mk(BW, BH), (270, 130, 300, 146), 4)
     part(c, bumper, (70, 76, 92), radius=1.2)
     # the pedestal on the cab roof that the missile turret stands on (its base rests on this plate; see MISSILE_MOUNT)
@@ -230,23 +229,49 @@ def draw_canopy():
 # ----------------------------------------------------------------------------------------------------------------------
 # the turrets
 # ----------------------------------------------------------------------------------------------------------------------
-MTW, MTH = 168, 92         # the missile turret: pivot at (40, 50)
+MTW, MTH = 184, 92         # the missile turret: pivot at (40, 50); the muzzle (where a missile leaves) is at (176, 44)
 MT_PIVOT = (40, 50)
+
+
+gm_stripes = stripes
 
 
 def draw_missile_turret():
     c = Image.new("RGBA", (MTW * S, MTH * S), (0, 0, 0, 0))
     # two launch tubes (one above the other: the far one is darker), a body block, a swivel base
-    far = rr(mk(MTW, MTH), (40, 24, 156, 44), 6)
+    far = rr(mk(MTW, MTH), (40, 24, 146, 44), 6)
     part(c, far, vgrad(24, 44, (70, 76, 92), (40, 44, 58)), radius=1.6)
-    near = rr(mk(MTW, MTH), (36, 38, 160, 62), 7)
+    near = rr(mk(MTW, MTH), (36, 38, 150, 62), 7)
     part(c, near, vgrad(38, 62, (150, 158, 176), (60, 66, 82)), radius=2.0, bump=2.4, spec=0.6)
-    # tube mouths: dark openings with a red nose cone peeking out
-    for x0, y0, y1 in ((150, 26, 42), (154, 40, 60)):
-        mouth = rr(mk(MTW, MTH), (x0, y0, x0 + 12, y1), 4)
-        part(c, mouth, (18, 20, 28), radius=0.8, outline_w=0.7)
-        cone = poly(mk(MTW, MTH), [(x0 + 3, y0 + 3), (x0 + 12, (y0 + y1) / 2), (x0 + 3, y1 - 3)])
-        c.alpha_composite(solid(cone, RED, 0.95))
+    # the tube ends: a steel flange with rivets, and the missile inside showing its nose (a silver collar, a red ogive with a dark tip, a highlight)
+    for xe, y0, y1, dark in ((146, 24, 44, True), (150, 38, 62, False)):
+        yc = (y0 + y1) / 2.0
+        h = y1 - y0
+        # the nose first (behind the flange)
+        nose_len = 28
+        collar = rr(mk(MTW, MTH), (xe - 6, yc - h * 0.38, xe + 6, yc + h * 0.38), 2)
+        part(c, collar, vgrad(yc - h * 0.38, yc + h * 0.38, (230, 234, 242), (120, 128, 148)), radius=1.0, bump=2.0, spec=0.8, outline_w=0.7)
+        cone = poly(mk(MTW, MTH), [(xe + 4, yc - h * 0.36), (xe + nose_len, yc - h * 0.05), (xe + nose_len, yc + h * 0.05), (xe + 4, yc + h * 0.36)])
+        cone = cone.filter(ImageFilter.GaussianBlur(1.2 * S)).point(lambda v: 255 if v > 128 else 0)
+        gm_col = vgrad(yc - h * 0.36, yc + h * 0.36, (255, 120, 96) if not dark else (210, 84, 70), (150, 20, 18) if not dark else (110, 18, 16))
+        part(c, cone, gm_col, radius=1.8, bump=2.2, spec=0.85, outline_w=0.9)
+        tip = inside(ell(mk(MTW, MTH), xe + nose_len - 1, yc, 4.0, h * 0.09), cone)
+        c.alpha_composite(solid(tip, (36, 38, 48)))
+        # a pale stripe along the cone (a glint) and a seam ring
+        glint = inside(poly(mk(MTW, MTH), [(xe + 8, yc - h * 0.26), (xe + nose_len - 6, yc - h * 0.04), (xe + nose_len - 6, yc - h * 0.0), (xe + 8, yc - h * 0.20)]), cone)
+        c.alpha_composite(solid(glint, (255, 220, 210), 0.55))
+        seam = inside(rr(mk(MTW, MTH), (xe + 12, yc - h * 0.4, xe + 13.4, yc + h * 0.4), 0), cone)
+        c.alpha_composite(solid(seam, (90, 12, 12), 0.7))
+        # the flange (a ring round the tube end), with rivets and a dark bore line
+        flange = rr(mk(MTW, MTH), (xe - 14, y0 - 3, xe - 2, y1 + 3), 3)
+        part(c, flange, vgrad(y0 - 3, y1 + 3, (176, 184, 202), (64, 70, 88)), radius=1.6, bump=2.4, spec=0.8, outline_w=1.0)
+        for ry in (y0 + 1, y1 - 1):
+            part(c, ell(mk(MTW, MTH), xe - 8, ry, 1.5), (210, 216, 230), outline_w=0.3, radius=0.4, bump=2.4, spec=0.9)
+        gap = rr(mk(MTW, MTH), (xe - 2.4, y0 - 1, xe + 0.4, y1 + 1), 1)
+        c.alpha_composite(solid(gap, (14, 16, 22), 0.9))
+        # warning stripes on the tube just behind the flange
+        zone = inside(gm_stripes(MTW, MTH, 8, 3.6, 1.0), rr(mk(MTW, MTH), (xe - 26, y0 + 2, xe - 15, y1 - 2), 1))
+        c.alpha_composite(solid(zone, YEL, 0.95))
     # yellow bands
     for bx in (62, 104):
         band = inside(rr(mk(MTW, MTH), (bx, 36, bx + 10, 64), 1), rr(mk(MTW, MTH), (36, 38, 160, 62), 7))
@@ -259,7 +284,7 @@ def draw_missile_turret():
     part(c, pivot, (110, 118, 136), radius=1.4, bump=2.4, spec=0.8)
     part(c, ell(mk(MTW, MTH), *MT_PIVOT, 5), (40, 44, 56), radius=0.8, outline_w=0.6)
     # a status light
-    bs.glow(c, ell(mk(MTW, MTH), 66, 50, 2.4), (255, 90, 70), radii=(1.4, 4), strengths=(0.9, 0.5))
+    art_lib.glow(c, ell(mk(MTW, MTH), 66, 50, 2.4), (255, 90, 70), radii=(1.4, 4), strengths=(0.9, 0.5))
     c.alpha_composite(solid(ell(mk(MTW, MTH), 66, 50, 2.4), (255, 190, 170)))
     return c
 
@@ -281,13 +306,13 @@ def draw_laser_turret():
     for k in range(4):
         x = 104 + k * 7
         line(coils, (x, 29), (x, 47), 2.2)
-    bs.glow(c, coils, CYAN, radii=(1.2, 4, 10), strengths=(1.0, 0.6, 0.4))
+    art_lib.glow(c, coils, CYAN, radii=(1.2, 4, 10), strengths=(1.0, 0.6, 0.4))
     c.alpha_composite(solid(coils, (200, 224, 255)))
     # the muzzle and the lens
     muzzle = rr(mk(LTW, LTH), (134, 26, 150, 50), 5)
     part(c, muzzle, (60, 66, 82), radius=1.2, bump=2.2, outline_w=0.9)
     lens = ell(mk(LTW, LTH), 148, 38, 4.5, 8)
-    bs.glow(c, lens, CYAN, radii=(1.6, 5, 12), strengths=(1.0, 0.8, 0.5))
+    art_lib.glow(c, lens, CYAN, radii=(1.6, 5, 12), strengths=(1.0, 0.8, 0.5))
     c.alpha_composite(solid(lens, (215, 232, 255)))
     # the base: a yellow housing and the ball joint
     housing = rr(mk(LTW, LTH), (10, 40, 56, 66), 8)
@@ -391,7 +416,7 @@ def draw_flame(variant):
     outer = drop(1.0, 1.0).filter(ImageFilter.GaussianBlur(1.2 * S))
     mid = drop(0.72, 0.68).filter(ImageFilter.GaussianBlur(1.0 * S))
     core = drop(0.42, 0.4).filter(ImageFilter.GaussianBlur(0.8 * S))
-    bs.glow(c, outer, (255, 120, 30), radii=(3, 9), strengths=(0.7, 0.5))
+    art_lib.glow(c, outer, (255, 120, 30), radii=(3, 9), strengths=(0.7, 0.5))
     c.alpha_composite(solid(outer, (255, 110, 30), 0.95))
     c.alpha_composite(solid(mid, (255, 200, 70), 1.0))
     c.alpha_composite(solid(core, (255, 250, 230), 1.0))
@@ -501,21 +526,10 @@ def main():
         parts[name] = finish(fn(), os.path.join(OUT, name + ".png"))
     for i in range(3):
         parts["flame_%d" % (i + 1)] = finish(draw_flame(i), os.path.join(OUT, "flame_%d.png" % (i + 1)))
-    meta = {
-        "note": "pixel positions in the picture files (twice the size they are shown at); every picture faces right",
-        "body_size": [BW, BH],
-        "window": WINDOW,
-        "missile_turret": {"size": [MTW, MTH], "pivot": list(MT_PIVOT)},
-        "laser_turret": {"size": [LTW, LTH], "pivot": list(LT_PIVOT)},
-        "link": [LKW, LKH], "joint": JW, "claw": [CLW, CLH], "hip": 56,
-        "flame": [64, 110],
-    }
-    with open(os.path.join(OUT, "meta.json"), "w") as f:
-        json.dump(meta, f, indent=1)
     sheet = Image.new("RGBA", (920, 380), (0, 0, 0, 0))
     sheet.alpha_composite(preview(parts, "stand"), (0, 0))
     sheet.alpha_composite(preview(parts, "jump"), (460, 0))
-    sheet.save(os.path.join(OUT, "preview.png"))
+    sheet.save(art_lib.preview_path("mech_preview.png"))
     print("done")
 
 

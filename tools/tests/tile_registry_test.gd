@@ -126,7 +126,7 @@ func _main() -> void:
 	var path := ProjectSettings.globalize_path("user://generic_kinds.sablevel.json")
 	LevelFile.save_file(path, lv)
 	OS.set_environment("SABOTAGE_LEVEL_FILE", path)
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(60)
 	var player: Player

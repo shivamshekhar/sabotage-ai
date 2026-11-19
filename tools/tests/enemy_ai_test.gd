@@ -34,7 +34,7 @@ func _wait(frames: int) -> void:
 
 func _box(x0: float, x1: float, top: float) -> void:
 	var body := StaticBody2D.new()
-	body.collision_layer = Player.LAYER_WORLD
+	body.collision_layer = PhysicsLayers.WORLD
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = Vector2(x1 - x0, 600)
@@ -189,11 +189,11 @@ func _main() -> void:
 	for i in 200:
 		_bro(float(i) * 100.0, 0.0)
 	await _wait(20)
-	_check("200 Bros are alive", get_nodes_in_group("enemies").size() == 200, str(get_nodes_in_group("enemies").size()))
-	for e in get_nodes_in_group("enemies"):
+	_check("200 Bros are alive", get_nodes_in_group(Groups.ENEMIES).size() == 200, str(get_nodes_in_group(Groups.ENEMIES).size()))
+	for e in get_nodes_in_group(Groups.ENEMIES):
 		e.take_hit(1.0)
 	await _wait(60)
-	_check("killed Bros leave the enemies group at once", get_nodes_in_group("enemies").is_empty())
+	_check("killed Bros leave the enemies group at once", get_nodes_in_group(Groups.ENEMIES).is_empty())
 	var nodes_after := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	var objects_after := int(Performance.get_monitor(Performance.OBJECT_COUNT))
 	_check("and are freed: the node count is back to where it was", nodes_after <= nodes_before + MAX_LEAK, "%d before, %d after" % [nodes_before, nodes_after])
@@ -203,14 +203,14 @@ func _main() -> void:
 
 	# ---- sleeping: Bros far from the player do no work (Level 1)
 	OS.set_environment("SABOTAGE_LEVEL", "level_01")
-	var main: Node = load("res://scenes/main.tscn").instantiate()
+	var main: Node = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(40)
 	var far_count := 0
 	var asleep := 0
-	for n in get_nodes_in_group("player"):
+	for n in get_nodes_in_group(Groups.PLAYER):
 		player = n
-	for e in get_nodes_in_group("enemies"):
+	for e in get_nodes_in_group(Groups.ENEMIES):
 		if e is AIBro and absf(e.global_position.x - player.global_position.x) > Level.ENEMY_ACTIVE_RANGE + 100.0:
 			far_count += 1
 			if not e.is_physics_processing():
@@ -218,7 +218,7 @@ func _main() -> void:
 	_check("Level 1 has Bros far from the start", far_count >= 3, str(far_count))
 	_check("Bros far from the player are asleep (no physics at all)", asleep == far_count, "%d of %d" % [asleep, far_count])
 	var target: AIBro = null
-	for e in get_nodes_in_group("enemies"):
+	for e in get_nodes_in_group(Groups.ENEMIES):
 		if e is AIBro and not e.is_physics_processing():
 			target = e
 	player.global_position = Vector2(target.global_position.x - 300.0, target.global_position.y)

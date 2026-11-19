@@ -27,7 +27,7 @@ func _flat_world(px: float) -> void:
 	world = Node2D.new()
 	root.add_child(world)
 	var floor_body := StaticBody2D.new()
-	floor_body.collision_layer = Player.LAYER_WORLD
+	floor_body.collision_layer = PhysicsLayers.WORLD
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = Vector2(12000, 200)
@@ -107,12 +107,12 @@ func _main() -> void:
 	target.global_position = Vector2(Player.THROW_HAND.x + vx * t_hit, 0.0)
 	await _wait(3)
 	player.attack_light()
-	_check("the wind-up pose is shown first (nothing thrown yet)", player._pose_state(0.0) == &"throw_windup" and get_nodes_in_group("projectiles").is_empty())
+	_check("the wind-up pose is shown first (nothing thrown yet)", player._pose_state(0.0) == &"throw_windup" and get_nodes_in_group(Groups.PROJECTILES).is_empty())
 	var waited := 0
-	while get_nodes_in_group("projectiles").is_empty() and waited < 30:
+	while get_nodes_in_group(Groups.PROJECTILES).is_empty() and waited < 30:
 		await _wait(1)
 		waited += 1
-	var shots := get_nodes_in_group("projectiles")
+	var shots := get_nodes_in_group(Groups.PROJECTILES)
 	_check("attack_light throws an object after the wind-up", shots.size() == 1 and waited <= ceili(Player.THROW_WINDUP * 60.0) + 2, "%d frames" % waited)
 	_check("then the release pose is shown", player._pose_state(0.0) == &"throw_release")
 	var ys: Array[float] = []
@@ -158,7 +158,7 @@ func _main() -> void:
 	for fr in 400:
 		await _wait(1)
 		if landed_at < 0:
-			var lying := get_nodes_in_group("landed_projectiles")
+			var lying := get_nodes_in_group(Groups.LANDED_PROJECTILES)
 			if lying.size() == 1:
 				obj = lying[0]
 				landed_at = fr
@@ -183,7 +183,7 @@ func _main() -> void:
 
 	# ---- shallow floor spikes do not hurt a Bro (test level has a one-deep spike strip)
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	var main: Node = load("res://scenes/main.tscn").instantiate()
+	var main: Node = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(5)
 	var shallow := AIBro.new()
@@ -196,7 +196,7 @@ func _main() -> void:
 
 	# ---- deadly pits kill whoever falls in (the first toxic-waste pit of Level 1, read from the map)
 	OS.set_environment("SABOTAGE_LEVEL", "level_01")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(5)
 	var level: Level
@@ -205,7 +205,7 @@ func _main() -> void:
 			player = n
 		elif n is Level:
 			level = n
-	for creature in get_nodes_in_group("enemies"):   # the creatures of the pits would bite and knock the player about: this test is about the liquid
+	for creature in get_nodes_in_group(Groups.ENEMIES):   # the creatures of the pits would bite and knock the player about: this test is about the liquid
 		if creature is PitCreature:
 			creature.queue_free()
 	await _wait(2)
@@ -240,9 +240,9 @@ func _main() -> void:
 	_check("a player in a deadly pit falls all the way down first", player.global_position.y > bottom - 20.0, "y=%.0f" % player.global_position.y)
 	_check("with no game over yet, and no health left", causes.is_empty() and player.health == 0, "%s health %d" % [causes, player.health])
 	_check("and blinks while it waits", player._visuals.modulate.a < 1.0 or player._visuals._blink_tween != null)
-	Input.action_press("jump")
+	Input.action_press(InputActions.JUMP)
 	await _wait(8)
-	Input.action_release("jump")
+	Input.action_release(InputActions.JUMP)
 	_check("and cannot jump out", player.global_position.y > bottom - 20.0)
 	await _wait(int(Player.PIT_DEATH_DELAY * 60.0) + 10)
 	_check("the player that falls into a deadly pit dies", causes == ["pit"], str(causes))

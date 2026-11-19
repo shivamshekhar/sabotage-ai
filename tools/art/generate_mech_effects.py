@@ -1,7 +1,7 @@
 """Draws the mech's damage effects, its missile and the weapon effects. Run generate_mech.py first (this one draws on its body).
 
 Usage (from the repo root; needs Pillow, numpy and opencv):
-    python tools/art/generate_mech_effects.py       writes into assets/powerups/mech/
+    python tools/art/generate_mech_effects.py       writes the mech's own pictures into assets/powerups/mech/ and the generic effects (explosion, smoke, fire, sparks, glows) into assets/effects/
 
 DAMAGE (the mech survives five hits; each one shows on the mech itself):
     body_cracks.png, canopy_cracks.png   hit 1: cracks across the cab, the engine block and the cockpit glass. They are drawn ON the
@@ -14,7 +14,8 @@ DAMAGE (the mech survives five hits; each one shows on the mech itself):
 WEAPONS:
     missile.png, missile_flame_1..3.png, missile_glow.png   the missile (pointing right), its exhaust flame (pointing left, the picture's
                                                             right edge is the nozzle) and the glow round it
-    laser_halo.png, laser_burst.png      the rings and the starburst at the laser's muzzle when it fires
+    laser_orb.png, spark_blue.png        the bright flare at both ends of the laser beam, and its blue sparks
+    explosion_1..8.png                   the explosion: flash, lumpy fireball, shock ring, sparks, then smoke
 Every picture is drawn at 4x and shrunk, like the others; the game shows them at half size (see MechVisual.TEX).
 """
 import math
@@ -28,16 +29,25 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import generate_mech as gm  # noqa: E402
-import generate_boss_shaker as bs  # noqa: E402
-from generate_boss_shaker import S, lit, outline, solid  # noqa: E402
+import art_lib  # noqa: E402
+from art_lib import S, lit, outline, solid  # noqa: E402
 
-OUT = gm.OUT
+OUT = gm.OUT                                                      # the mech's own pictures
+FX = os.path.join(art_lib.ROOT, "assets", "effects")               # effects any vehicle, enemy or boss can use
+EFFECT_PREFIXES = ("explosion_", "smoke_", "fire_", "spark", "missile_glow", "laser_orb")
+
+
+def out_path(name):
+    """The file for a picture called `name`: effects go to assets/effects, the mech's own parts next to the mech."""
+    folder = FX if name.startswith(EFFECT_PREFIXES) else OUT
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, name)
 BW, BH = gm.BW, gm.BH
 mk, P, pl, poly, rr, ell, vgrad = gm.mk, gm.P, gm.pl, gm.poly, gm.rr, gm.ell, gm.vgrad
 
 
 def save(canvas, name):
-    out = gm.finish(canvas, os.path.join(OUT, name))
+    out = gm.finish(canvas, out_path(name))
     return out
 
 
@@ -161,7 +171,7 @@ def draw_link_broken():
         c.alpha_composite(solid(wm, col))
     # a spark at the end of the piston
     sp = ell(mk(BLW, BLH), 54, oy + 9, 3.0)
-    bs.glow(c, sp, (255, 220, 120), radii=(1.2, 3.5), strengths=(1.0, 0.6))
+    art_lib.glow(c, sp, (255, 220, 120), radii=(1.2, 3.5), strengths=(1.0, 0.6))
     c.alpha_composite(solid(sp, (255, 255, 230)))
     return c
 
@@ -178,7 +188,7 @@ def draw_spark():
             pass
         d.polygon([P(cx + math.cos(a) * 15, cy + math.sin(a) * 15), P(cx + math.cos(a + 1.57) * 1.6, cy + math.sin(a + 1.57) * 1.6),
                    P(cx - math.cos(a) * 15, cy - math.sin(a) * 15), P(cx - math.cos(a + 1.57) * 1.6, cy - math.sin(a + 1.57) * 1.6)], fill=255)
-    bs.glow(c, m, (255, 200, 80), radii=(1.0, 3.0), strengths=(1.0, 0.7))
+    art_lib.glow(c, m, (255, 200, 80), radii=(1.0, 3.0), strengths=(1.0, 0.7))
     c.alpha_composite(solid(m, (255, 240, 190)))
     c.alpha_composite(solid(ell(mk(n, n), cx, cy, 3.4), (255, 255, 255)))
     return c
@@ -240,7 +250,7 @@ def draw_fire(variant):
     outer = outer.filter(ImageFilter.GaussianBlur(0.9 * S))
     mid = mid.filter(ImageFilter.GaussianBlur(0.8 * S))
     core = core.filter(ImageFilter.GaussianBlur(0.7 * S))
-    bs.glow(c, outer, (255, 110, 30), radii=(3, 9), strengths=(0.65, 0.45))
+    art_lib.glow(c, outer, (255, 110, 30), radii=(3, 9), strengths=(0.65, 0.45))
     c.alpha_composite(solid(outer, (255, 96, 22), 0.96))
     c.alpha_composite(solid(mid, (255, 186, 52)))
     c.alpha_composite(solid(core, (255, 248, 210)))
@@ -301,7 +311,7 @@ def draw_missile():
     bell = poly(mk(MW, MH), [(22, cy - 8), (14, cy - 11), (14, cy + 11), (22, cy + 8)])
     gm.part(c, bell, vgrad(cy - 11, cy + 11, (84, 90, 106), (30, 34, 44)), radius=1.0, bump=2.2, outline_w=0.9)
     glow_m = ell(mk(MW, MH), 14.5, cy, 3.0, 7.5)
-    bs.glow(c, glow_m, (255, 150, 50), radii=(1.2, 3.5), strengths=(1.0, 0.6))
+    art_lib.glow(c, glow_m, (255, 150, 50), radii=(1.2, 3.5), strengths=(1.0, 0.6))
     c.alpha_composite(solid(glow_m, (255, 226, 160)))
     return c
 
@@ -328,7 +338,7 @@ def draw_missile_flame(variant):
     outer = drop(1.0, 1.0).filter(ImageFilter.GaussianBlur(1.3 * S))
     mid = drop(0.72, 0.66).filter(ImageFilter.GaussianBlur(1.0 * S))
     core = drop(0.42, 0.36).filter(ImageFilter.GaussianBlur(0.8 * S))
-    bs.glow(c, outer, (255, 110, 30), radii=(3, 9), strengths=(0.7, 0.45))
+    art_lib.glow(c, outer, (255, 110, 30), radii=(3, 9), strengths=(0.7, 0.45))
     c.alpha_composite(solid(outer, (255, 96, 24), 0.95))
     c.alpha_composite(solid(mid, (255, 196, 70)))
     c.alpha_composite(solid(core, (255, 250, 225)))
@@ -355,40 +365,128 @@ def draw_glow(size, color):
 # ----------------------------------------------------------------------------------------------------------------------
 # the laser's muzzle effects
 # ----------------------------------------------------------------------------------------------------------------------
-BLUE = (70, 150, 255)
-BLUE_L = (190, 224, 255)
 
 
-def draw_halo():
-    n = 192
-    c = Image.new("RGBA", (n * S, n * S), (0, 0, 0, 0))
-    for r, w, a in ((26, 5, 1.0), (48, 4, 0.75), (70, 3, 0.5), (88, 2, 0.3)):
-        ring = mk(n, n)
-        ImageDraw.Draw(ring).ellipse([P(n / 2 - r, n / 2 - r), P(n / 2 + r, n / 2 + r)], outline=255, width=int(w * S))
-        bs.glow(c, ring, BLUE, radii=(1.0, 3.5, 8), strengths=(0.9 * a, 0.6 * a, 0.35 * a))
-        c.alpha_composite(solid(ring, BLUE_L, a))
-    core = ell(mk(n, n), n / 2, n / 2, 12)
-    bs.glow(c, core, BLUE, radii=(3, 9, 18), strengths=(1.0, 0.7, 0.5))
-    c.alpha_composite(solid(core, (235, 245, 255), 0.9))
-    return c
+# ----------------------------------------------------------------------------------------------------------------------
+# the explosion (8 frames) and the laser's orb
+# ----------------------------------------------------------------------------------------------------------------------
+import cv2  # noqa: E402
+
+EXN = 256                                  # an explosion frame's size in px (shown at half that, times the scale the game gives it)
+EXFRAMES = 8
 
 
-def draw_burst():
-    n = 160
-    c = Image.new("RGBA", (n * S, n * S), (0, 0, 0, 0))
-    m = mk(n, n)
-    d = ImageDraw.Draw(m)
-    for k in range(8):
-        a = k * math.pi / 4 + 0.2
-        ln = 76 if k % 2 == 0 else 46
-        d.polygon([P(n / 2 + math.cos(a) * ln, n / 2 + math.sin(a) * ln), P(n / 2 + math.cos(a + 1.57) * 3.6, n / 2 + math.sin(a + 1.57) * 3.6),
-                   P(n / 2 - math.cos(a) * ln, n / 2 - math.sin(a) * ln), P(n / 2 - math.cos(a + 1.57) * 3.6, n / 2 - math.sin(a + 1.57) * 3.6)], fill=255)
-    bs.glow(c, m, BLUE, radii=(1.5, 4, 10), strengths=(0.9, 0.6, 0.4))
-    c.alpha_composite(solid(m, BLUE_L, 0.95))
-    core = ell(mk(n, n), n / 2, n / 2, 9)
-    bs.glow(c, core, BLUE, radii=(3, 8), strengths=(1.0, 0.7))
-    c.alpha_composite(solid(core, (255, 255, 255)))
-    return c
+def _blob_field(size, lumps_list, softness):
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    f = np.zeros((size, size), np.float32)
+    for cx, cy, r in lumps_list:
+        f += np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2.0 * (r * softness) ** 2))
+    return f
+
+
+def _ramp(f, stops):
+    """Colour a field through stops [(value, (r, g, b, a)), ...]: returns an RGBA uint8 image."""
+    xs = [v for v, _ in stops]
+    out = np.zeros(f.shape + (4,), np.float32)
+    for ch in range(4):
+        out[..., ch] = np.interp(f, xs, [c[ch] for _, c in stops])
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
+
+
+def draw_explosion(index):
+    n = EXN
+    rnd = random.Random(31)
+    base = [(rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(0.55, 1.0)) for _ in range(16)]
+    noise = cv2.GaussianBlur(np.random.RandomState(5).rand(n, n).astype(np.float32), (0, 0), 7.0)
+    noise = (noise - noise.mean()) / (noise.std() + 1e-6)
+    t = index / (EXFRAMES - 1.0)
+    cx = cy = n / 2.0
+    # how big the fireball is, how much of it is still fire, how much smoke there is
+    radius = [16, 38, 62, 80, 88, 88, 90, 92][index]
+    fire = [1.0, 1.0, 1.0, 0.95, 0.7, 0.42, 0.18, 0.0][index]
+    smoke_amt = [0.0, 0.0, 0.1, 0.35, 0.6, 0.78, 0.7, 0.45][index]
+    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    # the smoke: big, soft, grey-brown lumps that rise
+    if smoke_amt > 0:
+        lift = -t * 26.0
+        lumps = [(cx + bx * radius * 0.7, cy + by * radius * 0.55 + lift, br * radius * 0.7) for bx, by, br in base]
+        sf = _blob_field(n, lumps, 0.7)
+        sf = np.clip(sf * (1.0 + noise * 0.22) / 1.6, 0, 1)
+        rows = np.mgrid[0:n, 0:n][0].astype(np.float32)
+        shade = np.clip(0.5 + (rows - cy) / n * 0.9, 0.25, 1.0)    # lighter on top
+        smoke = _ramp(sf, [(0.12, (40, 34, 34, 0)), (0.3, (70, 62, 62, 150 * smoke_amt)), (0.8, (96, 88, 88, 215 * smoke_amt))])
+        arr_s = np.asarray(smoke).astype(np.float32)
+        arr_s[..., :3] *= (0.75 + 0.5 * (1.0 - shade))[..., None]
+        img.alpha_composite(Image.fromarray(np.clip(arr_s, 0, 255).astype(np.uint8), "RGBA"))
+    # the fire: lumpy, hot in the middle
+    if fire > 0:
+        lumps = [(cx + bx * radius * 0.5, cy + by * radius * 0.45, br * radius * 0.55) for bx, by, br in base]
+        ff = _blob_field(n, lumps, 0.62)
+        ff = np.clip(ff * (1.0 + noise * 0.3) / 2.5, 0, 1.3) * fire
+        core = _blob_field(n, [(cx, cy - radius * 0.05, radius * 0.45)], 0.5) * fire
+        ff = ff + core * 0.28
+        flame = _ramp(ff, [(0.10, (120, 24, 10, 0)), (0.2, (190, 40, 12, 170)), (0.42, (255, 100, 22, 235)), (0.62, (255, 160, 44, 250)),
+                           (0.9, (255, 205, 96, 255)), (1.25, (255, 244, 196, 255))])
+        gl = np.clip(_blob_field(n, [(cx, cy, radius * 1.1)], 0.8) * fire * 0.85, 0, 1)
+        glow = _ramp(gl, [(0.0, (255, 120, 30, 0)), (1.0, (255, 150, 50, 120))])
+        img.alpha_composite(glow)
+        img.alpha_composite(flame)
+    # the shock ring
+    if index <= 5:
+        ring = Image.new("L", (n, n), 0)
+        rr_ = [26, 56, 84, 104, 118, 126][index]
+        ImageDraw.Draw(ring).ellipse([cx - rr_, cy - rr_, cx + rr_, cy + rr_], outline=int(255 * [0.9, 0.85, 0.7, 0.5, 0.3, 0.15][index]), width=3)
+        layer = Image.new("RGBA", (n, n), (255, 236, 200, 0))
+        layer.putalpha(ring.filter(ImageFilter.GaussianBlur(2.0)))
+        img.alpha_composite(layer)
+    # sparks and flying bits: bright streaks flung out
+    spark = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(spark)
+    rs = random.Random(77)
+    for _ in range(12):
+        ang = rs.uniform(0, math.tau)
+        d0 = rs.uniform(0.7, 1.0) * (36 + index * 15)
+        d1 = d0 + rs.uniform(10, 26)
+        if index == 0 or d1 > n / 2 - 6 or index >= 6:
+            continue
+        a_ = int(255 * (1.0 - index / 6.5))
+        sd.line([(cx + math.cos(ang) * d0, cy + math.sin(ang) * d0), (cx + math.cos(ang) * d1, cy + math.sin(ang) * d1)], fill=(255, 190, 90, a_), width=3)
+    img.alpha_composite(spark.filter(ImageFilter.GaussianBlur(1.0)))
+    # a white flash on the very first frames
+    if index <= 1:
+        fl = _ramp(np.clip(_blob_field(n, [(cx, cy, 26 + index * 12)], 0.7), 0, 1), [(0.0, (255, 255, 255, 0)), (1.0, (255, 255, 245, 230))])
+        img.alpha_composite(fl)
+    return img
+
+
+def draw_orb():
+    """The laser's flare: a bright white-blue orb with a soft blue glow and a faint four-point star."""
+    n = 128
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d = np.sqrt((xx - n / 2) ** 2 + (yy - n / 2) ** 2) / (n / 2)
+    glow = np.clip(1.0 - d, 0, 1) ** 2.4
+    core = np.clip(1.0 - d / 0.3, 0, 1) ** 1.2
+    out = np.zeros((n, n, 4), np.float32)
+    out[..., 0] = 60 + 195 * core
+    out[..., 1] = 140 + 115 * core
+    out[..., 2] = 255
+    out[..., 3] = np.clip(glow * 200 + core * 255, 0, 255)
+    img = Image.fromarray(out.astype(np.uint8), "RGBA")
+    star = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(star)
+    for ang, ln in ((0, 62), (math.pi / 2, 62), (math.pi / 4, 30), (-math.pi / 4, 30)):
+        sd.polygon([(n / 2 + math.cos(ang) * ln, n / 2 + math.sin(ang) * ln), (n / 2 + math.cos(ang + 1.57) * 2.2, n / 2 + math.sin(ang + 1.57) * 2.2),
+                    (n / 2 - math.cos(ang) * ln, n / 2 - math.sin(ang) * ln), (n / 2 - math.cos(ang + 1.57) * 2.2, n / 2 - math.sin(ang + 1.57) * 2.2)], fill=(200, 228, 255, 190))
+    img.alpha_composite(star.filter(ImageFilter.GaussianBlur(0.8)))
+    return img
+
+
+def draw_spark_blue():
+    """The spark picture recoloured blue-white (for the laser's sparks)."""
+    sp = Image.open(out_path("spark.png")).convert("RGBA")
+    r, g, b, a = sp.split()
+    lum = ImageChops.add(r.point(lambda v: v // 2), g.point(lambda v: v // 2))
+    return Image.merge("RGBA", (lum.point(lambda v: min(255, int(v * 0.55 + 90))), lum.point(lambda v: min(255, int(v * 0.5 + 150))), Image.new("L", r.size, 255), a))
 
 
 def main():
@@ -407,8 +505,10 @@ def main():
     for i in range(3):
         save(draw_missile_flame(i), "missile_flame_%d.png" % (i + 1))
     save(draw_glow(96, (255, 150, 60)), "missile_glow.png")
-    save(draw_halo(), "laser_halo.png")
-    save(draw_burst(), "laser_burst.png")
+    for i in range(EXFRAMES):
+        draw_explosion(i).save(out_path("explosion_%d.png" % (i + 1)))
+    draw_orb().save(out_path("laser_orb.png"))
+    draw_spark_blue().save(out_path("spark_blue.png"))
     print("done")
 
 

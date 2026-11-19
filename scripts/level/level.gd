@@ -636,7 +636,7 @@ func _build_terminals() -> void:
 		_lock_screens[t["laser"]] = _screens_at.get(Vector2i(t["c"], t["r"]), [])
 		_terminals.append({
 			"rect": body.grow_individual(TERMINAL_REACH, 0, TERMINAL_REACH, 0),
-			"laser": t["laser"], "game": t["game"], "hint": hint,
+			"laser": t["laser"], "game": t["game"], "hint": hint, "hint_home": hint.position,
 		})
 
 
@@ -647,7 +647,7 @@ func _player_box(feet: Vector2) -> Rect2:
 ## The player node (looked up once and kept).
 func _player_ref() -> Node2D:
 	if _player_node == null or not is_instance_valid(_player_node):
-		_player_node = get_tree().get_first_node_in_group("player") as Node2D
+		_player_node = get_tree().get_first_node_in_group(Groups.PLAYER) as Node2D
 	return _player_node
 
 
@@ -656,7 +656,7 @@ func _wake_nearby_enemies() -> void:
 	var player := _player_ref()
 	if player == null:
 		return
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if e is PitCreature:
 			continue   # a pit's creatures sleep and wake with their pit (see _wake_nearby_pits)
 		if e.has_meta("always_awake"):
@@ -682,6 +682,12 @@ func _update_terminal_hints() -> void:
 	for t in _terminals:
 		var near: bool = player != null and _player_box(player.global_position).intersects(t["rect"])
 		t["hint"].visible = near and laser_is_on(t["laser"])
+		# In a vehicle the prompt rides above the vehicle's fuel bar (the usual spot is where the vehicle's body and bar are).
+		var hint: Label = t["hint"]
+		if near and player is Player and (player as Player).mech != null:
+			hint.position = Vector2(player.global_position.x - hint.size.x / 2.0, player.global_position.y - Mech.SIZE_IN_PLAYERS * Player.BODY_SIZE.y - 68.0)
+		else:
+			hint.position = t["hint_home"]
 
 
 ## True if the field with this id exists and is on.
@@ -760,7 +766,7 @@ func _make_area(rect: Rect2) -> Area2D:
 	return area
 
 
-func _add_solid(rect: Rect2, one_way: bool = false, layer: int = Player.LAYER_WORLD) -> void:
+func _add_solid(rect: Rect2, one_way: bool = false, layer: int = PhysicsLayers.WORLD) -> void:
 	var body := StaticBody2D.new()
 	body.collision_layer = layer
 	body.position = rect.get_center()
@@ -811,7 +817,7 @@ func _build_barriers() -> void:
 				var top := r
 				while r < _map.size() and _map[r][c] == TileRegistry.BARRIER_CHAR:
 					r += 1
-				_add_solid(Rect2(c * T, top * T, T, (r - top) * T), false, Player.LAYER_BARRIER)
+				_add_solid(Rect2(c * T, top * T, T, (r - top) * T), false, PhysicsLayers.BARRIER)
 			else:
 				r += 1
 
@@ -840,7 +846,7 @@ func _build_ladders() -> void:
 				ladders.append(Rect2(c * T, top * T, T, (r - top) * T))
 				# Deck on top of the ladder: stand on it, climb up through it from below.
 				# Own physics layer so the climbing player can ignore it (to climb back down).
-				_add_solid(Rect2(c * T, top * T, T, 12), true, Player.LAYER_LADDER_DECK)
+				_add_solid(Rect2(c * T, top * T, T, 12), true, PhysicsLayers.LADDER_DECK)
 			else:
 				r += 1
 

@@ -1,12 +1,12 @@
 class_name PlayerSprite
 extends Sprite2D
 ## Visual for the player: picks a Kenney character pose from the movement state.
-## Swap the hero by changing CHARACTER to "adventurer", "female", "soldier" or "zombie".
+## The hero is the "player" character; the AI Bro uses "zombie" (it sets `character`). Only the poses the game shows are in the repo.
 
 # CHARACTER: which Kenney character to use. It is the folder and file prefix of the poses:
 # SpriteLibrary.character_pose(CHARACTER, pose) loads
 # assets/kenney/platformer-characters/<CHARACTER>/<CHARACTER>_<pose>.png.
-# Available: player, adventurer, female, soldier, zombie.
+# Available: player, zombie.
 const CHARACTER := "player"
 
 # SCALE: scale applied to the sprite: drawn size = source art size * SCALE, for art that is ART_HEIGHT pixels tall (the

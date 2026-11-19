@@ -195,9 +195,9 @@ func _ready() -> void:
 	_standoff = randf_range(STANDOFF_MIN, STANDOFF_MAX)
 	name = "AIBro"
 	z_index = 1
-	add_to_group("enemies")
-	collision_layer = Player.LAYER_ENEMY
-	collision_mask = Player.LAYER_WORLD | Player.LAYER_LADDER_DECK
+	add_to_group(Groups.ENEMIES)
+	collision_layer = PhysicsLayers.ENEMY
+	collision_mask = PhysicsLayers.FLOOR
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = BODY_SIZE
@@ -210,6 +210,7 @@ func _ready() -> void:
 	_bar = HealthBar.new()
 	_bar.position = BAR_OFFSET
 	_bar.set_title(display_name)
+	_bar.z_index = 12     # (above a vehicle the player may be in, so the name and the health stay readable)
 	add_child(_bar)
 	_bar.set_ratio(1.0)
 
@@ -273,7 +274,7 @@ func _physics_process(delta: float) -> void:
 
 func _sense() -> void:
 	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Player
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Player
 		if _player != null:
 			add_collision_exception_with(_player)   # the player and the Bro walk through each other; it hurts by touch
 	_sees_player = false
@@ -308,7 +309,7 @@ func _sense() -> void:
 ## Step sideways, if needed, so no other Bro on the same level is closer than MIN_GAP (only the Bro with the higher id moves, so a pair
 ## is never moved twice). It never walks into a wall or off a ledge to do it.
 func _keep_gap() -> void:
-	for other in get_tree().get_nodes_in_group("enemies"):
+	for other in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if other == self or not other is AIBro or other.get_instance_id() > get_instance_id():
 			continue
 		var dx: float = global_position.x - other.global_position.x
@@ -324,7 +325,7 @@ func _keep_gap() -> void:
 ## SEPARATION_RADIUS, limited to -1..1. Two Bros on exactly the same spot are split by their instance ids.
 func _neighbour_push() -> float:
 	var push := 0.0
-	for other in get_tree().get_nodes_in_group("enemies"):
+	for other in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if other == self or not other is AIBro:
 			continue   # only other Bros crowd a Bro
 		var dx: float = global_position.x - other.global_position.x
@@ -355,7 +356,7 @@ func _chase() -> void:
 		return
 	_dir = 1 if _player.global_position.x > global_position.x else -1
 	var gap := absf(_player.global_position.x - global_position.x)
-	if gap < hit_range * _standoff:
+	if gap < hit_range * _standoff + _body_extra(_player):
 		_walk(0.0)
 		if _player_above and is_on_floor():
 			_jump()   # the player is on a ledge above: try to hop up to them
@@ -403,14 +404,20 @@ func _walk(speed: float) -> void:
 func _in_reach(player: Player) -> bool:
 	var dx := absf(player.global_position.x - global_position.x)
 	var dy := absf(player.global_position.y - global_position.y)
-	return dx <= hit_range and dy <= sight_height / 2.0
+	return dx <= hit_range + _body_extra(player) and dy <= sight_height / 2.0
+
+
+## How much wider than the normal player the thing the Bro is after is, on each side (a vehicle's chassis): the Bro stops and strikes at the edge
+## of the body, not in the middle of it.
+func _body_extra(player: Player) -> float:
+	return maxf(0.0, player.half_width() - Player.BODY_SIZE.x * 0.5)
 
 
 ## True if there is floor within `depth` pixels below the spot `ahead` pixels in front of the feet.
 func _floor_ahead(dir: int, ahead: float, depth: float) -> bool:
 	var from := global_position + Vector2(dir * ahead, -10.0)
 	var to := from + Vector2(0.0, depth + 10.0)
-	var query := PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD | Player.LAYER_LADDER_DECK)
+	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.FLOOR)
 	_ignore_player(query)
 	return not get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -418,7 +425,7 @@ func _floor_ahead(dir: int, ahead: float, depth: float) -> bool:
 ## True if solid ground (not a one-way ledge) blocks the way `height` pixels above the feet, WALL_PROBE ahead.
 func _blocked_at(dir: int, height: float) -> bool:
 	var from := global_position + Vector2(0.0, -height)
-	var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(dir * (BODY_SIZE.x / 2.0 + WALL_PROBE), 0.0), Player.LAYER_WORLD)
+	var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(dir * (BODY_SIZE.x / 2.0 + WALL_PROBE), 0.0), PhysicsLayers.WORLD)
 	_ignore_player(query)
 	return not get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -453,7 +460,7 @@ func take_hit(fraction: float, from_x: float = NAN) -> void:
 	_visuals.flinch(_dir)
 	_visuals.blink(0.3)
 	if health == 0:
-		GameStats.add_score(GameStats.KILL_SCORE)
+		GameStats.add_score(GameStats.KILL_SCORE, global_position + Vector2(0.0, -150.0))   # (above its head)
 		_die()
 
 
@@ -471,7 +478,7 @@ func _die() -> void:
 		return
 	_dead = true
 	defeated.emit()
-	remove_from_group("enemies")
+	remove_from_group(Groups.ENEMIES)
 	collision_layer = 0
 	collision_mask = 0
 	set_physics_process(false)

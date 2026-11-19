@@ -35,7 +35,7 @@ func _main() -> void:
 	_check("2D transforms snap to whole pixels", ProjectSettings.get_setting("rendering/2d/snap/snap_2d_transforms_to_pixel", false) == true)
 
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	var main: Node = load("res://scenes/main.tscn").instantiate()
+	var main: Node = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(5)
 	var cam: Camera2D = null

@@ -161,7 +161,7 @@ static func bite_damage() -> int:
 
 func _ready() -> void:
 	_rng.seed = int(home_x) * 7 + int(surface_y)
-	add_to_group("enemies")
+	add_to_group(Groups.ENEMIES)
 	z_index = PitHazard.FISH_Z   # behind the liquid, in front of the player
 	_flip = Node2D.new()          # mirrors the creature when it swims left, so it is never upside down
 	for part in species["parts"]:
@@ -335,7 +335,7 @@ func _animate() -> void:
 ## The creature's own reach: it notices the player near its spot and above the surface.
 func _noticed_player() -> Node2D:
 	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Node2D
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Node2D
 	if _player == null:
 		return null
 	var dx := _player.global_position.x - home_x
@@ -436,7 +436,7 @@ func _leap_step() -> void:
 
 func _bite_check() -> void:
 	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Node2D
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Node2D
 	if _player == null or not (_player is Player):
 		return
 	var feet := _player.global_position

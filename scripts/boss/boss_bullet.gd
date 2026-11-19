@@ -52,11 +52,11 @@ func _ready() -> void:
 	_spin = randf_range(-SPIN_SPEED, SPIN_SPEED)
 	rotation = randf() * TAU
 	_sprite = Sprite2D.new()
-	_sprite.texture = load("res://assets/bosses/%s.png" % kind)
+	_sprite.texture = AssetPaths.boss(kind)
 	_sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
 	add_child(_sprite)
 	if harmful:
-		add_to_group("boss_bullets")
+		add_to_group(Groups.BOSS_BULLETS)
 
 
 func _physics_process(delta: float) -> void:
@@ -69,8 +69,8 @@ func _physics_process(delta: float) -> void:
 	var from := global_position
 	var to := from + velocity * delta
 	# a floor or a wall: a ray from here to there, so a fast piece cannot skip through
-	var query := PhysicsRayQueryParameters2D.create(from, to, Player.LAYER_WORLD)
-	for p in get_tree().get_nodes_in_group("player"):
+	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
+	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
 		query.exclude.append((p as CollisionObject2D).get_rid())
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 
 func _hit_player() -> void:
 	var radius: float = float(KINDS[kind]["radius"]) * SPRITE_SCALE
-	for p in get_tree().get_nodes_in_group("player"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
 		var player := p as Player
 		var body := Rect2(player.global_position + Vector2(-Player.BODY_SIZE.x / 2.0, -Player.BODY_SIZE.y), Player.BODY_SIZE)
 		if body.grow(radius).has_point(global_position):
@@ -97,7 +97,7 @@ func _hit_player() -> void:
 ## Burst into sparks and vanish.
 func _shatter(at: Vector2, normal: Vector2) -> void:
 	_done = true
-	remove_from_group("boss_bullets")
+	remove_from_group(Groups.BOSS_BULLETS)
 	var sparks := CPUParticles2D.new()
 	sparks.top_level = true
 	sparks.global_position = at

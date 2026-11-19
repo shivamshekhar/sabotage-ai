@@ -5,27 +5,6 @@ extends CharacterBody2D
 
 signal health_changed(current: int, maximum: int)
 
-# PHYSICS LAYERS. Godot collision layers are bit flags, so each layer needs its own bit.
-
-# LAYER_WORLD: ground, walls, crates and ledges. Level colliders use it as their
-# collision_layer, and the player always includes it in its collision_mask.
-const LAYER_WORLD := 1
-
-# LAYER_LADDER_DECK: the one-way deck on top of each ladder. It has its own layer so
-# climbing can switch it off: the player's collision_mask is WORLD | DECK normally and just
-# WORLD while climbing (see _start_climb / _stop_climb), which lets you climb down through
-# the deck you are standing on. A new layer must use a different bit, and the player's
-# mask must include it for the player to collide with it.
-const LAYER_LADDER_DECK := 2
-
-# LAYER_ENEMY: enemies. The player does not collide with it (you can walk through an enemy; it
-# hurts you by touching, see AIBro), but thrown objects look for it (see Projectile).
-const LAYER_ENEMY := 4
-
-# LAYER_BARRIER: invisible walls (the "invisible_wall" tile). Only the player collides with this layer (it is in the player's
-# collision_mask), so a level can fence the player in while enemies and thrown objects pass through.
-const LAYER_BARRIER := 8
-
 # MOVEMENT TUNING. Units are pixels and seconds. Godot's Y axis points DOWN, so "up" is a
 # NEGATIVE velocity. Every formula is multiplied by delta (the physics step), so the feel
 # does not depend on frame rate.
@@ -254,12 +233,8 @@ var _facing := 1
 var _hurt_timer := 0.0
 var _invuln_timer := 0.0
 var _stun_timer := 0.0
-var _poison_ticks := 0       # how many more times the poison hurts (see apply_poison())
-var _poison_timer := 0.0     # seconds until the next tick
-var _poison_amount := 0      # health lost per tick
-var _burn_ticks := 0         # how many more times the burn hurts (see apply_burn())
-var _burn_timer := 0.0
-var _burn_amount := 0
+var _poison := DamageOverTime.new()   # the toxic puffer's poison (see apply_poison())
+var _burn := DamageOverTime.new()     # a lava ball's fire (see apply_burn())
 var _flames: CPUParticles2D  # the fire on a burning player
 var _visuals: PlayerSprite
 var _health_bar: HealthBar
@@ -272,9 +247,9 @@ var mech: Mech
 
 func _ready() -> void:
 	z_index = 2
-	add_to_group("player")
+	add_to_group(Groups.PLAYER)
 	_peak_y = global_position.y
-	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK | LAYER_BARRIER
+	collision_mask = PhysicsLayers.PLAYER_MASK
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = BODY_SIZE
@@ -325,6 +300,23 @@ func take_damage(amount: int, source_x: float = NAN) -> bool:
 	return true
 
 
+## True if a ladder is within reach right now (see _find_ladder()).
+func ladder_in_reach() -> bool:
+	if mech != null:
+		# the vehicle is wider than a ladder and may stand beside it (its body stopped by the wall the ladder leans on): any ladder under its body counts
+		var body := Rect2(global_position.x - half_width(), global_position.y - BODY_SIZE.y * Mech.SIZE_IN_PLAYERS, half_width() * 2.0, BODY_SIZE.y * Mech.SIZE_IN_PLAYERS)
+		for l in ladders:
+			if body.intersects(l):
+				return true
+		return false
+	return _find_ladder(-1.0).has_area() or _find_ladder(1.0).has_area()
+
+
+## Half the width of the body as it is drawn and as enemies keep their distance from it: the player's, or the vehicle's chassis.
+func half_width() -> float:
+	return maxf(BODY_SIZE.x * 0.5, Mech.CHASSIS_SIZE.x * 0.5 if mech != null else 0.0)
+
+
 ## Which way the player faces: 1 right, -1 left.
 func facing() -> int:
 	return _facing
@@ -338,12 +330,11 @@ func set_body_scale(factor: float) -> void:
 
 ## Get into the mech (a power-up): the player's own picture and health bar are hidden, the hit box grows and the mech fights, moves and
 ## takes the damage until it is destroyed.
-func board_mech() -> void:
+func board_mech(carried_in := false) -> void:
 	if mech != null:
 		return
 	_stop_climb()
-	_clear_poison()
-	_clear_burn()
+	_clear_status()
 	_windup = -1.0
 	_throw_pose_timer = 0.0
 	global_position.y -= 2.0
@@ -354,6 +345,8 @@ func board_mech() -> void:
 	_visuals.visible = false
 	_health_bar.visible = false
 	_invuln_timer = maxf(_invuln_timer, 0.8)
+	if carried_in:
+		_invuln_timer = 0.0      # (it came with the player from the last level: nothing to protect from)
 
 
 func _on_mech_destroyed() -> void:
@@ -387,99 +380,71 @@ func _mech_takes_damage(amount: int, source_x: float) -> bool:
 	return true
 
 
-# POISON_TICK_TIME: seconds between the hurts of a poisoning (see apply_poison()). POISON_TINT: the colour the player is tinted
-# while poisoned.
-const POISON_TICK_TIME := 0.7
+# POISON_TINT: the colour the player is tinted while poisoned.
 const POISON_TINT := Color(0.62, 1.0, 0.45)
 
 
 # BURN_TINT: the colour a burning player is tinted. BURN_THROW_RANGE: how far a thrown object goes while burning, as a fraction of
-# the normal range (0.5 = half). Burning uses the same tick time as poison, see apply_burn().
+# the normal range (0.5 = half). Burning uses the same tick time as poison (DamageOverTime.TICK_TIME).
 const BURN_TINT := Color(1.0, 0.66, 0.5)
 const BURN_THROW_RANGE := 0.5
 
 
-## Poisoned (by the toxic puffer fish): for the next `ticks` times, POISON_TICK_TIME seconds apart, lose `fraction` of the maximum
+## Poisoned (by the toxic puffer fish): for the next `ticks` times, DamageOverTime.TICK_TIME seconds apart, lose `fraction` of the maximum
 ## health, without being knocked back or made invulnerable. Poison never kills: it stops at 1 health point (the puffer's bite
 ## does the killing, a pit or a fall does the rest). Another poisoning restarts the count. The player is tinted green meanwhile.
 func apply_poison(ticks: int, fraction: float) -> void:
-	if mech != null:
-		return    # the mech's hull keeps it out
-	if _pit_dying or health <= 0:
+	if _immune_to_status():
 		return
-	_poison_ticks = maxi(_poison_ticks, ticks)
-	_poison_amount = maxi(1, roundi(max_health * fraction))
-	_poison_timer = POISON_TICK_TIME
+	_poison.apply(ticks, roundi(max_health * fraction))
 	_update_status_look()
 
 
 ## True while a poisoning is still hurting.
 func is_poisoned() -> bool:
-	return _poison_ticks > 0
+	return _poison.active()
 
 
-func _poison_step(delta: float) -> void:
-	if _poison_ticks <= 0:
-		return
-	_poison_timer -= delta
-	if _poison_timer > 0.0:
-		return
-	_poison_timer = POISON_TICK_TIME
-	_poison_ticks -= 1
-	if health > 1:
-		health = maxi(1, health - _poison_amount)
-		health_changed.emit(health, max_health)
-	if _poison_ticks == 0:
-		_clear_poison()
-
-
-func _clear_poison() -> void:
-	_poison_ticks = 0
-	_update_status_look()
-
-
-## Set on fire (by a lava ball): for the next `ticks` times, POISON_TICK_TIME seconds apart, lose `fraction` of the maximum health,
+## Set on fire (by a lava ball): for the next `ticks` times, DamageOverTime.TICK_TIME seconds apart, lose `fraction` of the maximum health,
 ## without being knocked back or made invulnerable, and for as long as it lasts thrown objects only go BURN_THROW_RANGE of their
 ## usual distance. Like poison it never kills, and a new burning restarts the count. A burning player is tinted orange and has
 ## flames. (A lava ball sets 1% per tick for 16 ticks: a quarter of the poison's rate for four times as long.)
 func apply_burn(ticks: int, fraction: float) -> void:
-	if mech != null:
+	if _immune_to_status():
 		return
-	if _pit_dying or health <= 0:
-		return
-	_burn_ticks = maxi(_burn_ticks, ticks)
-	_burn_amount = maxi(1, roundi(max_health * fraction))
-	_burn_timer = POISON_TICK_TIME
+	_burn.apply(ticks, roundi(max_health * fraction))
 	_update_status_look()
 
 
 ## True while a burning is still hurting.
 func is_burning() -> bool:
-	return _burn_ticks > 0
+	return _burn.active()
 
 
 ## How far thrown objects go right now, as a fraction of the normal range (1, or BURN_THROW_RANGE while burning).
 func throw_range_scale() -> float:
-	return BURN_THROW_RANGE if _burn_ticks > 0 else 1.0
+	return BURN_THROW_RANGE if _burn.active() else 1.0
 
 
-func _burn_step(delta: float) -> void:
-	if _burn_ticks <= 0:
-		return
-	_burn_timer -= delta
-	if _burn_timer > 0.0:
-		return
-	_burn_timer = POISON_TICK_TIME
-	_burn_ticks -= 1
-	if health > 1:
-		health = maxi(1, health - _burn_amount)
-		health_changed.emit(health, max_health)
-	if _burn_ticks == 0:
-		_clear_burn()
+## The mech's hull keeps poison and fire out, and a player who is dying cannot be set on fire.
+func _immune_to_status() -> bool:
+	return mech != null or _pit_dying or health <= 0
 
 
-func _clear_burn() -> void:
-	_burn_ticks = 0
+## One physics step of both effects: each one that is due hurts a little (never below 1 health point) and the look is updated when one ends.
+func _status_step(delta: float) -> void:
+	for effect in [_poison, _burn]:
+		var tick: int = (effect as DamageOverTime).step(delta)
+		if tick > 0 and health > 1:
+			health = maxi(1, health - tick)
+			health_changed.emit(health, max_health)
+		if tick > 0 and not (effect as DamageOverTime).active():
+			_update_status_look()
+
+
+func _clear_status() -> void:
+	_poison.clear()
+	_burn.clear()
 	_update_status_look()
 
 
@@ -487,12 +452,12 @@ func _clear_burn() -> void:
 func _update_status_look() -> void:
 	if _visuals != null:
 		var tint := Color.WHITE
-		if _burn_ticks > 0:
+		if _burn.active():
 			tint = BURN_TINT
-		elif _poison_ticks > 0:
+		elif _poison.active():
 			tint = POISON_TINT
 		_visuals.modulate = Color(tint.r, tint.g, tint.b, _visuals.modulate.a)
-	if _burn_ticks > 0 and _flames == null:
+	if _burn.active() and _flames == null:
 		_flames = CPUParticles2D.new()
 		_flames.texture = PitHazard.glow_texture()
 		var add := CanvasItemMaterial.new()
@@ -518,7 +483,7 @@ func _update_status_look() -> void:
 		_flames.color_ramp = fade
 		add_child(_flames)
 	if _flames != null:
-		_flames.emitting = _burn_ticks > 0
+		_flames.emitting = _burn.active()
 
 
 ## Interact with whatever is in reach. The player only announces it (the interacted signal); the
@@ -589,8 +554,7 @@ func fall_in_pit() -> void:
 	if _pit_dying:
 		return
 	_leave_mech(false)
-	_clear_poison()
-	_clear_burn()
+	_clear_status()
 	_pit_dying = true
 	_pit_timer = -1.0
 	health = 0
@@ -620,8 +584,7 @@ func _pit_step(delta: float) -> void:
 func die(cause: String = "health") -> void:
 	_leave_mech(false)
 	_pit_dying = false
-	_clear_poison()
-	_clear_burn()
+	_clear_status()
 	died.emit(cause)
 	_peak_y = spawn.y
 	health = max_health
@@ -639,13 +602,12 @@ func _physics_process(delta: float) -> void:
 	if _pit_dying:
 		_pit_step(delta)
 		return
-	var dir := Input.get_axis("move_left", "move_right")
-	var vdir := Input.get_axis("move_up", "move_down")  # negative = up
+	var dir := Input.get_axis(InputActions.MOVE_LEFT, InputActions.MOVE_RIGHT)
+	var vdir := Input.get_axis(InputActions.MOVE_UP, InputActions.MOVE_DOWN)  # negative = up
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_invuln_timer = maxf(0.0, _invuln_timer - delta)
 	_stun_timer = maxf(0.0, _stun_timer - delta)
-	_poison_step(delta)
-	_burn_step(delta)
+	_status_step(delta)
 	_throw_timer = maxf(0.0, _throw_timer - delta)
 	_throw_pose_timer = maxf(0.0, _throw_pose_timer - delta)
 	if _windup >= 0.0:
@@ -657,14 +619,14 @@ func _physics_process(delta: float) -> void:
 	if _stun_timer > 0.0:
 		dir = 0.0  # knocked back: no steering for a moment
 
-	if Input.is_action_just_pressed("interact"):
+	if Input.is_action_just_pressed(InputActions.INTERACT):
 		interact()
-	if Input.is_action_just_pressed("attack_light"):
+	if Input.is_action_just_pressed(InputActions.ATTACK_LIGHT):
 		attack_light()
-	if Input.is_action_just_pressed("attack_heavy"):
+	if Input.is_action_just_pressed(InputActions.ATTACK_HEAVY):
 		attack_heavy()
 
-	if hazard_count > 0:
+	if hazard_count > 0 and mech == null:      # (the mech walks over spikes unharmed)
 		take_damage(roundi(max_health * hazard_fraction))  # ignored while invulnerable
 
 	# Up/down grabs a ladder when one is in reach: standing at its bottom, standing on its
@@ -677,7 +639,7 @@ func _physics_process(delta: float) -> void:
 
 	# Jump button while on a ladder: let go and leap off, steering with left/right.
 	var ladder_jump := false
-	if climbing and Input.is_action_just_pressed("jump"):
+	if climbing and Input.is_action_just_pressed(InputActions.JUMP):
 		_stop_climb()
 		_regrab_timer = LADDER_REGRAB_TIME
 		ladder_jump = true
@@ -696,7 +658,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = jump_speed
 		elif not is_on_floor():
 			velocity.y += GRAVITY * delta
-		elif Input.is_action_just_pressed("jump") or (Input.is_action_just_pressed("move_up") and not TouchControls.should_show()):
+		elif Input.is_action_just_pressed(InputActions.JUMP) or (Input.is_action_just_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not (mech != null and ladder_in_reach())):
 			# "jump" (Space / the JUMP button) always jumps. On a keyboard "move_up" (W / Up)
 			# is both jump and climb: a ladder in reach was already grabbed above (so we'd be
 			# climbing, not here); otherwise it jumps. On a phone the D-pad's up never jumps.
@@ -754,14 +716,14 @@ func _find_ladder(vdir: float) -> Rect2:
 func _start_climb(ladder: Rect2) -> void:
 	_ladder = ladder
 	climbing = true
-	collision_mask = LAYER_WORLD | LAYER_BARRIER  # pass through the ladder's top deck both ways
+	collision_mask = PhysicsLayers.PLAYER_CLIMBING_MASK  # pass through the ladder's top deck both ways
 	velocity = Vector2.ZERO
 	global_position.x = ladder.get_center().x  # snap onto the ladder's centre line
 
 
 func _stop_climb() -> void:
 	climbing = false
-	collision_mask = LAYER_WORLD | LAYER_LADDER_DECK | LAYER_BARRIER
+	collision_mask = PhysicsLayers.PLAYER_MASK
 
 
 ## Keep the player on the ladder's centre line and step off at either end.

@@ -16,8 +16,6 @@ extends Node2D
 ## its end falls off and the stump hangs, sparking), 3 smoke from the exhaust and the engine, 4 fire on the engine and the roof with soot
 ## over the body. The 5th hit destroys it (shatter()).
 
-const DIR := "res://assets/powerups/mech/"
-
 # TEX: the pictures are drawn at this scale (they are made at twice their size on screen).
 const TEX := 0.5
 
@@ -52,7 +50,15 @@ const STEP_TRIGGER := 44.0
 const STEP_TIME := 0.2
 const STEP_LIFT := 32.0
 const LEAD := 0.2
-const MAX_REACH := 150.0
+const MAX_REACH := 145.0
+
+# REACH_SOFT: a foot farther than this from its hip steps at once, whatever the other legs are doing; MAX_REACH is the hard limit: a foot is never
+# allowed farther than that (it is dragged along with the body), so a leg never stretches into a long rod. A leg at rest is about 116 long.
+const REACH_SOFT := 128.0
+
+# FOOT_LIFT_LIMIT: a standing foot more than this many pixels above the floor under its stance has been left in the air (see _step_legs()): it
+# is put down at once.
+const FOOT_LIFT_LIMIT := 24.0
 
 # BROKEN_LEG: the leg that snaps on the 2nd hit (the near front leg). SNAP_LINKS: how many links stay on it, the last one torn. LINK_LENGTH: how
 # long each hanging link is, in pixels.
@@ -60,6 +66,29 @@ const BROKEN_LEG := 3
 const SNAP_LINKS := 3
 const LINK_LENGTH := 20.0
 
+# The damage effects: FIRE_SCALE / FIRE_BASE_OFFSET: how big a flame is (of a body picture pixel) and where its base is in its own picture; the smoke streams
+# from the SMOKE_SPOTS (see _make_damage_effects()); the snapped leg's sparks.
+const FIRE_SCALE := 0.9
+const FIRE_FRAMES := 4
+const FIRE_FPS := 11.0
+const FIRE_BASE_OFFSET := Vector2(-40.0, -118.0)
+const SMOKE_AMOUNT := 12
+const SMOKE_AMOUNT_BURNING := 20
+const SMOKE_LIFE := 1.6
+const SMOKE_SPREAD := 20.0
+const SMOKE_SPEED := Vector2(22.0, 46.0)
+const SMOKE_GRAVITY := Vector2(0.0, -10.0)
+const SMOKE_SIZE := Vector2(0.22, 0.36)
+const SMOKE_GROWTH := Vector2(0.45, 1.8)
+const SMOKE_DARK := Color(0.55, 0.5, 0.5)
+const SPARK_AMOUNT := 7
+const SPARK_AMOUNT_SNAP := 14
+const SPARK_AMOUNT_IDLE := 6
+const SPARK_LIFE := 0.45
+const SPARK_SPEED := Vector2(40.0, 150.0)
+const SPARK_GRAVITY := Vector2(0.0, 700.0)
+const SPARK_SIZE := Vector2(0.18, 0.36)
+const SPARK_EVERY := Vector2(0.5, 1.1)       # seconds between the sparks of the hanging stump
 # The damage effects' places, in pixels from the middle of the body picture (the engine block's top is at y = -22.5, the cab roof at y = -30.5,
 # the exhaust stack's top at (-53.5, -51)).
 const SMOKE_SPOTS := [Vector2(-53.5, -51.0), Vector2(-38.0, -22.5)]
@@ -100,23 +129,14 @@ var _spark_timer := 0.0
 var _recoil := {&"missile": 0.0, &"laser": 0.0}
 var _aim := {&"missile": 0.0, &"laser": 0.0}
 var _flash := {&"missile": 0.0, &"laser": 0.0}
-var _tex := {}
 
 
 func _tex_of(name: String) -> Texture2D:
-	if not _tex.has(name):
-		_tex[name] = load(DIR + name + ".png")
-	return _tex[name]
+	return AssetPaths.mech(name)
 
 
 func _sprite(name: String, z: int, centered := true) -> Sprite2D:
-	var s := Sprite2D.new()
-	s.texture = _tex_of(name)
-	s.centered = centered
-	s.scale = Vector2(TEX, TEX)
-	s.z_index = z
-	s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	return s
+	return Sprites.make(_tex_of(name), TEX, z, centered)
 
 
 func _turret(name: String, pivot: Vector2, mount: Vector2, muzzle_tex: Vector2) -> Array:
@@ -170,7 +190,7 @@ func _ready() -> void:
 	_glass_cracks = _sprite("canopy_cracks", 1)
 	_glass_cracks.visible = false
 	_body.add_child(_glass_cracks)
-	var mt := _turret("missile_turret", Vector2(40, 50), MISSILE_MOUNT, Vector2(160, 44))
+	var mt := _turret("missile_turret", Vector2(40, 50), MISSILE_MOUNT, Vector2(176, 44))
 	_missile_turret = mt[0]
 	_missile_muzzle = mt[1]
 	var lt := _turret("laser_turret", Vector2(34, 38), LASER_MOUNT, Vector2(150, 38))
@@ -194,65 +214,52 @@ func _ready() -> void:
 func _make_damage_effects() -> void:
 	# fire: three flames standing on the engine block and the cab roof (their bases are on the spots), animated in _animate_damage()
 	for spot in FIRE_SPOTS:
-		var f := Sprite2D.new()
-		f.texture = _tex_of("fire_1")
-		f.centered = false
-		f.offset = Vector2(-40.0, -124.0 + 6.0)      # the base of the flame picture on the spot
+		var f := Sprites.make(AssetPaths.effect_frame("fire", 0), TEX * FIRE_SCALE, 1, false)
+		f.offset = FIRE_BASE_OFFSET
 		f.position = spot
-		f.scale = Vector2(TEX, TEX) * 0.9
-		f.z_index = 1
 		f.visible = false
-		f.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		_body.add_child(f)
 		_fires.append(f)
-	# smoke from the exhaust stack and from the engine
+	# smoke from the exhaust stack and from the engine (it only streams once the mech is damaged enough, see set_damage())
 	for i in SMOKE_SPOTS.size():
-		var p := CPUParticles2D.new()
-		p.texture = _tex_of("smoke_%d" % (i + 1))
+		var puffs := ParticlePreset.new()
+		puffs.texture = AssetPaths.effect("smoke_%d" % (i + 1))
+		puffs.one_shot = false
+		puffs.explosiveness = 0.0
+		puffs.amount = SMOKE_AMOUNT
+		puffs.lifetime = SMOKE_LIFE
+		puffs.direction = Vector2.UP
+		puffs.spread = SMOKE_SPREAD
+		puffs.speed_min = SMOKE_SPEED.x
+		puffs.speed_max = SMOKE_SPEED.y
+		puffs.gravity = SMOKE_GRAVITY
+		puffs.random_angle = true
+		puffs.scale_min = SMOKE_SIZE.x
+		puffs.scale_max = SMOKE_SIZE.y
+		puffs.grow = ParticlePreset.grow_curve(SMOKE_GROWTH.x, SMOKE_GROWTH.y)
+		puffs.colors = ParticlePreset.fade_gradient([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.8), Color(0.6, 0.6, 0.64, 0.0)])
+		var p := puffs.build()
 		p.position = SMOKE_SPOTS[i]
-		p.local_coords = false
 		p.emitting = false
-		p.amount = 12
-		p.lifetime = 1.6
-		p.direction = Vector2(0.0, -1.0)
-		p.spread = 20.0
-		p.initial_velocity_min = 22.0
-		p.initial_velocity_max = 46.0
-		p.gravity = Vector2(0.0, -10.0)
-		p.angle_min = -180.0
-		p.angle_max = 180.0
-		p.scale_amount_min = 0.22
-		p.scale_amount_max = 0.36
-		var grow := Curve.new()
-		grow.add_point(Vector2(0.0, 0.45))
-		grow.add_point(Vector2(1.0, 1.8))
-		p.scale_amount_curve = grow
-		var ramp := Gradient.new()
-		ramp.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
-		ramp.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.8), Color(0.6, 0.6, 0.64, 0.0)])
-		p.color_ramp = ramp
 		p.z_index = 4
 		_body.add_child(p)
 		_smoke.append(p)
 	# the sparks of the snapped leg (in the world, so they fall away from it)
-	_sparks = CPUParticles2D.new()
-	_sparks.texture = _tex_of("spark")
-	var add := CanvasItemMaterial.new()
-	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_sparks.material = add
-	_sparks.local_coords = false
+	var sparks := ParticlePreset.new()
+	sparks.texture = AssetPaths.effect("spark")
+	sparks.additive = true
+	sparks.explosiveness = 0.9
+	sparks.amount = SPARK_AMOUNT
+	sparks.lifetime = SPARK_LIFE
+	sparks.direction = Vector2.DOWN
+	sparks.spread = 70.0
+	sparks.speed_min = SPARK_SPEED.x
+	sparks.speed_max = SPARK_SPEED.y
+	sparks.gravity = SPARK_GRAVITY
+	sparks.scale_min = SPARK_SIZE.x
+	sparks.scale_max = SPARK_SIZE.y
+	_sparks = sparks.build()
 	_sparks.emitting = false
-	_sparks.one_shot = true
-	_sparks.explosiveness = 0.9
-	_sparks.amount = 7
-	_sparks.lifetime = 0.45
-	_sparks.direction = Vector2(0.0, 1.0)
-	_sparks.spread = 70.0
-	_sparks.initial_velocity_min = 40.0
-	_sparks.initial_velocity_max = 150.0
-	_sparks.gravity = Vector2(0.0, 700.0)
-	_sparks.scale_amount_min = 0.18
-	_sparks.scale_amount_max = 0.36
 	_sparks.z_index = 4
 	add_child(_sparks)
 
@@ -261,20 +268,36 @@ func _make_damage_effects() -> void:
 # damage
 # ---------------------------------------------------------------------------------------------------------------------------
 ## Show the damage of `level` hits (1 to 4).
-func set_damage(level: int) -> void:
+func set_damage(level: int, silent := false) -> void:
 	damage = level
 	_cracks.visible = level >= 1
 	_glass_cracks.visible = level >= 1
 	if level >= 2 and _broken < 0:
-		_snap_leg(BROKEN_LEG)
+		if silent:
+			_broken = BROKEN_LEG       # (carried in from the last level: the leg is already gone, nothing falls off now)
+		else:
+			_snap_leg(BROKEN_LEG)
 	var smoking := level >= 3
 	for p in _smoke:
 		p.emitting = smoking
-		p.color = Color(0.55, 0.5, 0.5) if level >= 4 else Color.WHITE
-		p.amount = 20 if level >= 4 else 12
+		p.color = SMOKE_DARK if level >= 4 else Color.WHITE
+		p.amount = SMOKE_AMOUNT_BURNING if level >= 4 else SMOKE_AMOUNT
 	_soot.visible = level >= 4
 	for f in _fires:
 		f.visible = level >= 4
+
+
+## Mend everything (see Mech.repair()): the cracks, the smoke and the fire go, the leg is whole again.
+func clear_damage() -> void:
+	damage = 0
+	_broken = -1
+	_cracks.visible = false
+	_glass_cracks.visible = false
+	_soot.visible = false
+	for p in _smoke:
+		p.emitting = false
+	for f in _fires:
+		f.visible = false
 
 
 func hurt() -> void:
@@ -312,12 +335,12 @@ func _snap_leg(i: int) -> void:
 		var seg := b - a
 		var thick := LINK_THICKNESS * (1.0 - 0.5 * float(k) / LEG_LINKS)
 		var sc := Vector2(seg.length() * 1.14 / 52.0, thick / 40.0)
-		MechDebris.spawn(parent, _tex_of("link"), (a + b) / 2.0, seg.angle(), sc, Vector2(side * randf_range(40.0, 140.0), randf_range(-260.0, -120.0)), randf_range(-6.0, 6.0))
+		Debris.spawn(parent, _tex_of("link"), (a + b) / 2.0, seg.angle(), sc, Vector2(side * randf_range(40.0, 140.0), randf_range(-260.0, -120.0)), randf_range(-6.0, 6.0))
 	var last := to_global(pts[LEG_LINKS]) - to_global(pts[LEG_LINKS - 1])
-	MechDebris.spawn(parent, _tex_of("claw"), feet[i], last.angle(), Vector2(0.5, 0.5), Vector2(side * randf_range(60.0, 160.0), randf_range(-220.0, -100.0)), randf_range(-7.0, 7.0))
+	Debris.spawn(parent, _tex_of("claw"), feet[i], last.angle(), Vector2(0.5, 0.5), Vector2(side * randf_range(60.0, 160.0), randf_range(-220.0, -100.0)), randf_range(-7.0, 7.0))
 	_spark_timer = 0.0
 	_sparks.global_position = to_global(pts[SNAP_LINKS])
-	_sparks.amount = 14
+	_sparks.amount = SPARK_AMOUNT_SNAP
 	_sparks.restart()
 	_sparks.emitting = true
 
@@ -336,11 +359,11 @@ func shatter() -> void:
 			var seg := b - a
 			var thick := LINK_THICKNESS * (1.0 - 0.5 * float(k) / LEG_LINKS)
 			var away := (a - centre).normalized()
-			MechDebris.spawn(parent, _tex_of("link"), (a + b) / 2.0, seg.angle(), Vector2(seg.length() * 1.14 / 52.0, thick / 40.0), away * randf_range(120.0, 320.0) + Vector2(0.0, -260.0), randf_range(-9.0, 9.0))
-		MechDebris.spawn(parent, _tex_of("claw"), feet[i], randf() * TAU, Vector2(0.5, 0.5), Vector2(randf_range(-260.0, 260.0), randf_range(-420.0, -200.0)), randf_range(-8.0, 8.0))
+			Debris.spawn(parent, _tex_of("link"), (a + b) / 2.0, seg.angle(), Vector2(seg.length() * 1.14 / 52.0, thick / 40.0), away * randf_range(120.0, 320.0) + Vector2(0.0, -260.0), randf_range(-9.0, 9.0))
+		Debris.spawn(parent, _tex_of("claw"), feet[i], randf() * TAU, Vector2(0.5, 0.5), Vector2(randf_range(-260.0, 260.0), randf_range(-420.0, -200.0)), randf_range(-8.0, 8.0))
 	for turret in [_missile_turret, _laser_turret]:
 		var sp := (turret as Node2D).get_child(0) as Sprite2D
-		MechDebris.spawn(parent, sp.texture, (turret as Node2D).global_position, (turret as Node2D).global_rotation, Vector2(0.5, 0.5), Vector2(randf_range(-240.0, 240.0), randf_range(-520.0, -300.0)), randf_range(-6.0, 6.0))
+		Debris.spawn(parent, sp.texture, (turret as Node2D).global_position, (turret as Node2D).global_rotation, Vector2(0.5, 0.5), Vector2(randf_range(-240.0, 240.0), randf_range(-520.0, -300.0)), randf_range(-6.0, 6.0))
 	# chunks of the body picture: the engine block, the cab and the hull (parts of the picture cut out, so they look like pieces of the mech)
 	var body_tex := _tex_of("body")
 	for region in [Rect2(10, 56, 122, 90), Rect2(112, 40, 188, 110), Rect2(14, 146, 280, 56), Rect2(30, 2, 30, 70)]:
@@ -349,7 +372,7 @@ func shatter() -> void:
 		at.region = region
 		var middle: Vector2 = (region.position + region.size / 2.0 - Vector2(150.0, 107.0)) * TEX
 		var world_at := _body.to_global(middle)
-		MechDebris.spawn(parent, at, world_at, 0.0, Vector2(0.5, 0.5) * Vector2(float(_body.scale.x), 1.0), (world_at - centre).normalized() * randf_range(140.0, 300.0) + Vector2(0.0, -300.0), randf_range(-4.0, 4.0))
+		Debris.spawn(parent, at, world_at, 0.0, Vector2(0.5, 0.5) * Vector2(float(_body.scale.x), 1.0), (world_at - centre).normalized() * randf_range(140.0, 300.0) + Vector2(0.0, -300.0), randf_range(-4.0, 4.0))
 
 
 func burst() -> void:
@@ -399,7 +422,7 @@ func laser_direction() -> Vector2:
 ## The floor under `x` within reach of the mech: its y, or `fallback` if there is none.
 func _ground_y(x: float, fallback: float = NAN) -> float:
 	var p := mech.player
-	var query := PhysicsRayQueryParameters2D.create(Vector2(x, p.global_position.y - 130.0), Vector2(x, p.global_position.y + 120.0), Player.LAYER_WORLD | Player.LAYER_LADDER_DECK)
+	var query := PhysicsRayQueryParameters2D.create(Vector2(x, p.global_position.y - 130.0), Vector2(x, p.global_position.y + 120.0), PhysicsLayers.FLOOR)
 	query.exclude.append(p.get_rid())
 	query.hit_from_inside = true
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
@@ -471,14 +494,14 @@ func _animate_damage(delta: float) -> void:
 	for i in _fires.size():
 		var f := _fires[i]
 		if f.visible:
-			f.texture = _tex_of("fire_%d" % ((int(_t * 11.0) + i) % 4 + 1))
+			f.texture = AssetPaths.effect_frame("fire", (int(_t * FIRE_FPS) + i) % FIRE_FRAMES)
 			f.scale = Vector2(TEX, TEX) * (0.82 + 0.12 * sin(_t * 9.0 + i * 2.0))
 	if _broken >= 0:
 		_spark_timer -= delta
 		if _spark_timer <= 0.0:
-			_spark_timer = randf_range(0.5, 1.1)
+			_spark_timer = randf_range(SPARK_EVERY.x, SPARK_EVERY.y)
 			_sparks.global_position = break_tip
-			_sparks.amount = 6
+			_sparks.amount = SPARK_AMOUNT_IDLE
 			_sparks.restart()
 			_sparks.emitting = true
 
@@ -498,36 +521,65 @@ func _step_legs(delta: float, grounded: bool) -> void:
 			_step_t[i] += delta / STEP_TIME
 			var t := clampf(_step_t[i], 0.0, 1.0)
 			var e := t * t * (3.0 - 2.0 * t)
-			var lift := STEP_LIFT + maxf(0.0, _step_from[i].y - _step_to[i].y)
+			# (a foot that is already well above its floor, like a curled one after a jump, just drops: no swing up first)
+			var lift := (STEP_LIFT if _step_from[i].y >= _step_to[i].y - FOOT_LIFT_LIMIT else 0.0) + maxf(0.0, _step_from[i].y - _step_to[i].y)
 			feet[i] = _step_from[i].lerp(_step_to[i], e) + Vector2(0.0, -lift * sin(PI * t))
 			if _step_t[i] >= 1.0:
 				_step_t[i] = -1.0
 				feet[i] = _step_to[i]
 			continue
-		var stance_x: float = p.global_position.x + STANCE[i]
+		var stance_x: float = _stance_x(i)
 		var to_x := stance_x + clampf(p.velocity.x * LEAD, -60.0, 60.0)
+		to_x = _stance_x_toward(i, to_x)
 		var floor_y := _ground_y(to_x)
 		if is_nan(floor_y):
 			# no floor under this foot's stance (a narrow ledge, an edge): it cannot stand, it curls up
 			lacking += 1
 			_curl(i, hip, delta)
 			continue
-		var too_far := absf(feet[i].x - stance_x) > STEP_TRIGGER or feet[i].distance_to(hip) > MAX_REACH or feet[i].y < p.global_position.y - 130.0
+		# a foot well above the floor it should stand on (curled up after a jump, or left on a crate the mech has walked off) comes down at once
+		var off_ground := feet[i].y < floor_y - FOOT_LIFT_LIMIT
+		var over_reach := feet[i].distance_to(hip) > REACH_SOFT
+		var too_far := off_ground or over_reach or absf(feet[i].x - stance_x) > STEP_TRIGGER or feet[i].y < p.global_position.y - 130.0
 		if not too_far:
 			continue
-		# the legs of one group do not step together
+		# the legs of one group do not step together (except to come down from the air, when all of them go at once)
 		var group_busy := false
 		for j in 4:
 			if j != i and j % 2 == i % 2 and _step_t[j] >= 0.0:
 				group_busy = true
-		if group_busy and feet[i].distance_to(hip) < MAX_REACH:
+		if group_busy and not off_ground and not over_reach:
 			continue
 		_step_from[i] = feet[i]
 		_step_to[i] = Vector2(to_x, floor_y)
 		_step_t[i] = 0.0
 	hovering = grounded and lacking > 0
+	# no leg is ever longer than MAX_REACH: a foot that would be is dragged in towards its hip
+	for i in 4:
+		if i == _broken:
+			continue
+		var along := feet[i] - hip_world(i)
+		if along.length() > MAX_REACH:
+			feet[i] = hip_world(i) + along.normalized() * MAX_REACH
 	if _broken >= 0:
 		_update_break_tip()
+
+
+## Where leg `i`'s foot likes to stand: its stance beside the mech, but never inside a wall: a wall beside the mech makes the leg fold in and
+## stand in front of it.
+func _stance_x(i: int) -> float:
+	return _stance_x_toward(i, mech.player.global_position.x + STANCE[i])
+
+
+func _stance_x_toward(i: int, want: float) -> float:
+	var p := mech.player
+	var from := Vector2(p.global_position.x, p.global_position.y - 20.0)
+	var query := PhysicsRayQueryParameters2D.create(from, Vector2(want, from.y), PhysicsLayers.WORLD)
+	query.exclude.append(p.get_rid())
+	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return want
+	return float(hit["position"].x) - signf(want - from.x) * 10.0
 
 
 func _curl(i: int, hip: Vector2, delta: float) -> void:

@@ -60,7 +60,7 @@ levels/
 assets/
   characters/
     kenney_platformer/             Kenney's cartoon characters (style)
-      player/ adventurer/ female/ soldier/ zombie/    24 poses each: <character>_<pose>.png
+      player/ zombie/                the ten poses the game shows (see tools/audit_rules.json): <character>_<pose>.png
   projectiles/                     the throwable objects
 ```
 

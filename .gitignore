@@ -16,3 +16,10 @@ build/
 
 # Python bytecode from the art tools
 __pycache__/
+
+# Scratch space for anything temporary: scratch test scripts, screenshots, logs (see .claude/rules/testing.md). The folder itself is kept.
+tmp/*
+!tmp/.gitkeep
+
+# Local settings of AI tools (the shared rules in .claude/ are committed)
+.claude/settings.local.json

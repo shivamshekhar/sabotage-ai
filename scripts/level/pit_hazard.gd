@@ -90,7 +90,7 @@ func _init(liquid_kind: String = "toxic_waste", liquid: Rect2 = Rect2(), setting
 
 
 func _ready() -> void:
-	add_to_group("pits")   # thrown objects look for the liquid they fall into (see Projectile)
+	add_to_group(Groups.PITS)   # thrown objects look for the liquid they fall into (see Projectile)
 	_surface_y = _rect.position.y + SURFACE_PX
 	var style: Dictionary = STYLES[kind]
 
@@ -126,7 +126,7 @@ func _ready() -> void:
 	# the death zone is the whole liquid (outside the sleeping decoration, so it always works)
 	var area := Area2D.new()
 	area.position = _rect.get_center()
-	area.collision_mask = Player.LAYER_WORLD | Player.LAYER_ENEMY   # the player shares the world layer
+	area.collision_mask = PhysicsLayers.WORLD | PhysicsLayers.ENEMY   # the player shares the world layer
 	var shape := CollisionShape2D.new()
 	var box := RectangleShape2D.new()
 	box.size = _rect.size

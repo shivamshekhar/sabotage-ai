@@ -17,7 +17,7 @@ extends RefCounted
 ## handful of physical classes (solid, empty, ...) first.
 
 # PATH: the registry file.
-const PATH := "res://levels/common/tile_registry.json"
+const PATH := AssetPaths.TILE_REGISTRY
 
 # PRIVATE_BASE: the first code point used for kinds without a built-in character (the start of Unicode's plane 15, a private-use
 # range with 65,534 code points; the id is added to it).
@@ -28,7 +28,7 @@ const PRIVATE_BASE := 0xF0000
 const SOLID_CHAR := "@"
 
 # BARRIER_CHAR: what physics_rows() puts for an invisible wall: not solid for anyone but the player (Level builds its colliders on
-# Player.LAYER_BARRIER), so the solver and the enemies treat it as empty air.
+# PhysicsLayers.BARRIER), so the solver and the enemies treat it as empty air.
 const BARRIER_CHAR := "|"
 
 static var _loaded := false

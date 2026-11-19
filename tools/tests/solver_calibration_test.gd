@@ -30,7 +30,7 @@ func _check(name: String, cond: bool, detail := "") -> void:
 
 func _initialize() -> void:
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	var model := LevelSolver.new(LevelData.test_level())
 	for pat in cal_patterns:
@@ -53,20 +53,20 @@ func _process(_d: float) -> bool:
 	# Press right all the way, release after the pattern's hold, jump on the first frame.
 	var hold: int = cal_patterns[cal_index][0]
 	if t == 1:
-		Input.action_press("jump")
+		Input.action_press(InputActions.JUMP)
 	elif t == 2:
-		Input.action_release("jump")
+		Input.action_release(InputActions.JUMP)
 	if t <= hold:
-		Input.action_press("move_right")
+		Input.action_press(InputActions.MOVE_RIGHT)
 	else:
-		Input.action_release("move_right")
+		Input.action_release(InputActions.MOVE_RIGHT)
 	if t > 3 and player.is_on_floor():
 		var got := player.global_position.x
 		var want := cal_results[cal_index]
 		_check("solver jump %d lands where the engine does" % cal_index,
 			absf(got - want) <= LAND_TOLERANCE, "engine x=%.0f solver x=%.0f" % [got, want])
 		cal_index += 1
-		Input.action_release("move_right")
+		Input.action_release(InputActions.MOVE_RIGHT)
 		if cal_index >= cal_patterns.size():
 			main.queue_free()
 			print("ALL PASS" if ok else "SOME FAILED")
@@ -85,4 +85,4 @@ func _start_cal() -> void:
 	t = 0
 	player.global_position = Vector2(CAL_X, CAL_Y)
 	player.velocity = Vector2.ZERO
-	Input.action_release("move_right")
+	Input.action_release(InputActions.MOVE_RIGHT)

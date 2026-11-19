@@ -38,10 +38,10 @@ func _until(boss: SaltShakerBoss, state: SaltShakerBoss.State, seconds: float) -
 func _main() -> void:
 	_check("level 5 leads to the boss level", LevelData.next_id("level_05") == "level_06" and BossFight.boss_of("level_06") == "salt_shaker")
 	_check("it is the last level", LevelData.next_id("level_06") == "" and LevelData.level_ids().back() == "level_06")
-	_check("the HUD calls it BOSS", LevelData.stage_label("level_06") == "BOSS")
+	_check("the HUD calls it 1-6", LevelData.stage_label("level_06") == "1-6")
 	_check("no other level has a boss", BossFight.boss_of("level_01") == "" and BossFight.boss_of("level_05") == "")
 	LevelData.selected_id = "level_06"
-	var main = load("res://scenes/main.tscn").instantiate()
+	var main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 	await _wait(3)
 	LevelData.selected_id = ""
@@ -64,7 +64,7 @@ func _main() -> void:
 	var reach := boss.hurtbox().grow(Projectile.HIT_RADIUS)
 	var hand := Vector2(boss.global_position.x, boss.floor_y - 92.0)
 	_check("a thrown object leaving the hand can reach its body", reach.has_point(hand + Vector2(0.0, -20.0)), str(reach))
-	_check("the boss is in the enemies group (thrown objects find it)", boss.is_in_group("enemies"))
+	_check("the boss is in the enemies group (thrown objects find it)", boss.is_in_group(Groups.ENEMIES))
 
 	# the level has no visible walls at its sides, only invisible ones that keep the player in
 	var rows := LevelData.map("level_06")
@@ -81,7 +81,7 @@ func _main() -> void:
 	_check("so nothing hurts the player during the calm start", player.health == player.max_health and boss.state == SaltShakerBoss.State.HOVER)
 	boss._hover_left = 9999.0       # (he keeps hovering while the player runs to the walls)
 	for side in [-1, 1]:
-		var action := "move_left" if side < 0 else "move_right"
+		var action := InputActions.MOVE_LEFT if side < 0 else InputActions.MOVE_RIGHT
 		Input.action_press(action)
 		await _wait(60 * 12)
 		Input.action_release(action)
@@ -152,7 +152,7 @@ func _main() -> void:
 			if n is AIBro:
 				bros += 1
 		most = maxi(most, bros)
-		var pieces := get_nodes_in_group("boss_bullets")
+		var pieces := get_nodes_in_group(Groups.BOSS_BULLETS)
 		max_pieces = maxi(max_pieces, pieces.size())
 		for b in pieces:
 			kinds[(b as BossBullet).kind] = true
@@ -183,7 +183,7 @@ func _main() -> void:
 	for i in SaltShakerBoss.HITS_TO_DEFEAT - 1:
 		boss.take_hit(0.5)
 	_check("%d hits defeat it" % SaltShakerBoss.HITS_TO_DEFEAT, seen_defeat[0] and boss.state == SaltShakerBoss.State.DEAD)
-	_check("a defeated boss is no longer an enemy", not boss.is_in_group("enemies"))
+	_check("a defeated boss is no longer an enemy", not boss.is_in_group(Groups.ENEMIES))
 	await _wait(3)
 	_check("and has the dead face", visual.expression == "dead")
 	main.queue_free()

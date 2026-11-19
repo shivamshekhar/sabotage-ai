@@ -10,7 +10,7 @@ extends Node2D
 ##   cap_glow  the cap holes glowing hot (added on top while he sprays)
 ## Everything is centred on this node. Move, turn and scale the node to move the whole boss. Call step() every physics frame.
 
-const FOLDER := "res://assets/bosses/saltman/"
+const FOLDER := AssetPaths.BOSS_SALTMAN
 
 # FACE_FADE: how fast one expression fades into the next, in alpha per second (10 = a tenth of a second).
 const FACE_FADE := 10.0

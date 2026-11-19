@@ -1,7 +1,7 @@
 # Automated checks
 
 Headless scripts in [tools/tests/](../tools/tests/) play the real game with simulated input.
-Run all of them (about 5 seconds; each has a hard time limit; logs go to `build/test_*.log`):
+Run all of them (about 5 seconds; each has a hard time limit; logs go to `tmp/test_logs/`):
 
 ```bash
 tools/run_tests.sh        # Git Bash, from the repo root; exit code 0 = everything passed
@@ -22,12 +22,22 @@ godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/leve
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fall_test.gd     # fall death, level selection
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/minigame_test.gd  # all 10 unlock puzzles: solvable, fair, fit the popup, random
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/laser_test.gd    # laser walls, computers, the puzzle popup
-godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/levels_test.gd         # every level in levels/: finishable, no dead ends, laser order, backgrounds
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/levels_test.gd         # the campaign: chained levels, titles, backgrounds
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_traversal_test.gd # ANY level can be played: exit reachable, no dead ends, gates, power-up box (LEVEL=id or LEVEL_FILE=path for one)
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/powerup_levels_test.gd # the power-up boxes and laser gates of every level, with the real physics
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd           # the mech: size, legs, booster, fuel, weapons, damage stages (in the test arena)
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/carry_test.gd          # carry-over between levels, points text, repair, spikes, walls
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/editor_sync_test.gd    # the level editor offers everything the game has
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/solver_calibration_test.gd # the solver's jump matches the engine's
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_file_test.gd    # level files: read, write, validate, play
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_cli_test.gd     # the level command-line tool
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/editor_test.gd        # the level editor
 ```
+
+**Rules for tests** (details in [.claude/rules/testing.md](../.claude/rules/testing.md)): they must pass every time (`REPEAT=5 tools/run_tests.sh` runs
+each one five times to find flakiness); tests of one element's behaviour run in the test arena (`tools/tests/lib/test_arena.gd`) or the test level, never in
+a real level; tests of the real levels are generic (`lib/level_checks.gd`) and never look at where a tile is placed; scratch scripts and screenshots go in
+`tmp/`, which is git-ignored.
 
 Most tests pin the **test level** (they set `SABOTAGE_LEVEL=test` themselves), because they rely on its
 exact layout. `level_bot.gd` is specific to the test level's layout. `levels_test.gd` checks every level in `levels/`

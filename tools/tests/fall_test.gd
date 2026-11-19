@@ -30,7 +30,7 @@ func _initialize() -> void:
 	_check("the test level is untouched (60 columns, 14 rows)",
 		LevelData.test_level().size() == 14 and LevelData.test_level()[0].length() == 60)
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 
 

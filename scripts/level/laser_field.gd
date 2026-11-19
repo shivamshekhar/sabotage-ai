@@ -40,7 +40,7 @@ func setup(id: String, rect: Rect2) -> void:
 	_area = Rect2(-rect.size.x / 2.0, 0.0, rect.size.x, rect.size.y)
 	z_index = 1
 	_body = StaticBody2D.new()
-	_body.collision_layer = Player.LAYER_WORLD
+	_body.collision_layer = PhysicsLayers.WORLD
 	_shape = CollisionShape2D.new()
 	var rs := RectangleShape2D.new()
 	rs.size = Vector2(BEAM_WIDTH, rect.size.y)

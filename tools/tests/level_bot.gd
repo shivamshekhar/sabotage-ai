@@ -22,7 +22,7 @@ var log_every := 120
 
 func _initialize() -> void:
 	OS.set_environment("SABOTAGE_LEVEL", "test")
-	main = load("res://scenes/main.tscn").instantiate()
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
 	root.add_child(main)
 
 
@@ -56,7 +56,7 @@ func _process(_delta: float) -> bool:
 		return false
 
 	if jump_down:
-		Input.action_release("move_up")
+		Input.action_release(InputActions.MOVE_UP)
 		jump_down = false
 
 	var x := player.global_position.x
@@ -96,27 +96,27 @@ func _process(_delta: float) -> bool:
 		if player.is_on_floor():
 			var st := int(round((840.0 - y) / 70.0))
 			if st >= 4:
-				Input.action_press("move_right")
+				Input.action_press(InputActions.MOVE_RIGHT)
 			elif x >= jump_xs[st]:
 				takeoff = st
-				Input.action_press("move_right")
-				Input.action_press("move_up")
+				Input.action_press(InputActions.MOVE_RIGHT)
+				Input.action_press(InputActions.MOVE_UP)
 				jump_down = true
 			else:
-				Input.action_press("move_right")
+				Input.action_press(InputActions.MOVE_RIGHT)
 		elif takeoff >= 0 and x < targets[takeoff]:
-			Input.action_press("move_right")
+			Input.action_press(InputActions.MOVE_RIGHT)
 	elif phase == 3:
-		Input.action_press("move_left")
+		Input.action_press(InputActions.MOVE_LEFT)
 	elif phase == 1:
 		var lx := 28 * T + 35.0
 		if x < lx - 6.0:
-			Input.action_press("move_right")
+			Input.action_press(InputActions.MOVE_RIGHT)
 		elif x > lx + 6.0:
-			Input.action_press("move_left")
-		Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_LEFT)
+		Input.action_press(InputActions.MOVE_UP)
 	else:
-		Input.action_press("move_right")
+		Input.action_press(InputActions.MOVE_RIGHT)
 		var on_floor := player.is_on_floor()
 		var jump := false
 		if on_floor:
@@ -127,7 +127,7 @@ func _process(_delta: float) -> bool:
 			elif level._cell(c + 1, r) == "^":
 				jump = true
 		if jump:
-			Input.action_press("move_up")
+			Input.action_press(InputActions.MOVE_UP)
 			jump_down = true
 
 	if phase == 4 and frames % 6 == 0 and frames < 1120:
