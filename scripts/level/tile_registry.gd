@@ -10,6 +10,7 @@ extends RefCounted
 ## tile and there is room for over a million kinds. Kinds without a built-in character have a `behavior`:
 ##   "solid"  a block the player stands on and is stopped by, drawn with its `sprite`
 ##   "decor"  a picture behind the player, drawn with its `sprite`
+##   (a "decor" kind may also list `glows`: [{"at": [x, y] px on the tile, "color": [r, g, b], "size": diameter px, "phase": 0 to 1}], lights that glow and dim, see GlowPulse)
 ##   "barrier"  an invisible wall: only the player is stopped by it (enemies walk through), nothing is drawn in the game (the level
 ##              editor shows its `sprite`)
 ##   "powerup"  a floating power-up box (see PowerUpBox): jump on it and it breaks open and gives the player a vehicle; not solid

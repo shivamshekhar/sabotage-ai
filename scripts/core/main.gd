@@ -189,7 +189,6 @@ func _on_goal_reached() -> void:
 	var again := next == ""
 	if again:
 		next = LevelData.DEFAULT_ID if LevelData.is_campaign(_level_id) else _level_id
-		GameStats.reset()   # the game starts over: the score, the health and the vehicle too
 	elif _player != null and is_instance_valid(_player):
 		GameStats.save_player(_player)   # the health and the vehicle (with its damage and energy) go with the player into the next level
 	var layer := CanvasLayer.new()
@@ -207,5 +206,7 @@ func _on_goal_reached() -> void:
 	layer.add_child(label)
 	add_child(layer)
 	await get_tree().create_timer(3.0).timeout
+	if again:
+		GameStats.reset()   # the game is over and starts again: the score, the health and the vehicle go too (points earned until now still counted)
 	LevelData.selected_id = next
 	get_tree().reload_current_scene()

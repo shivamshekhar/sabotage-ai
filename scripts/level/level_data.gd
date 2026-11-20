@@ -664,6 +664,8 @@ static func seq_build_plan(plan: Array, machines: Array, liquid_default: String,
 	grid.fill(0, 0, 0, rows - 1, "#")
 	grid.fill(width - 1, 0, width - 1, rows - 1, "#")
 	grid.fill(1, 1, width - 2, 1, "r")
+	for spot in PitSigns.missing(grid.to_rows()):     # a warning sign on the ground before every deadly pit (first, so the decor leaves its tile free)
+		grid.put(int(spot["col"]), int(spot["row"]), str(spot["char"]))
 	_seq_decor(grid, surfaces, machines)
 	var built := {"rows": grid.to_rows(), "start_row": start_g}
 	var bad := bros_without_room(built["rows"])

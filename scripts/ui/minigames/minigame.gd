@@ -70,9 +70,10 @@ func _build_frame() -> void:
 	_box.add_theme_constant_override("separation", 12)
 	add_child(_box)
 	_status = _make_label("", 32)
-	_status.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+	HackStyle.style_text(_status, HackStyle.MINT)
 	_box.add_child(_status)
 	_prompt = _make_label("", 30)
+	HackStyle.style_text(_prompt)
 	_prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_prompt.custom_minimum_size = Vector2(840, 0)
 	_prompt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -86,6 +87,7 @@ func _add_timer_bar() -> void:
 	_bar.show_percentage = false
 	_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_bar.visible = false
+	HackStyle.style_bar(_bar)
 	_box.add_child(_bar)
 
 
@@ -150,14 +152,7 @@ func _make_button(text: String, color: Color) -> Button:
 	b.custom_minimum_size = Vector2(BUTTON_MIN, BUTTON_MIN)
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 40)
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.set_corner_radius_all(14)
-	b.add_theme_stylebox_override("normal", box)
-	var pressed := box.duplicate() as StyleBoxFlat
-	pressed.bg_color = color.lightened(0.45)
-	b.add_theme_stylebox_override("pressed", pressed)
-	b.add_theme_stylebox_override("hover", box)
+	HackStyle.style_button(b, color)
 	return b
 
 

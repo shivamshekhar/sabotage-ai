@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://5hnmnigh1d6m"
-path="res://.godot/imported/body_burn.png-1767e885e01087c43e6d31e8d2427af1.ctex"
+uid="uid://cpelm8mg7ogfb"
+path="res://.godot/imported/sign_pit_fire.png-2c7ee7303bd2142975f7f2fd5f8f52f5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/powerups/mech/body_burn.png"
-dest_files=["res://.godot/imported/body_burn.png-1767e885e01087c43e6d31e8d2427af1.ctex"]
+source_file="res://levels/common/tiles/data_center/signage/sign_pit_fire.png"
+dest_files=["res://.godot/imported/sign_pit_fire.png-2c7ee7303bd2142975f7f2fd5f8f52f5.ctex"]
 
 [params]
 

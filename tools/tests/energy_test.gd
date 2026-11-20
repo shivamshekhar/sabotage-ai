@@ -1,7 +1,7 @@
 extends SceneTree
-## The player's energy bar (throwing costs 5%, it refills at 4% a second, gradually) and the two ailments that go with it: bleeding (a piranha bite: health
-## loss like a burn, energy refills at half speed, the player flashes red) and radiation sickness (an eel: health loss at 0.75 of a burn's rate for 1.25 times
-## as long, left/right and up/down swapped, a radioactive glow). Also that the mech's weapons are never blocked by the mech itself. Played in the test arena.
+## The player's energy bar (throwing costs 10%, it refills at 4% a second, gradually) and the two ailments that go with it: bleeding (a piranha bite: health
+## loss like a burn, energy refills at half speed, the player flashes red) and radiation sickness (an eel: health loss at a third of a burn's rate for twice
+## as long, enemies' hits do 1.5 times the damage, a radioactive glow). Also that the mech's weapons are never blocked by the mech itself. Played in the test arena.
 ## Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/energy_test.gd
 
@@ -69,13 +69,14 @@ func _main() -> void:
 
 	# ---- the ailments' numbers
 	var burn := _lifetime_total(16, 0.01 * Player.MAX_HEALTH)
-	var radiation := _lifetime_total(20, 0.0075 * Player.MAX_HEALTH)
+	var radiation := _lifetime_total(PitCreature.RADIATION_TICKS, PitCreature.RADIATION_FRACTION * Player.MAX_HEALTH)
 	_check("a burn takes 16 points in 11.2 s", burn[0] == 16 and is_equal_approx(burn[1], 16 * DamageOverTime.TICK_TIME), str(burn))
-	_check("radiation takes 0.75 of the rate (0.75 a tick) for 1.25 times as long (15 points in 14 s)", radiation[0] == 15 and is_equal_approx(radiation[1] / burn[1], 1.25), str(radiation))
+	_check("radiation lasts twice as long as a burn (22.4 s)", is_equal_approx(radiation[1], 2.0 * burn[1]), str(radiation))
+	_check("and hurts at a third of its rate: 10 points over its whole life, against a burn's 16 in half the time", radiation[0] == 10 and burn[0] == 16 and absf((float(radiation[0]) / radiation[1]) / (float(burn[0]) / burn[1]) - 1.0 / 3.0) < 0.07, str(radiation))
 	var bleed_species: Array = PitCreature.SPECIES["piranha"]["bleed"]
 	var burn_species: Array = PitCreature.SPECIES["lava_ball"]["burn"]
 	_check("a piranha's bite makes the player bleed at the rate and for the time of a burn", bleed_species == burn_species, str(bleed_species))
-	_check("an eel's touch gives radiation sickness, and nothing else does", PitCreature.SPECIES["eel"].has("radiation") and not PitCreature.SPECIES["puffer"].has("radiation") and not PitCreature.SPECIES["piranha"].has("radiation") and not PitCreature.SPECIES["eel"].has("bleed"))
+	_check("an eel's touch gives radiation sickness, and nothing else does", PitCreature.SPECIES["eel"]["radiation"] == [PitCreature.RADIATION_TICKS, PitCreature.RADIATION_FRACTION] and not PitCreature.SPECIES["puffer"].has("radiation") and not PitCreature.SPECIES["piranha"].has("radiation") and not PitCreature.SPECIES["eel"].has("bleed"))
 
 	# ---- the player's energy bar
 	TestArena.use()
@@ -136,52 +137,46 @@ func _main() -> void:
 	_check("it ends: no flashing, no blood, normal recovery", not player.is_bleeding() and player._visuals.modulate.g > 0.99 and not player._status.drips.emitting and is_equal_approx(player._status.energy_recovery_scale(), 1.0))
 
 	# ---- radiation sickness
-	player.apply_radiation(20, 0.0075)
 	player.health = player.max_health
-	_check("an eel's touch gives radiation sickness", player.is_radiated() and player.controls_swapped())
+	player._invuln_timer = 0.0
+	player.apply_radiation(PitCreature.RADIATION_TICKS, PitCreature.RADIATION_FRACTION)
+	_check("an eel's touch gives radiation sickness", player.is_radiated())
 	_check("the player glows radioactive", player._status.halo != null and player._status.halo.visible and player._status.halo.material != null)
-	_check("and left/right and up/down are swapped", player.up_action() == InputActions.MOVE_DOWN)
 	player.global_position = Vector2(CLEAR_X, TestArena.FLOOR_Y)
 	player.velocity = Vector2.ZERO
 	await _wait(20)
 	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait_until(func() -> bool: return absf(player.velocity.x) > 50.0)
-	var went_left := player.velocity.x < 0.0
+	_check("the controls are not changed: the right key moves the player right", player.velocity.x > 0.0)
 	Input.action_release(InputActions.MOVE_RIGHT)
 	await _wait_until(func() -> bool: return absf(player.velocity.x) < 1.0)
-	Input.action_press(InputActions.MOVE_LEFT)
-	await _wait_until(func() -> bool: return absf(player.velocity.x) > 50.0)
-	var went_right := player.velocity.x > 0.0
-	Input.action_release(InputActions.MOVE_LEFT)
-	await _wait_until(func() -> bool: return absf(player.velocity.x) < 1.0)
-	_check("the right key moves the player left and the left key right", went_left and went_right)
-	player.global_position = Vector2(CLEAR_X, TestArena.FLOOR_Y)
-	await _wait(20)
-	Input.action_press(InputActions.MOVE_UP)
-	await _wait(6)
-	var up_jumped := not player.is_on_floor()
-	Input.action_release(InputActions.MOVE_UP)
-	await _wait(90)
-	Input.action_press(InputActions.MOVE_DOWN)
-	await _wait(6)
-	var down_jumped := not player.is_on_floor()
-	Input.action_release(InputActions.MOVE_DOWN)
-	_check("the up key no longer jumps, the down key does", not up_jumped and down_jumped, "%s %s" % [up_jumped, down_jumped])
+	var before_hit := player.health
+	player._invuln_timer = 0.0
+	player.take_damage(10, player.global_position.x + 100.0)
+	_check("an enemy's hit does 1.5 times the damage (15 for 10)", before_hit - player.health == 15, "%d" % (before_hit - player.health))
+	player._invuln_timer = 0.0
+	before_hit = player.health
+	player.take_damage(10, NAN, false)
+	_check("spikes and the like are not made worse", before_hit - player.health == 10, "%d" % (before_hit - player.health))
 	await _wait(90)
 	player.health = player.max_health
 	player._status.radiation.clear()
-	player.apply_radiation(20, 0.0075)
-	await _wait(int(DamageOverTime.TICK_TIME * FRAMES_PER_SECOND * 4.0) + 12)
-	_check("it takes 3 points in the first 4 ticks (0.75 each)", player.health == player.max_health - 3, str(player.max_health - player.health))
+	player._invuln_timer = 0.0
+	player.apply_radiation(PitCreature.RADIATION_TICKS, PitCreature.RADIATION_FRACTION)
+	await _wait(int(DamageOverTime.TICK_TIME * FRAMES_PER_SECOND * 3.0) + 12)
+	_check("it takes 1 point in the first 3 ticks (a third of a point each)", player.health == player.max_health - 1, str(player.max_health - player.health))
 	player._clear_status()
+	player._invuln_timer = 0.0
 	await _wait(2)
-	_check("when it ends the controls are back and the glow is off", not player.controls_swapped() and player.up_action() == InputActions.MOVE_UP and not player._status.halo.visible and player._visuals.modulate.r > 0.99)
+	before_hit = player.health
+	player.take_damage(10, player.global_position.x + 100.0)
+	_check("when it ends the glow is off and hits are normal again", not player._status.halo.visible and player._visuals.modulate.r > 0.99 and before_hit - player.health == 10)
 
 	# ---- in the mech: no ailments, and nothing the mech fires is stopped by the mech
 	player.board_mech()
 	await _wait(5)
 	player.apply_bleed(16, 0.01)
-	player.apply_radiation(20, 0.0075)
+	player.apply_radiation(PitCreature.RADIATION_TICKS, PitCreature.RADIATION_FRACTION)
 	_check("the mech's hull keeps both out", not player.is_bleeding() and not player.is_radiated())
 	await _wait(60)
 	var above := player.global_position + Vector2(0.0, -300.0)

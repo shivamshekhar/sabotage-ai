@@ -1,16 +1,15 @@
 """Draws the mech's damage effects, its missile and the weapon effects. Run generate_mech.py first (this one draws on its body).
 
 Usage (from the repo root; needs Pillow, numpy and opencv):
-    python tools/art/generate_mech_effects.py       writes the mech's own pictures into assets/powerups/mech/ and the generic effects (explosion, smoke, fire, sparks, glows) into assets/effects/
+    python tools/art/generate_mech_effects.py       writes the mech's own pictures into assets/powerups/mech/ and the generic effects (explosion, smoke, sparks, glows) into assets/effects/
 
-DAMAGE (the mech survives five hits; each one shows on the mech itself):
+DAMAGE (the mech survives two hits and is destroyed by the third; each one shows on the mech itself):
     body_cracks.png, canopy_cracks.png   hit 1: cracks across the cab, the engine block and the cockpit glass. They are drawn ON the
                                          body picture's own shape (clipped to it), so they are painted onto the mech, not floating.
     link_broken.png, spark.png           hit 2: a leg snaps: the last whole link has a jagged torn end with wires and a bent piston;
                                          the rest of the leg falls off (the game uses link.png, joint.png and claw.png for that)
-    smoke_1..3.png                       hit 3: puffs of smoke from the exhaust stack and the engine
-    fire_1..4.png, body_burn.png         hit 4: flames on the engine block and the cab roof, and a layer of soot over the body
-    (hit 5: the mech explodes; the game throws its own parts about)
+    smoke_1..3.png                       hit 2 too: puffs of smoke from the exhaust stack and the engine
+    (hit 3: the mech explodes; the game throws its own parts about)
 WEAPONS:
     missile.png, missile_flame_1..3.png, missile_glow.png   the missile (pointing right), its exhaust flame (pointing left, the picture's
                                                             right edge is the nozzle) and the glow round it
@@ -34,7 +33,7 @@ from art_lib import S, lit, outline, solid  # noqa: E402
 
 OUT = gm.OUT                                                      # the mech's own pictures
 FX = os.path.join(art_lib.ROOT, "assets", "effects")               # effects any vehicle, enemy or boss can use
-EFFECT_PREFIXES = ("explosion_", "smoke_", "fire_", "spark", "missile_glow", "laser_orb")
+EFFECT_PREFIXES = ("explosion_", "smoke_", "spark", "missile_glow", "laser_orb")
 
 
 def out_path(name):
@@ -210,66 +209,6 @@ def draw_smoke(seed):
     base = vgrad(10, 86, (196, 196, 206), (92, 94, 108))
     c = lit(m, base, radius=6.0, bump=1.5, spec=0.0, ambient=0.62)
     c.putalpha(m.filter(ImageFilter.GaussianBlur(4.5 * S)).point(lambda v: int(v * 0.62)))
-    return c
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# hit 4: fire and soot
-# ----------------------------------------------------------------------------------------------------------------------
-FW_, FH_ = 80, 124          # a flame picture: pointing up, the base on the bottom edge in the middle
-
-
-def tongue(cx, base_w, height, sway, lean=0.0, top=0):
-    pts_l, pts_r = [], []
-    steps = 24
-    for k in range(steps + 1):
-        t = k / steps
-        y = FH_ - 4 - t * height
-        w = base_w * (1 - t) ** 0.85 * (0.75 + 0.25 * math.cos(t * math.pi * 2.0))
-        x = cx + sway * math.sin(t * math.pi * 1.5) * (0.4 + t) + lean * t * 8
-        pts_l.append((x - w, y))
-        pts_r.append((x + w, y))
-    return pts_l + pts_r[::-1]
-
-
-def draw_fire(variant):
-    c = Image.new("RGBA", (FW_ * S, FH_ * S), (0, 0, 0, 0))
-    specs = [
-        [(40, 22, 104, 8, 0), (22, 12, 70, -7, -1), (58, 12, 78, 7, 1)],
-        [(40, 22, 96, -9, 0), (24, 13, 80, 6, -1), (57, 11, 64, -6, 1)],
-        [(40, 22, 110, 7, 0), (21, 11, 62, -5, -1), (59, 13, 84, 9, 1)],
-        [(40, 22, 100, -7, 0), (23, 12, 74, 8, -1), (58, 12, 68, -8, 1)],
-    ][variant]
-    outer = mk(FW_, FH_)
-    mid = mk(FW_, FH_)
-    core = mk(FW_, FH_)
-    for cx, bw, h, sw, ln in specs:
-        poly(outer, tongue(cx, bw, h, sw, ln))
-        poly(mid, tongue(cx, bw * 0.66, h * 0.72, sw * 0.8, ln))
-        poly(core, tongue(cx, bw * 0.36, h * 0.42, sw * 0.5, ln))
-    outer = outer.filter(ImageFilter.GaussianBlur(0.9 * S))
-    mid = mid.filter(ImageFilter.GaussianBlur(0.8 * S))
-    core = core.filter(ImageFilter.GaussianBlur(0.7 * S))
-    art_lib.glow(c, outer, (255, 110, 30), radii=(3, 9), strengths=(0.65, 0.45))
-    c.alpha_composite(solid(outer, (255, 96, 22), 0.96))
-    c.alpha_composite(solid(mid, (255, 186, 52)))
-    c.alpha_composite(solid(core, (255, 248, 210)))
-    return c
-
-
-def draw_burn(body_alpha):
-    rnd = random.Random(3)
-    m = mk(BW, BH)
-    d = ImageDraw.Draw(m)
-    for (x, y, r) in ((60, 64, 34), (104, 66, 26), (38, 118, 24), (212, 50, 24), (258, 102, 20), (150, 146, 22), (92, 138, 20)):
-        d.ellipse([P(x - r, y - r * 0.8), P(x + r, y + r * 0.8)], fill=int(rnd.uniform(220, 255)))
-    # scorch streaks rising from the vents
-    for x in (36, 62, 90):
-        d.rectangle([P(x - 4, 60), P(x + 4, 120)], fill=120)
-    m = m.filter(ImageFilter.GaussianBlur(5 * S)).point(lambda v: min(255, int(v * 1.5)))
-    m = ImageChops.multiply(m, body_alpha)
-    c = Image.new("RGBA", m.size, (0, 0, 0, 0))
-    c.alpha_composite(solid(m, (14, 10, 8), 0.86))
     return c
 
 
@@ -498,9 +437,6 @@ def main():
     save(draw_spark(), "spark.png")
     for i in range(3):
         save(draw_smoke(20 + i), "smoke_%d.png" % (i + 1))
-    for i in range(4):
-        save(draw_fire(i), "fire_%d.png" % (i + 1))
-    save(draw_burn(alpha), "body_burn.png")
     save(draw_missile(), "missile.png")
     for i in range(3):
         save(draw_missile_flame(i), "missile_flame_%d.png" % (i + 1))

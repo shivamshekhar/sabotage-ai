@@ -1,9 +1,9 @@
 class_name PowerUpBox
 extends Node2D
 ## A floating power-up box (the "powerup_box" tile): a flat slate cube with a "?" because what is inside is random. It hovers and
-## bobs. Jump on it (come down on its top) and the player bounces off it, it breaks apart in a few frames (assets/powerups/box_break_*.png,
-## made by tools/art/generate_powerup.py) and the power-up inside, picked at random (see PowerUps), is given to the player. Walking
-## into it from the side or from below does nothing. A player who already has that vehicle gets it mended and its energy filled, and 500 points.
+## bobs. When the player's body touches it (from any side, on foot or in a vehicle) it breaks apart in a few frames (assets/powerups/box_break_*.png,
+## made by tools/art/generate_powerup.py) and the power-up inside, picked at random (see PowerUps), is given to the player, with a bright white flash
+## (WhiteFlash). A player who already has that vehicle gets it mended and its energy filled, and 500 points.
 
 signal opened(kind: String)
 
@@ -26,12 +26,6 @@ const HALF := 32.0
 # BOB_HEIGHT / BOB_SPEED: how far (px) and how fast (radians per second) the box floats up and down.
 const BOB_HEIGHT := 4.0
 const BOB_SPEED := 2.4
-
-# STOMP_REACH: how far below the box's top edge (and how far above it) the player's feet may be and still count as landing on it.
-const STOMP_REACH := 30.0
-
-# BOUNCE_SPEED: the upward speed the player is given when they land on the box (a little hop, like a stomp).
-const BOUNCE_SPEED := -460.0
 
 # FRAME_TIME: seconds each break-apart frame is shown. GRANT_FRAME: the frame (0-based, of the break frames) at which the power-up
 # is given, the moment of the flash.
@@ -86,22 +80,21 @@ func _physics_process(delta: float) -> void:
 	position = _home + Vector2(0.0, sin(_t * BOB_SPEED) * BOB_HEIGHT)
 	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
 		var player := p as Player
-		if player != null and _stomped_by(player):
+		if player != null and touched_by(player):
 			_open(player)
 			return
 
 
-func _stomped_by(player: Player) -> bool:
-	if player.velocity.y < 0.0:
-		return false
-	var feet := player.global_position
-	var top := position.y - HALF
-	return absf(feet.x - position.x) < HALF + Player.BODY_SIZE.x * 0.5 - 8.0 and feet.y > top - STOMP_REACH and feet.y < top + STOMP_REACH
+## True if the player's body (the vehicle's, when they are in one) overlaps the box.
+func touched_by(player: Player) -> bool:
+	var vehicle_scale := Mech.SIZE_IN_PLAYERS if player.mech != null else 1.0
+	var size := Vector2(player.half_width() * 2.0, Player.BODY_SIZE.y * vehicle_scale)
+	var body := Rect2(player.global_position - Vector2(size.x / 2.0, size.y), size)
+	return body.intersects(Rect2(position - Vector2(HALF, HALF), Vector2(HALF, HALF) * 2.0))
 
 
 func _open(player: Player) -> void:
 	_breaking = true
-	player.velocity.y = BOUNCE_SPEED
 	opened.emit(kind)
 	_question.visible = false          # the break frames carry the (amber) "?" themselves
 	for i in 6:

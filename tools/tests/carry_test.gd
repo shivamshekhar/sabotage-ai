@@ -1,6 +1,6 @@
 extends SceneTree
 ## What goes with the player from level to level and the points text: the health and the vehicle (with its damage and energy) are carried into the
-## next level; points float up as a small pooled text; opening a power-up box while in the mech mends it and gives 500 points; the mech walks
+## next level; every award floats up at once as a small text of its own (nothing is delayed or added together), and the score survives a respawn and a level change; opening a power-up box while in the mech mends it and gives 500 points; the mech walks
 ## over spikes unharmed; enemies keep their distance from its wide body and it is stopped by walls where it is drawn; Up at a ladder does not
 ## light its booster. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/carry_test.gd
@@ -24,11 +24,7 @@ func _wait(frames: int) -> void:
 
 
 func _popups() -> Array:
-	var out := []
-	if ScorePopups._instance != null and is_instance_valid(ScorePopups._instance):
-		for c in ScorePopups._instance.get_children():
-			out.append(c)
-	return out
+	return get_nodes_in_group(Groups.SCORE_POPUPS)
 
 
 func _level() -> Node:
@@ -45,38 +41,25 @@ func _main() -> void:
 	GameStats.reset()
 	await _wait(2)
 
-	# ---- the points text: pooled, small, floating, then gone
+	# ---- the points text: at once, one per award, small, floating up, then gone
 	GameStats.add_score(100, Vector2(100.0, 300.0))
-	await _wait(30)
+	_check("the score rises at once", GameStats.score == 100, str(GameStats.score))
+	var first := _popups()
+	_check("and so does its text, with no waiting", first.size() == 1 and (first[0] as ScorePopups.ScorePopup).text == "+100" and absf((first[0] as Node2D).position.x - 100.0) < 1.0, str(first.size()))
 	GameStats.add_score(500, Vector2(240.0, 260.0))
-	_check("the score rises at once", GameStats.score == 600, str(GameStats.score))
-	await _wait(50)
-	_check("nothing is shown while awards keep coming within a second of each other", _popups().is_empty())
-	await _wait(30)
-	var shown := _popups()
-	_check("a second after the last one, ONE text shows the sum", shown.size() == 1 and (shown[0] as ScorePopups.ScorePopup).text == "+600", str(shown.size()))
-	_check("where the last one was earned", shown.size() == 1 and absf((shown[0] as Node2D).position.x - 240.0) < 1.0)
-	var start_y: float = (shown[0] as Node2D).position.y
+	GameStats.add_score(50, Vector2(300.0, 260.0))
+	var several := _popups()
+	var texts := several.map(func(n: Node) -> String: return (n as ScorePopups.ScorePopup).text)
+	_check("awards are not added together: each has its own text", several.size() == 3 and texts.has("+100") and texts.has("+500") and texts.has("+50"), str(texts))
+	_check("and the score is their sum", GameStats.score == 650, str(GameStats.score))
+	var start_y: float = (first[0] as Node2D).position.y
 	await _wait(35)
-	_check("it floats up", shown.size() == 1 and is_instance_valid(shown[0]) and (shown[0] as Node2D).position.y < start_y - 10.0)
+	_check("a text floats up", is_instance_valid(first[0]) and (first[0] as Node2D).position.y < start_y - 10.0)
 	_check("and the font is small", ScorePopups.FONT_SIZE <= 20)
 	await _wait(60)
 	_check("then it is gone", _popups().is_empty())
-	GameStats.add_score(100, Vector2(10.0, 10.0))
-	await _wait(75)
-	_check("a lone award shows by itself after the pooling time", _popups().size() == 1 and (_popups()[0] as ScorePopups.ScorePopup).text == "+100")
-	await _wait(100)
-	# a long chain still shows eventually
-	var chain_shown := false
-	for i in 8:
-		GameStats.add_score(10, Vector2(float(i), 0.0))
-		for k in 40:
-			await _wait(1)
-			chain_shown = chain_shown or not _popups().is_empty()
-	_check("a long chain does not wait for ever (it shows within %.1f s)" % ScorePopups.MAX_WAIT, chain_shown)
-	await _wait(120)
 
-	# ---- an enemy's death scores above its head
+	# ---- an enemy's death scores above its head, at once
 	var bro := AIBro.new()
 	bro.configure({"sight_range": 1.0, "lose_range": 1.0, "sight_height": 1.0, "patrol_radius": 1.0}, "X")
 	bro.position = Vector2(500.0, 600.0)
@@ -84,30 +67,69 @@ func _main() -> void:
 	await _wait(3)
 	var before := GameStats.score
 	bro.take_hit(1.0)
-	_check("killing a Bro scores %d, shown above its head" % GameStats.KILL_SCORE, GameStats.score == before + GameStats.KILL_SCORE and ScorePopups._instance._pending == GameStats.KILL_SCORE and ScorePopups._instance._at.y < 600.0 - 100.0)
-	await _wait(200)
+	var kill_text := _popups()
+	_check("killing a Bro scores %d, and the text floats up from above its head at that moment" % GameStats.KILL_SCORE, GameStats.score == before + GameStats.KILL_SCORE and kill_text.size() == 1 and (kill_text[0] as Node2D).position.y < 600.0 - 100.0 and (kill_text[0] as ScorePopups.ScorePopup).text == "+%d" % GameStats.KILL_SCORE)
+	await _wait(100)
+
+	# ---- so does destroying a creature of a pit (the fireball, which cannot be destroyed, scores nothing)
+	for kind in ["piranha", "puffer", "eel", "lava_ball"]:
+		var creature := PitCreature.new(600.0, 800.0, 700.0, 900.0, kind)
+		root.add_child(creature)
+		await _wait(2)
+		creature.state = PitCreature.State.PEEK
+		creature.position = Vector2(800.0, 560.0)
+		var score_before := GameStats.score
+		creature.take_hit(1.0)
+		var expected: int = 0 if kind == "lava_ball" else GameStats.PIT_CREATURE_SCORE
+		_check("destroying a %s scores %d" % [kind, expected], GameStats.score == score_before + expected, str(GameStats.score - score_before))
+		if expected > 0:
+			var text := _popups()
+			_check("and its points float up from it", text.size() == 1 and (text[0] as ScorePopups.ScorePopup).text == "+%d" % expected)
+		else:
+			_check("(and no text)", _popups().is_empty())
+		creature.queue_free()
+		await _wait(80)
+	var twice := PitCreature.new(600.0, 800.0, 700.0, 900.0, "piranha")
+	root.add_child(twice)
+	await _wait(2)
+	twice.state = PitCreature.State.PEEK
+	twice.position = Vector2(800.0, 560.0)
+	twice.take_hit(1.0)
+	var after_one := GameStats.score
+	twice.take_hit(1.0)
+	_check("a creature that is already destroyed does not score again", GameStats.score == after_one)
+	twice.queue_free()
+	await _wait(80)
 
 	# ---- what is carried to the next level
 	var main = await _level()
 	var player: Player = get_first_node_in_group(Groups.PLAYER)
+	GameStats.add_score(GameStats.KILL_SCORE)
+	var score_before_death := GameStats.score
+	player.die("health")
+	_check("the score is kept when the player respawns", GameStats.score == score_before_death and score_before_death > 0, str(GameStats.score))
 	player.health = 63
 	player.board_mech()
 	await _wait(5)
 	player.mech.take_damage()
 	player.mech.take_damage()
-	player.mech.take_damage()
 	player.mech.energy.set_level(0.5)
 	GameStats.save_player(player)
-	_check("the player's state is remembered: health, vehicle, its damage and energy", int(GameStats.carried["health"]) == 63 and GameStats.carried["mech"] == true and int(GameStats.carried["mech_hits"]) == 3 and is_equal_approx(float(GameStats.carried["mech_energy"]), 0.5), str(GameStats.carried))
+	_check("the player's state is remembered: health, vehicle, its damage and energy", int(GameStats.carried["health"]) == 63 and GameStats.carried["mech"] == true and int(GameStats.carried["mech_hits"]) == 2 and is_equal_approx(float(GameStats.carried["mech_energy"]), 0.5), str(GameStats.carried))
+	GameStats.add_score(GameStats.KILL_SCORE)
+	var score_at_exit := GameStats.score
 	main.queue_free()
 	await _wait(3)
 	main = await _level()
 	player = get_first_node_in_group(Groups.PLAYER)
+	_check("the score is kept into the next level, and points still add up there", GameStats.score == score_at_exit and score_at_exit > 0, str(GameStats.score))
+	GameStats.add_score(GameStats.KILL_SCORE)
+	_check("(a level change does not lose what comes after it either)", GameStats.score == score_at_exit + GameStats.KILL_SCORE)
 	_check("the next level starts with the same health", player.health == 63, str(player.health))
 	var carried_mech := player.mech
 	_check("and the same vehicle", carried_mech != null)
 	if carried_mech != null:
-		_check("in the same state: three hits, the cracks, the broken leg and the smoke showing", carried_mech.hits == 3 and carried_mech.visual._cracks.visible and carried_mech.visual._broken == MechVisual.BROKEN_LEG and carried_mech.visual._smoke[0].emitting and not carried_mech.visual._fires[0].visible)
+		_check("in the same state: two hits, the cracks, the broken leg and the smoke showing", carried_mech.hits == 2 and carried_mech.visual._cracks.visible and carried_mech.visual._broken == MechVisual.BROKEN_LEG and carried_mech.visual._smoke[0].emitting)
 		_check("and the energy it had", carried_mech.energy.level >= 0.5 and carried_mech.energy.level < 0.6, "%.2f" % carried_mech.energy.level)
 		var debris := 0
 		for n in main.get_children():
@@ -119,6 +141,17 @@ func _main() -> void:
 		for f in carried_mech.visual.feet:
 			floating = maxf(floating, player.global_position.y - f.y)
 		_check("it arrives standing: all four feet are on the floor, not hovering above it", player.is_on_floor() and floating < 4.0, "feet up to %.1f px above the floor" % floating)
+	if carried_mech != null:
+		for i in Mech.HITS_TO_DESTROY:
+			player._invuln_timer = 0.0
+			player.take_damage(1)
+			await _wait(2)
+		_check("a destroyed mech is lost for good: it is no longer what is carried", player.mech == null and GameStats.carried["mech"] == false)
+		main.queue_free()
+		await _wait(3)
+		main = await _level()
+		player = get_first_node_in_group(Groups.PLAYER)
+		_check("so a level that starts again (the boss fight after a defeat) does not give it back", player.mech == null)
 	main.queue_free()
 	await _wait(3)
 	GameStats.reset()
@@ -130,7 +163,7 @@ func _main() -> void:
 	# ---- a power-up box opened while in the mech mends it, fills its energy and gives 500 points
 	player.board_mech()
 	await _wait(5)
-	for i in 3:
+	for i in 2:
 		player.mech.take_damage()
 	player.mech.energy.set_level(0.1)
 	var box := PowerUpBox.new()
@@ -140,14 +173,15 @@ func _main() -> void:
 	var score_before := GameStats.score
 	player.global_position = Vector2(box.position.x, box.position.y - 150.0)
 	player.velocity = Vector2(0.0, 520.0)
-	await _wait(20)
+	await _wait(45)
 	var m := player.mech
 	player.global_position = Vector2(300.0, TestArena.FLOOR_Y)       # (back to the floor: the box hangs over a deadly pit)
 	player.velocity = Vector2.ZERO
 	_check("the box mends the mech (no damage) and fills the tank", m != null and m.hits == 0 and m.energy.level >= 0.99 and m.visual.damage == 0 and not m.visual._cracks.visible and m.visual._broken == -1)
 	_check("and gives %d points" % GameStats.REPAIR_SCORE, GameStats.score == score_before + GameStats.REPAIR_SCORE, str(GameStats.score - score_before))
+	var box_text := _popups().filter(func(n: Node) -> bool: return (n as ScorePopups.ScorePopup).text == "+500")
+	_check("the points float up from the box", box_text.size() == 1)
 	await _wait(100)
-	_check("the points float up from the box", not _popups().is_empty() and (_popups()[0] as ScorePopups.ScorePopup).text == "+500")
 	await _wait(100)
 
 	# ---- spikes: they hurt on foot, but not the mech

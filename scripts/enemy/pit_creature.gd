@@ -82,16 +82,16 @@ const HURT_BOX := Vector2(84, 58)
 # `hide` how deep it waits (HIDE_DEPTH if missing), `splash` the colour of the spray it makes at the surface. Optional: `eye`
 # (the piranha's glowing eye), `glow` (a colour: an additive copy of the picture that pulses), `trail` (particles it leaves while
 # it is out of the water: colour, how many per second, how long they live, whether they glow), `poison` ([ticks, share of health
-# per tick] a hit makes the player suffer, see Player.apply_poison()), `burn` (the same for Player.apply_burn(): a lava ball's 16 ticks of 1%), `bleed` (Player.apply_bleed(): the piranha's bite, the same rate and time as a burn), `radiation` (Player.apply_radiation(): the eel, 0.75 of a burn's rate and 1.25 times as long: 20 ticks of 0.75%), `leap_height`,
+# per tick] a hit makes the player suffer, see Player.apply_poison()), `burn` (the same for Player.apply_burn(): a lava ball's 16 ticks of 1%), `bleed` (Player.apply_bleed(): the piranha's bite, the same rate and time as a burn), `score` (the points for destroying it, see GameStats; none for the fireball, which cannot be destroyed), `radiation` (Player.apply_radiation(): the eel, a third of a burn's rate for twice as long: 32 ticks of a third of a percent, and hits do 1.5 times as much damage meanwhile), `leap_height`,
 # `leap_reach`, `leap_time` ([min, max]), `lurk` (seconds hidden between appearances, instead of LURK_TIME), `vertical` (it only ever jumps straight up and down from its spot, never peeks or leaps
 # sideways), `fire` (it is made of fire: a thrown object that hits it burns up and does not hurt it) and `anchor` (the pixel of the
 # picture that is the creature's position, if not the middle: the fireball's head, so its flame trails behind it).
 const SPECIES := {
 	"piranha": {"liquid": "piranha_tank", "parts": ["fish_closed", "fish_slight", "fish_open", "fish_wide"], "scale": 0.56,
-		"hurt": Vector2(84, 58), "damage": 0.1, "anim": "mouth", "eye": true, "splash": Color(0.85, 0.95, 1.0, 0.9), "bleed": [16, 0.01]},
+		"hurt": Vector2(84, 58), "damage": 0.1, "anim": "mouth", "eye": true, "splash": Color(0.85, 0.95, 1.0, 0.9), "bleed": [16, 0.01], "score": GameStats.PIT_CREATURE_SCORE},
 	"puffer": {"liquid": "toxic_waste", "parts": ["puffer_small", "puffer_mid", "puffer_big"], "scale": 0.5210,
 		"hurt": Vector2(64, 58), "damage": 0.08, "anim": "inflate", "hide": 53.0, "splash": Color(0.6, 1.0, 0.3, 0.9),
-		"poison": [4, 0.04], "trail": {"color": Color(0.55, 1.0, 0.25, 0.85), "rate": 14.0, "life": 0.9, "glow": false}},
+		"poison": [4, 0.04], "score": GameStats.PIT_CREATURE_SCORE, "trail": {"color": Color(0.55, 1.0, 0.25, 0.85), "rate": 14.0, "life": 0.9, "glow": false}},
 	"lava_ball": {"liquid": "lava", "parts": ["ball_a", "ball_b", "ball_c"], "scale": 0.8,
 		"hurt": Vector2(68, 68), "damage": 0.15, "anim": "flicker", "frame_time": 0.08, "hide": 66.0, "glow": Color(1.0, 0.5, 0.1),
 		"splash": Color(1.0, 0.6, 0.15, 0.95), "leap_height": [221.0, 351.0], "leap_time": [1.95, 2.05], "lurk": 3.5,
@@ -99,9 +99,16 @@ const SPECIES := {
 		"trail": {"color": Color(1.0, 0.65, 0.2, 0.95), "rate": 30.0, "life": 0.7, "glow": true}},
 	"eel": {"liquid": "nuclear_waste", "parts": ["eel_a", "eel_b", "eel_c", "eel_d"], "scale": 0.4144,
 		"hurt": Vector2(83, 26), "damage": 0.12, "anim": "swim", "frame_time": 0.11, "hide": 29.0, "glow": Color(0.5, 1.0, 0.3),
-		"splash": Color(0.7, 1.0, 0.4, 0.95), "radiation": [20, 0.0075], "leap_reach": [110.0, 250.0], "leap_height": [90.0, 170.0], "leap_time": [1.0, 1.4],
+		"splash": Color(0.7, 1.0, 0.4, 0.95), "radiation": [RADIATION_TICKS, RADIATION_FRACTION], "score": GameStats.PIT_CREATURE_SCORE, "leap_reach": [110.0, 250.0], "leap_height": [90.0, 170.0], "leap_time": [1.0, 1.4],
 		"trail": {"color": Color(0.7, 1.0, 0.4, 0.9), "rate": 12.0, "life": 0.8, "glow": true}},
 }
+
+# SCORE_RISE: how far above a destroyed creature its points text starts, in pixels.
+const SCORE_RISE := 40.0
+
+# RADIATION_TICKS / RADIATION_FRACTION: the eel's radiation sickness: twice as many ticks as a lava ball's burn (16) of a third of its share of health (1%).
+const RADIATION_TICKS := 32
+const RADIATION_FRACTION := 0.01 / 3.0
 
 # AILMENTS: the SPECIES keys that make the player suffer something, each one [ticks, share of health per tick] for Player.apply_<name>().
 const AILMENTS := ["poison", "burn", "bleed", "radiation"]
@@ -477,6 +484,7 @@ func take_hit(_fraction: float, _from_x: float = NAN) -> void:
 		return
 	state = State.DEAD
 	_timer = respawn_time
+	GameStats.add_score(int(species.get("score", 0)), global_position + Vector2(0.0, -SCORE_RISE))   # (the points float up from where it was hit)
 	defeated.emit()
 	_splash(Vector2(global_position.x, surface_y))
 	if _trail != null:

@@ -13,8 +13,7 @@ extends Node2D
 ## not floating, it is held up.
 ##
 ## DAMAGE (set_damage(), one step for each hit the mech has taken): 1 cracks on the body and the glass, 2 a leg snaps (the front leg:
-## its end falls off and the stump hangs, sparking), 3 smoke from the exhaust and the engine, 4 fire on the engine and the roof with soot
-## over the body. The 5th hit destroys it (shatter()).
+## its end falls off and the stump hangs, sparking) and smoke streams from the exhaust and the engine. The 3rd hit destroys it (shatter()).
 
 # TEX: the pictures are drawn at this scale (they are made at twice their size on screen).
 const TEX := 0.5
@@ -36,6 +35,14 @@ const NEAR := [true, false, false, true]
 # base rests on the hull ledge at the front of the cab.
 const MISSILE_MOUNT := Vector2(12.0, -50.5)
 const LASER_MOUNT := Vector2(55.0, 7.5)
+
+# MISSILE_PIVOT / LASER_PIVOT: the point of each turret's picture it turns about, in picture pixels.
+const MISSILE_PIVOT := Vector2(40, 50)
+const LASER_PIVOT := Vector2(34, 38)
+
+# PILOT_HEIGHT / PILOT_AT: the picture of the player sitting in the cockpit: how tall it is (px) and where, from the middle of the body picture.
+const PILOT_HEIGHT := 58.0
+const PILOT_AT := Vector2(33.0, 3.5)
 
 # FAR_SHADE: how dark the legs behind the body are.
 const FAR_SHADE := 0.6
@@ -103,21 +110,14 @@ const BROKEN_LEG := 3
 const SNAP_LINKS := 3
 const LINK_LENGTH := 20.0
 
-# The damage effects: FIRE_SCALE / FIRE_BASE_OFFSET: how big a flame is (of a body picture pixel) and where its base is in its own picture; the smoke streams
-# from the SMOKE_SPOTS (see _make_damage_effects()); the snapped leg's sparks.
-const FIRE_SCALE := 0.9
-const FIRE_FRAMES := 4
-const FIRE_FPS := 11.0
-const FIRE_BASE_OFFSET := Vector2(-40.0, -118.0)
+# The damage effects: the smoke streams from the SMOKE_SPOTS (see _make_damage_effects()); the snapped leg's sparks.
 const SMOKE_AMOUNT := 12
-const SMOKE_AMOUNT_BURNING := 20
 const SMOKE_LIFE := 1.6
 const SMOKE_SPREAD := 20.0
 const SMOKE_SPEED := Vector2(22.0, 46.0)
 const SMOKE_GRAVITY := Vector2(0.0, -10.0)
 const SMOKE_SIZE := Vector2(0.22, 0.36)
 const SMOKE_GROWTH := Vector2(0.45, 1.8)
-const SMOKE_DARK := Color(0.55, 0.5, 0.5)
 const SPARK_AMOUNT := 7
 const SPARK_AMOUNT_SNAP := 14
 const SPARK_AMOUNT_IDLE := 6
@@ -129,11 +129,10 @@ const SPARK_EVERY := Vector2(0.5, 1.1)       # seconds between the sparks of the
 # The damage effects' places, in pixels from the middle of the body picture (the engine block's top is at y = -22.5, the cab roof at y = -30.5,
 # the exhaust stack's top at (-53.5, -51)).
 const SMOKE_SPOTS := [Vector2(-53.5, -51.0), Vector2(-38.0, -22.5)]
-const FIRE_SPOTS := [Vector2(-44.0, -21.0), Vector2(-24.0, -21.0), Vector2(6.0, -29.5)]
 
 var mech: Mech
 var feet: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]   # the feet in the world
-var damage := 0                      # the hits taken so far (0-4 while it is alive)
+var damage := 0                      # the hits taken so far (0-2 while it is alive)
 var hovering := false                # standing without all legs on the floor: the booster burns low
 var break_tip := Vector2.ZERO        # where the snapped leg ends, in the world (while a leg is broken)
 
@@ -145,7 +144,6 @@ var _body: Node2D
 var _pilot: Sprite2D
 var _cracks: Sprite2D
 var _glass_cracks: Sprite2D
-var _soot: Sprite2D
 var _missile_turret: Node2D
 var _laser_turret: Node2D
 var _missile_muzzle: Node2D
@@ -153,7 +151,6 @@ var _laser_muzzle: Node2D
 var _flame: Sprite2D
 var _legs_far: MechLegs
 var _legs_near: MechLegs
-var _fires: Array[Sprite2D] = []
 var _smoke: Array[CPUParticles2D] = []
 var _sparks: CPUParticles2D
 var _step_from: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
@@ -216,26 +213,23 @@ func _ready() -> void:
 	# the pilot: the player, sitting in the cockpit behind the glass
 	_pilot = Sprite2D.new()
 	_pilot.texture = SpriteLibrary.character_pose(PlayerSprite.CHARACTER, "idle")
-	var ps := 58.0 / float(_pilot.texture.get_height())
+	var ps := PILOT_HEIGHT / float(_pilot.texture.get_height())
 	_pilot.scale = Vector2(ps, ps)
-	_pilot.position = Vector2(33.0, 3.5)
+	_pilot.position = PILOT_AT
 	_pilot.z_index = -1
 	_body.add_child(_pilot)
 	_body.add_child(_sprite("body", 0))
 	_cracks = _sprite("body_cracks", 0)
 	_cracks.visible = false
 	_body.add_child(_cracks)
-	_soot = _sprite("body_burn", 0)
-	_soot.visible = false
-	_body.add_child(_soot)
 	_body.add_child(_sprite("canopy", 1))
 	_glass_cracks = _sprite("canopy_cracks", 1)
 	_glass_cracks.visible = false
 	_body.add_child(_glass_cracks)
-	var mt := _turret("missile_turret", Vector2(40, 50), MISSILE_MOUNT, Vector2(176, 44))
+	var mt := _turret("missile_turret", MISSILE_PIVOT, MISSILE_MOUNT, Vector2(176, 44))
 	_missile_turret = mt[0]
 	_missile_muzzle = mt[1]
-	var lt := _turret("laser_turret", Vector2(34, 38), LASER_MOUNT, Vector2(150, 38))
+	var lt := _turret("laser_turret", LASER_PIVOT, LASER_MOUNT, Vector2(150, 38))
 	_laser_turret = lt[0]
 	_laser_muzzle = lt[1]
 	_make_damage_effects()
@@ -254,14 +248,6 @@ func _ready() -> void:
 
 
 func _make_damage_effects() -> void:
-	# fire: three flames standing on the engine block and the cab roof (their bases are on the spots), animated in _animate_damage()
-	for spot in FIRE_SPOTS:
-		var f := Sprites.make(AssetPaths.effect_frame("fire", 0), TEX * FIRE_SCALE, 1, false)
-		f.offset = FIRE_BASE_OFFSET
-		f.position = spot
-		f.visible = false
-		_body.add_child(f)
-		_fires.append(f)
 	# smoke from the exhaust stack and from the engine (it only streams once the mech is damaged enough, see set_damage())
 	for i in SMOKE_SPOTS.size():
 		var puffs := ParticlePreset.new()
@@ -309,7 +295,7 @@ func _make_damage_effects() -> void:
 # ---------------------------------------------------------------------------------------------------------------------------
 # damage
 # ---------------------------------------------------------------------------------------------------------------------------
-## Show the damage of `level` hits (1 to 4).
+## Show the damage of `level` hits (1 to 2).
 func set_damage(level: int, silent := false) -> void:
 	damage = level
 	_cracks.visible = level >= 1
@@ -319,27 +305,18 @@ func set_damage(level: int, silent := false) -> void:
 			_broken = BROKEN_LEG       # (carried in from the last level: the leg is already gone, nothing falls off now)
 		else:
 			_snap_leg(BROKEN_LEG)
-	var smoking := level >= 3
 	for p in _smoke:
-		p.emitting = smoking
-		p.color = SMOKE_DARK if level >= 4 else Color.WHITE
-		p.amount = SMOKE_AMOUNT_BURNING if level >= 4 else SMOKE_AMOUNT
-	_soot.visible = level >= 4
-	for f in _fires:
-		f.visible = level >= 4
+		p.emitting = level >= 2
 
 
-## Mend everything (see Mech.repair()): the cracks, the smoke and the fire go, the leg is whole again.
+## Mend everything (see Mech.repair()): the cracks and the smoke go, the leg is whole again.
 func clear_damage() -> void:
 	damage = 0
 	_broken = -1
 	_cracks.visible = false
 	_glass_cracks.visible = false
-	_soot.visible = false
 	for p in _smoke:
 		p.emitting = false
-	for f in _fires:
-		f.visible = false
 
 
 func hurt() -> void:
@@ -481,7 +458,7 @@ func _ground_y(x: float, fallback: float = NAN) -> float:
 func _physics_process(delta: float) -> void:
 	var p := mech.player
 	_t += delta
-	var grounded := p.is_on_floor()
+	var grounded := p.is_on_floor() or mech.climbing_step()      # (climbing a step the legs stay down)
 	var speed := absf(p.velocity.x)
 	_dip = move_toward(_dip, 0.0, 40.0 * delta)
 	if grounded and _airborne:
@@ -533,11 +510,6 @@ func _animate_flame() -> void:
 
 
 func _animate_damage(delta: float) -> void:
-	for i in _fires.size():
-		var f := _fires[i]
-		if f.visible:
-			f.texture = AssetPaths.effect_frame("fire", (int(_t * FIRE_FPS) + i) % FIRE_FRAMES)
-			f.scale = Vector2(TEX, TEX) * (0.82 + 0.12 * sin(_t * 9.0 + i * 2.0))
 	if _broken >= 0:
 		_spark_timer -= delta
 		if _spark_timer <= 0.0:

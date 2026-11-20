@@ -362,7 +362,10 @@ func _build_generic(kind: Dictionary, c: int, r: int) -> void:
 			if kind.has("tint"):
 				var t: Array = kind["tint"]
 				tint = Color(float(t[0]), float(t[1]), float(t[2]))
-			_decor(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
+			var decor := _decor(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
+			for glow: Dictionary in kind.get("glows", []):   # lights on the tile that glow and dim (a pit's warning sign has two, one bright while the other is dim)
+				var colour: Array = glow["color"]
+				decor.add_child(GlowPulse.make(Vector2(float(glow["at"][0]), float(glow["at"][1])), Color(float(colour[0]), float(colour[1]), float(colour[2])), float(glow["size"]), float(glow["phase"])))
 		"barrier":   # an invisible wall: the collider comes from the '|' in the physics map; nothing is drawn
 			pass
 		"powerup":   # a floating box: jump on it for a vehicle (not solid, so nothing in the physics map)

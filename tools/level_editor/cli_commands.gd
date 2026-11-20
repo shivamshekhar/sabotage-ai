@@ -48,6 +48,7 @@ Edit a level
 Check a level
   info <file> [--solve]      size, counts of everything, problems (and whether it can be finished)
   validate <file>            the problems only (exit code 1 if there are any)
+  pit-signs <file>           put the warning sign (skull, flame, radiation, piranha) on the ground before every deadly pit that lacks one
   solve <file>               can the exit be reached, are there dead ends, do the laser gates work in order (exit code 1 if not)
   show <file> [--rows a-b] [--cols a-b]   the tiles as text with a column ruler
 Learn what exists
@@ -96,6 +97,8 @@ static func run(args: Array) -> Dictionary:
 			return _solve(pos)
 		"show":
 			return _show(pos, flags)
+		"pit-signs":
+			return _edit(pos, 1, func(d: Dictionary) -> Dictionary: return _pit_signs_cmd(d))
 		"set-tile":
 			return _edit(pos, 4, func(d: Dictionary) -> Dictionary: return _set_tile_cmd(d, pos))
 		"fill":
@@ -582,6 +585,19 @@ static func _set_tile_cmd(data: Dictionary, pos: Array) -> Dictionary:
 		return {"ok": false, "error": "'%s' is not a tile (a number, a map character or a key; see `catalog tiles`)." % str(pos[3])}
 	var err := _row_set(data, int(pos[1]), int(pos[2]), ch)
 	return {"ok": err == "", "error": err, "changed": 1}
+
+
+## Add the warning sign before every deadly pit that has none (see PitSigns). Safe to run again: it only adds what is missing.
+static func _pit_signs_cmd(data: Dictionary) -> Dictionary:
+	var rows: Array[String] = []
+	rows.assign(data["tiles"])
+	var added: Array = []
+	for spot in PitSigns.missing(rows):
+		var err := _row_set(data, int(spot["col"]), int(spot["row"]), str(spot["char"]))
+		if err != "":
+			return {"ok": false, "error": err}
+		added.append({"col": spot["col"], "row": spot["row"], "pit": spot["liquid"]})
+	return {"ok": true, "added": added, "changed": added.size()}
 
 
 static func _fill_cmd(data: Dictionary, pos: Array) -> Dictionary:

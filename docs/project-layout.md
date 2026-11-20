@@ -8,9 +8,9 @@ scenes/
 scripts/
   common/                   Reusable pieces any feature can use
     constants/              Groups, InputActions, PhysicsLayers, AssetPaths: the names, layers and paths (no other script writes them as strings)
-    effects/                Explosion, Debris, ParticlePreset: anything that makes a visual effect
-    ui/                     HealthBar, ScorePopups, Vignette: generic interface pieces
-    util/                   Sprites, Blend, Geom: small helpers (sprite settings, blend materials, segment/rectangle geometry)
+    effects/                Explosion, Debris, ParticlePreset, GlowPulse, WhiteFlash: anything that makes a visual effect
+    ui/                     HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines: generic interface pieces
+    util/                   Sprites, Blend, Geom, Energy: small helpers (sprite settings, blend materials, segment/rectangle geometry, an energy tank)
   core/
     main.gd                 Wires level, player, camera, touch UI, vignette, win banner
     input_setup.gd          Registers keyboard input actions (touch uses the same ones)
@@ -40,9 +40,9 @@ scripts/
   ui/
     hud.gd                  Score and level number
     touch_controls.gd       On-screen buttons for phones
-    hack_popup.gd, minigames/   The unlock puzzles
+    hack_popup.gd, hack_style.gd, minigames/   The unlock puzzle window (its look: HackStyle) and the puzzles
 levels/                     One folder per level (level.sablevel.json + background/) and common/ (art shared by all levels)
-assets/                     effects/ (generic: explosion, smoke, fire, sparks, glows), powerups/, bosses/, characters/, captcha/, projectiles/ (see art.md)
+assets/                     effects/ (generic: explosion, smoke, sparks, glows), powerups/, bosses/, characters/, captcha/, projectiles/, ui/ (the puzzle window's icons) (see art.md)
 tools/
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
   run_tests.sh              Runs every headless test in tools/tests/ with time limits (REPEAT=n to hunt flaky tests)

@@ -193,6 +193,7 @@ func _main() -> void:
 	for e in get_nodes_in_group(Groups.ENEMIES):
 		e.take_hit(1.0)
 	await _wait(60)
+	await _wait(ceili(ScorePopups.LIFE * 60.0) + 10)       # (each kill floats up its own points text for a moment)
 	_check("killed Bros leave the enemies group at once", get_nodes_in_group(Groups.ENEMIES).is_empty())
 	var nodes_after := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	var objects_after := int(Performance.get_monitor(Performance.OBJECT_COUNT))

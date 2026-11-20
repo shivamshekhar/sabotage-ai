@@ -11,6 +11,7 @@ const MECH := POWERUPS + "mech/"                        # the mech's own parts, 
 const BOSSES := ASSETS + "bosses/"
 const BOSS_SALTMAN := BOSSES + "saltman/"
 const CAPTCHA := ASSETS + "captcha/"
+const UI := ASSETS + "ui/"                                # icons of the puzzle window
 const CHARACTERS := ASSETS + "characters/kenney_platformer/"
 const PROJECTILES := ASSETS + "projectiles/pixel_art/"
 const MUSIC := ASSETS + "audio/music/"
@@ -28,6 +29,7 @@ const CAPTCHA_MANIFEST := CAPTCHA + "manifest.json"
 const MUSIC_LEVEL := MUSIC + "the_mountain_retro_game.mp3"
 const MUSIC_BOSS := MUSIC + "ihatetuesdays_boss_fight.mp3"
 const MAIN_SCENE := "res://scenes/main.tscn"
+const PART_FLASH_SHADER := "res://scripts/vehicle/part_flash.gdshader"       # turns a picture white (the mech parts at the flash)
 
 static var _textures := {}
 
@@ -52,6 +54,11 @@ static func effect_frame(name: String, index: int) -> Texture2D:
 ## A picture from the mech's folder by name ("body", "link", "flame_2").
 static func mech(name: String) -> Texture2D:
 	return texture(MECH + name + ".png")
+
+
+## An icon of the puzzle window by name ("icon_firewall", "icon_lock", "icon_unlocked").
+static func ui(name: String) -> Texture2D:
+	return texture(UI + name + ".png")
 
 
 ## A picture from the power-up folder by name ("box_base", "box_break_3").

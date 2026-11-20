@@ -70,6 +70,7 @@ static func run(id: String, campaign := true) -> Array[Dictionary]:
 	if campaign:
 		out.append_array(_box_checks(id, rows))
 	out.append_array(_gate_seal_checks(id, rows))
+	out.append(_sign_check(id, rows))
 	if is_boss:
 		return out
 	out.append(_result(tag + "every AI Bro has room to pace", LevelData.bros_without_room(rows).is_empty(), str(LevelData.bros_without_room(rows))))
@@ -161,8 +162,8 @@ static func boxes(id: String) -> Array[Vector2i]:
 	return out
 
 
-## The standing spots the player can reach from which a jump can bring them down on the box in cell `box` (any level; found by the solver):
-## below the box's top, close enough sideways, and no higher below it than a jump reaches. Nearest first.
+## The standing spots the player can reach from which a jump can bring their body to touch the box in cell `box` (any level; found by the solver):
+## below the box's top, close enough sideways, and no further below it than a jump plus the body's height reaches. Nearest first.
 static func box_jump_spots(id: String, box: Vector2i) -> Array[Vector2]:
 	var rows := LevelData.map(id)
 	var solver := _solve(rows)
@@ -172,10 +173,17 @@ static func box_jump_spots(id: String, box: Vector2i) -> Array[Vector2]:
 	for key in solver.nodes:
 		var p: Vector2 = solver.nodes[key]
 		var rise := p.y - top
-		if rise > 0.0 and p.y - JUMP_HEIGHT <= top + PowerUpBox.STOMP_REACH and absf(p.x - centre.x) <= BOX_REACH_X:
+		if rise > 0.0 and p.y - JUMP_HEIGHT - Player.BODY_SIZE.y <= centre.y + PowerUpBox.HALF and absf(p.x - centre.x) <= BOX_REACH_X:
 			spots.append(p)
 	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return absf(a.x - centre.x) < absf(b.x - centre.x))
 	return spots
+
+
+## Every deadly pit has its warning sign on the ground just before it (see PitSigns; `level_cli pit-signs <file>` adds the missing ones).
+static func _sign_check(id: String, rows: Array[String]) -> Dictionary:
+	var missing := PitSigns.missing(rows)
+	return _result("%s: every deadly pit has its warning sign before it" % id, missing.is_empty(),
+			"missing at %s" % str(missing.map(func(s: Dictionary) -> String: return "col %d, row %d (%s)" % [s["col"], s["row"], s["liquid"]])))
 
 
 ## One power-up box, and a player can reach it (the solver finds a spot to jump onto it from).

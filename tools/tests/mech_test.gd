@@ -52,9 +52,9 @@ func _main() -> void:
 		files.append("box_break_%d" % (i + 1))
 	_check("the box and its six break-apart frames exist", files.all(func(f: String) -> bool: return ResourceLoader.exists("res://assets/powerups/%s.png" % f)))
 	var mech_parts := ["body", "canopy", "missile_turret", "laser_turret", "link", "joint", "claw", "claw_open", "hip", "flame_1", "flame_2", "flame_3", "missile",
-			"body_cracks", "canopy_cracks", "link_broken", "body_burn", "missile_flame_1", "missile_flame_2", "missile_flame_3"]
+			"body_cracks", "canopy_cracks", "link_broken", "missile_flame_1", "missile_flame_2", "missile_flame_3"]
 	_check("every mech part has its picture", mech_parts.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.MECH + f + ".png")))
-	var effects := ["spark", "spark_blue", "smoke_1", "smoke_2", "smoke_3", "fire_1", "fire_2", "fire_3", "fire_4", "missile_glow", "laser_orb"]
+	var effects := ["spark", "spark_blue", "smoke_1", "smoke_2", "smoke_3", "missile_glow", "laser_orb"]
 	for i in Explosion.FRAMES:
 		effects.append("explosion_%d" % (i + 1))
 	_check("every generic effect (explosion, smoke, fire, sparks, glows) has its picture in assets/effects", effects.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.EFFECTS + f + ".png")))
@@ -91,33 +91,44 @@ func _main() -> void:
 	var ground_y := player.spawn.y
 	_check("the box floats above the ground, jumpable from the floor", box.position.y < ground_y - 80.0 and box.position.y > ground_y - 150.0, "box %.0f, ground %.0f" % [box.position.y, ground_y])
 
-	# walking under or beside it does nothing
+	# the player's body touching it is enough (no stomping): the box opens, and the mech is assembled round the player, who is held where they are
+	_check("the box is not touched yet", not box.touched_by(player))
+	var opened := [""]
+	box.opened.connect(func(k: String) -> void: opened[0] = k)
 	player.global_position = Vector2(box.position.x - 200.0, ground_y)
 	player.velocity = Vector2.ZERO
 	Input.action_press(InputActions.MOVE_RIGHT)
-	await _wait(60)
+	await _wait_until(func() -> bool: return opened[0] != "", 120)
 	Input.action_release(InputActions.MOVE_RIGHT)
-	_check("walking into it from the side does nothing", player.mech == null and is_instance_valid(box) and not box._breaking)
-
-	# jumping on it
-	player.global_position = Vector2(box.position.x, box.position.y - 110.0)
-	player.velocity = Vector2(0.0, 520.0)
-	var opened := [""]
-	box.opened.connect(func(k: String) -> void: opened[0] = k)
-	await _wait(8)
-	_check("coming down on it opens it", opened[0] == "mech", opened[0])
-	_check("and bounces the player up", player.velocity.y < -200.0 or player.global_position.y < box.position.y - 80.0)
-	await _wait(24)
-	_check("the box breaks apart and the mech appears", player.mech != null)
-	await _wait(30)
-	_check("the box is gone after its frames", not is_instance_valid(box))
+	_check("walking into it from the side opens it", opened[0] == "mech", opened[0])
+	await _wait(20)
+	var assembly: MechAssembly = null
+	for n in main.get_children():
+		if n is MechAssembly:
+			assembly = n
+	_check("the parts of the mech start to fly in round the player", assembly != null and assembly.get_child_count() >= 16, str(assembly.get_child_count() if assembly != null else 0))
+	_check("the player is held in place meanwhile, not yet in the mech", player.is_frozen_for_pickup() and player.mech == null and player.velocity == Vector2.ZERO)
+	var held_at := player.global_position
+	Input.action_press(InputActions.MOVE_LEFT)
+	Input.action_press(InputActions.JUMP)
+	await _wait(40)
+	Input.action_release(InputActions.MOVE_LEFT)
+	Input.action_release(InputActions.JUMP)
+	_check("they cannot move or jump while the mech is being built", player.global_position.distance_to(held_at) < 1.0, "moved %.1f px" % player.global_position.distance_to(held_at))
+	_check("and cannot be hurt", not player.take_damage(10) and player.health == player.max_health)
+	_check("the assembly takes a good moment (%.1f s), time to see where you are" % MechAssembly.duration(assembly.get_child_count()), MechAssembly.duration(assembly.get_child_count()) >= 1.2)
+	await _wait_until(func() -> bool: return player.mech != null, 300)
+	_check("then the mech is there and the player is in it", player.mech != null and not player.is_frozen_for_pickup())
+	await _wait(60)
+	_check("the box is gone", not is_instance_valid(box))
+	_check("and so are the parts", main.get_children().all(func(n: Node) -> bool: return not (n is MechAssembly)))
 	player.global_position = Vector2(150.0, ground_y)       # back to the flat floor near the start
 	player.velocity = Vector2.ZERO
 
 	# ---- the mech
 	var mech: Mech = player.mech
 	_check("it is 1.5 times the player's size", is_equal_approx(player._body_rect.size.y, Player.BODY_SIZE.y * 1.5) and is_equal_approx(player._body_rect.size.x, Player.BODY_SIZE.x * 1.5), str(player._body_rect.size))
-	_check("it survives five hits and starts undamaged", Mech.HITS_TO_DESTROY == 5 and mech.hits == 0 and mech.visual.damage == 0)
+	_check("it survives two hits (the third destroys it) and starts undamaged", Mech.HITS_TO_DESTROY == 3 and mech.hits == 0 and mech.visual.damage == 0)
 	var energy_bar: HealthBar = mech._energy_bar
 	_check("the only bar is a blue energy bar with no word above it (no health or hits are shown)", not player._health_bar.visible and not player._energy_bar.visible and energy_bar.title == "" and energy_bar.fill_color.b > 0.8 and energy_bar.fill_color.r < 0.4)
 	var bars := 0
@@ -320,18 +331,91 @@ func _main() -> void:
 	var before_x := player.global_position.x
 	Input.action_press(InputActions.MOVE_RIGHT)
 	var best_y := ground_y
-	var jumped := false
 	var longest_leg := 0.0
+	var prev_y := player.global_position.y
+	var prev_x := player.global_position.x
+	var hop_frames := 0
+	var stalled := 0
+	var biggest_rise := 0.0
 	for k in 130:
 		await process_frame
-		best_y = minf(best_y, player.global_position.y)
+		var y := player.global_position.y
+		var x := player.global_position.x
+		best_y = minf(best_y, y)
+		biggest_rise = maxf(biggest_rise, prev_y - y)
+		hop_frames += 1 if y - prev_y > 0.8 and not player.is_on_floor() else 0      # (a drop while it is not standing: a hop after the lift)
+		stalled += 1 if absf(x - prev_x) < 1.0 and x > before_x + 20.0 and x < x0 + 120.0 else 0
+		prev_y = y
+		prev_x = x
 		for i in 4:
 			longest_leg = maxf(longest_leg, vis.feet[i].distance_to(vis.hip_world(i)))
 	Input.action_release(InputActions.MOVE_RIGHT)
 	_check("the legs climb a one-tile step and then a two-tile step without a jump", ground_y - best_y > 120.0 and player.global_position.x > x0 + 60.0, "x %.0f -> %.0f, highest %.0f px" % [before_x, player.global_position.x, ground_y - best_y])
 	_check("climbing, no leg stretches beyond its limit (%.0f px)" % longest_leg, longest_leg <= MechVisual.MAX_REACH + 0.5)
+	_check("the climb is smooth: no hop after the lift, no stopping at each step, and the body rises a few pixels a frame (not a pop)", hop_frames == 0 and stalled <= 6 and biggest_rise < 12.0, "%d hop frames, %d stalled frames, biggest rise %.1f px" % [hop_frames, stalled, biggest_rise])
 	steps.queue_free()
 	player.global_position = Vector2(150.0, ground_y)
+	player.velocity = Vector2.ZERO
+	await _wait(40)
+
+	# a step of more than one tile stops it; the booster takes it over
+	var wall := StaticBody2D.new()
+	wall.collision_layer = PhysicsLayers.WORLD
+	wall.collision_mask = 0
+	var wall_shape := CollisionShape2D.new()
+	var wall_rect := RectangleShape2D.new()
+	wall_rect.size = Vector2(300.0, 140.0)
+	wall_shape.shape = wall_rect
+	wall_shape.position = Vector2(player.global_position.x + 500.0, ground_y - 70.0)
+	wall.add_child(wall_shape)
+	root.add_child(wall)
+	Input.action_press(InputActions.MOVE_RIGHT)
+	await _wait(150)
+	var stopped_x := player.global_position.x
+	var stopped_y := player.global_position.y
+	_check("a step two tiles high is not climbed: the mech stops in front of it", stopped_y > ground_y - 3.0 and stopped_x < wall_shape.position.x - 150.0, "x %.0f, wall at %.0f, y %.0f" % [stopped_x, wall_shape.position.x - 150.0, stopped_y])
+	Input.action_press(InputActions.JUMP)
+	await _wait(40)
+	Input.action_release(InputActions.JUMP)
+	await _wait(80)
+	Input.action_release(InputActions.MOVE_RIGHT)
+	_check("with the booster it gets over", player.global_position.x > wall_shape.position.x + 150.0, "x %.0f, wall from %.0f to %.0f" % [player.global_position.x, wall_shape.position.x - 150.0, wall_shape.position.x + 150.0])
+	wall.queue_free()
+	player.global_position = Vector2(150.0, ground_y)
+	player.velocity = Vector2.ZERO
+	await _wait(60)
+
+	# landing on the edge of a ledge: its hull may overlap the ledge while the body's box is beyond the edge. It must not stay lying on its belly with the feet
+	# hanging (and unable to move): it slides off and lands on the floor, and it stands on the ledge when it is properly on it
+	for one_way in [false, true]:
+		var ledge_top := ground_y - 260.0
+		var ledge := StaticBody2D.new()
+		ledge.collision_layer = PhysicsLayers.WORLD
+		ledge.collision_mask = 0
+		var ledge_shape := CollisionShape2D.new()
+		var ledge_rect := RectangleShape2D.new()
+		ledge_rect.size = Vector2(400.0, 40.0)
+		ledge_shape.shape = ledge_rect
+		ledge_shape.one_way_collision = one_way
+		ledge_shape.position = Vector2(1800.0, ledge_top + 20.0)
+		ledge.add_child(ledge_shape)
+		root.add_child(ledge)
+		var right_edge := 2000.0
+		for beyond in [52.0, 62.0, 72.0]:
+			player.global_position = Vector2(right_edge + beyond, ledge_top - 130.0)
+			player._peak_y = player.global_position.y
+			player.velocity = Vector2.ZERO
+			await _wait(150)
+			_check("a mech coming down with its middle %.0f px past a%s ledge's edge does not lie on it: it slides off and stands on the floor" % [beyond, " one-way" if one_way else " solid"], player.is_on_floor() and player.global_position.y > ground_y - 4.0, "feet at %.0f, floor %.0f, ledge %.0f" % [player.global_position.y, ground_y, ledge_top])
+		player.global_position = Vector2(right_edge - 25.0, ledge_top - 130.0)
+		player._peak_y = player.global_position.y
+		player.velocity = Vector2.ZERO
+		await _wait(120)
+		_check("but properly on the ledge it stands on it%s" % (" (one-way)" if one_way else ""), player.is_on_floor() and absf(player.global_position.y - ledge_top) < 4.0, "feet at %.0f, ledge %.0f" % [player.global_position.y, ledge_top])
+		ledge.queue_free()
+		await _wait(5)
+	player.global_position = Vector2(150.0, ground_y)
+	player._peak_y = ground_y
 	player.velocity = Vector2.ZERO
 	await _wait(60)
 
@@ -376,7 +460,7 @@ func _main() -> void:
 		if n is MechMissile:
 			missiles += 1
 	_check("the missile turret launches a missile", missiles == 1)
-	_check("then it needs %.0f s to fire the next (fixed)" % Mech.MISSILE_COOLDOWN, Mech.MISSILE_COOLDOWN == 3.0 and mech._missile_timer > Mech.MISSILE_COOLDOWN - 0.2)
+	_check("a missile uses 60%% of the energy", Mech.MISSILE_ENERGY_COST == 0.6 and mech.energy.level <= 1.0 - Mech.MISSILE_ENERGY_COST + 0.05, "energy %.2f" % mech.energy.level)
 	var detailed := false
 	for n in main.get_children():
 		if n is MechMissile:
@@ -387,15 +471,32 @@ func _main() -> void:
 				emitters += 1 if c is CPUParticles2D else 0
 			detailed = sprites >= 3 and emitters >= 2 and n._flame != null and n._glow != null
 	_check("the missile has an exhaust flame, a glow, sparks and a smoke trail", detailed)
-	await _wait(60)
+	var count_missiles := func() -> int:
+		var n := 0
+		for c in main.get_children():
+			n += 1 if c is MechMissile else 0
+		return n
+	var in_flight: int = count_missiles.call()
 	player.attack_light()
-	_check("a second press after one second does not fire (the wait is not restarted either)", mech._missile_timer < Mech.MISSILE_COOLDOWN - 0.9)
+	await _wait(1)
+	_check("with the tank too low (under 60%) the next press does nothing", count_missiles.call() == in_flight, "%d in flight" % count_missiles.call())
+	mech.energy.set_level(0.6)
+	player.attack_light()
+	await _wait(1)
+	_check("and with 60% it fires at once: there is no wait between missiles", count_missiles.call() == in_flight + 1)
+	mech.energy.set_level(1.0)
+	player.attack_light()
+	player._invuln_timer = 0.0
+	mech.energy.set_level(1.0)
+	player.attack_light()
+	await _wait(1)
+	_check("two missiles in a row, a frame apart, when the tank allows it", count_missiles.call() >= in_flight + 3)
 	await _wait(150)
 	_check("the missile blows up the Bro", not is_instance_valid(bro) or bro.health == 0 or bro._dead)
 	var before: Vector2 = mech.visual.missile_muzzle()
 	_check("both turrets have a muzzle in front of the mech", mech.visual.laser_muzzle().x > player.global_position.x and before.x > player.global_position.x - 40.0)
 
-	# damage: any hit counts the same; each one shows on the mech; the fifth destroys it and the player is on foot again
+	# damage: any hit counts the same; each one shows on the mech; the third destroys it and the player is on foot again
 	await _wait(80)
 	var ph := player.health
 	var vis2: MechVisual = mech.visual
@@ -403,7 +504,7 @@ func _main() -> void:
 	_check("a hit counts one, the player is untouched", took and mech.hits == 1 and player.health == ph, "hits %d, player %d" % [mech.hits, player.health])
 	_check("while hit it is briefly safe", not player.take_damage(10) and mech.hits == 1)
 	_check("hit 1: cracks on the mech and the glass", vis2._cracks.visible and vis2._glass_cracks.visible and vis2._broken == -1)
-	var smoke_on := false
+	_check("and nothing is smoking yet", not vis2._smoke[0].emitting)
 	await _wait(80)
 	player.take_damage(50)
 	await _wait(5)
@@ -414,22 +515,16 @@ func _main() -> void:
 	_check("hit 2: a leg breaks (a big hit counts the same as a small one)", mech.hits == 2 and vis2._broken == MechVisual.BROKEN_LEG and pieces >= 3, "hits %d, %d pieces fell" % [mech.hits, pieces])
 	var tip_gap := vis2.break_tip.distance_to(vis2.hip_world(MechVisual.BROKEN_LEG))
 	_check("the broken leg hangs from the hip with a torn end", tip_gap > 30.0 and tip_gap < 110.0, "%.0f" % tip_gap)
-	_check("and nothing is smoking yet", not vis2._smoke[0].emitting)
-	await _wait(80)
-	player.take_damage(5)
-	await _wait(5)
+	var smoke_on := false
 	for sp in vis2._smoke:
 		smoke_on = smoke_on or sp.emitting
-	_check("hit 3: smoke comes from the mech", mech.hits == 3 and smoke_on and not vis2._fires[0].visible)
-	await _wait(80)
-	player.take_damage(100)
-	await _wait(5)
-	_check("hit 4: the mech is on fire and sooty", mech.hits == 4 and vis2._fires.all(func(f: Sprite2D) -> bool: return f.visible) and vis2._soot.visible)
+	_check("and smoke comes from the mech", smoke_on)
+	_check("there is no fire stage: nothing of the mech burns", not ("_fires" in vis2) and not ("_soot" in vis2))
 	_check("still the player's own health is untouched", player.health == ph and player.mech != null)
 	await _wait(80)
 	player.take_damage(1)
 	await _wait(3)
-	_check("hit 5: the mech is destroyed and the player is out of it", player.mech == null and not is_instance_valid(mech))
+	_check("hit 3: the mech is destroyed and the player is out of it", player.mech == null and not is_instance_valid(mech))
 	_check("the player lost nothing", player.health == ph)
 	_check("they are normal sized again, and visible", is_equal_approx(player._body_rect.size.y, Player.BODY_SIZE.y) and player._visuals.visible and player._health_bar.visible)
 	var wreck_seen := false
@@ -439,6 +534,22 @@ func _main() -> void:
 		if n is Debris:
 			parts += 1
 	_check("there was an explosion and the parts flew", wreck_seen and parts >= 8, "%d parts" % parts)
+
+	# picked up in mid-air (the boxes hang over pits): the player hangs there, not falling, while the mech is built; then it is there and they fall
+	var air_box := PowerUpBox.new()
+	player.global_position = Vector2(400.0, ground_y - 320.0)
+	player._peak_y = player.global_position.y
+	player.velocity = Vector2.ZERO
+	air_box.position = player.global_position + Vector2(0.0, -64.0)
+	main.add_child(air_box)
+	await _wait(10)
+	var air_y := player.global_position.y
+	await _wait(60)
+	_check("picked up in mid-air the player hangs there, not falling, while the mech is built", player.is_frozen_for_pickup() and player.mech == null and absf(player.global_position.y - air_y) < 1.0, "moved %.1f px" % (player.global_position.y - air_y))
+	await _wait_until(func() -> bool: return player.mech != null, 300)
+	await _wait(40)
+	_check("and once the mech is there they fall as usual", player.mech != null and player.global_position.y > air_y + 20.0, "fell %.0f px" % (player.global_position.y - air_y))
+	await _wait(90)
 
 	# a second power-up, then a deadly pit takes the mech and the player
 	player.board_mech()

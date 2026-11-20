@@ -160,6 +160,9 @@ const KNOCKBACK_X := 260.0
 # knockback feels weaker.
 const STUN_TIME := 0.25
 
+# FLOOR_SNAP: how far down (px) the body follows the floor when it walks off a small edge (Godot's default is 1). A vehicle sets its own while it is in use.
+const FLOOR_SNAP := 1.0
+
 # HEALTH_BAR_OFFSET: where the health bar's centre sits relative to the player's feet, in
 # pixels (negative y = above). It should clear the top of the sprite and hitbox (see
 # BODY_SIZE); make y more negative if the bar overlaps the head.
@@ -173,9 +176,9 @@ const ENERGY_BAR_SIZE := Vector2(76, 6)
 const ENERGY_BAR_FILL := Color("#3aa0ff")
 const ENERGY_BAR_BACK := Color("#14223c")
 
-# THROW_ENERGY_COST: the share of the energy bar one throw uses (0.05 = 5%); a throw needs this much energy left. ENERGY_RECOVERY: the share of the
+# THROW_ENERGY_COST: the share of the energy bar one throw uses (0.1 = 10%); a throw needs this much energy left. ENERGY_RECOVERY: the share of the
 # bar that comes back every second while the player is not throwing (0.04 = 4% a second), a little every physics step. Bleeding halves it.
-const THROW_ENERGY_COST := 0.05
+const THROW_ENERGY_COST := 0.1
 const ENERGY_RECOVERY := 0.04
 
 # FALL_DEATH_HEIGHT: how far in pixels you can fall, measured from the highest point of the fall
@@ -259,6 +262,8 @@ var _body_rect: RectangleShape2D
 ## The vehicle the player is in (see Mech), or null on foot.
 var mech: Mech
 
+var _pickup_frozen := false     # held in place while a vehicle is assembled round them (see MechAssembly)
+
 
 func _ready() -> void:
 	_status = PlayerStatus.new(self)
@@ -296,13 +301,15 @@ func _ready() -> void:
 	add_child(_energy_bar)
 
 
-## Returns true if the hit landed (not blocked by invulnerability).
+## Returns true if the hit landed (not blocked by invulnerability). `from_enemy` is false for spikes and the like: only an enemy's hit is made worse by radiation sickness.
 ## `source_x` is the x of whatever hit us, if it has a position: the knockback pushes away from it.
-func take_damage(amount: int, source_x: float = NAN) -> bool:
-	if _invuln_timer > 0.0 or _pit_dying:
+func take_damage(amount: int, source_x: float = NAN, from_enemy := true) -> bool:
+	if _invuln_timer > 0.0 or _pit_dying or _pickup_frozen:
 		return false
 	if mech != null:
 		return _mech_takes_damage(amount, source_x)
+	if from_enemy:
+		amount = roundi(float(amount) * _status.damage_taken_scale())     # (radiation sickness makes enemies hit harder)
 	health = maxi(0, health - amount)
 	health_changed.emit(health, max_health)
 	if health == 0:
@@ -351,6 +358,31 @@ func set_body_scale(factor: float) -> void:
 	_body_shape.position = Vector2(0, -BODY_SIZE.y * factor / 2.0)
 
 
+## Hold the player where they are while a vehicle is built round them (a power-up pickup): they cannot move, fall, be hurt or be pushed until
+## end_pickup_freeze().
+func freeze_for_pickup() -> void:
+	_pickup_frozen = true
+	velocity = Vector2.ZERO
+	_stop_climb()
+	_windup = -1.0
+	_throw_pose_timer = 0.0
+
+
+## The player's own picture and bars go (the pilot in the new vehicle takes their place).
+func hide_for_pickup() -> void:
+	_visuals.visible = false
+	_health_bar.visible = false
+	_energy_bar.visible = false
+
+
+func end_pickup_freeze() -> void:
+	_pickup_frozen = false
+
+
+func is_frozen_for_pickup() -> bool:
+	return _pickup_frozen
+
+
 ## Get into the mech (a power-up): the player's own picture and health bar are hidden, the hit box grows and the mech fights, moves and
 ## takes the damage until it is destroyed.
 func board_mech(carried_in := false) -> void:
@@ -387,6 +419,7 @@ func _leave_mech(explode: bool) -> void:
 		return
 	var m := mech
 	mech = null
+	GameStats.lose_mech()
 	m.release(explode)
 	_visuals.visible = true
 	_health_bar.visible = true
@@ -444,8 +477,8 @@ func is_bleeding() -> bool:
 	return _status.is_bleeding()
 
 
-## Radiation sickness (from an eel's touch): the same kind of health loss as the others, and the controls are swapped for as long as it lasts
-## (see controls_swapped()). The player has a radioactive glow.
+## Radiation sickness (from an eel's touch): a slow loss of health (a third of a burn's rate, for twice as long) and, for as long as it lasts, every hit from
+## an enemy does PlayerStatus.RADIATION_DAMAGE_TAKEN times its damage. The player has a radioactive glow.
 func apply_radiation(ticks: int, fraction: float) -> void:
 	if not _immune_to_status():
 		_status.apply(_status.radiation, ticks, fraction)
@@ -454,16 +487,6 @@ func apply_radiation(ticks: int, fraction: float) -> void:
 ## True while radiation sickness lasts.
 func is_radiated() -> bool:
 	return _status.is_radiated()
-
-
-## True while radiation sickness swaps the controls: the left key moves right and the right key left, the up key goes down and the down key up.
-func controls_swapped() -> bool:
-	return _status.is_radiated()
-
-
-## The key that jumps (as well as climbing up) on a keyboard: Up, or Down while the controls are swapped.
-func up_action() -> StringName:
-	return InputActions.MOVE_DOWN if controls_swapped() else InputActions.MOVE_UP
 
 
 ## How far thrown objects go right now, as a fraction of the normal range.
@@ -617,11 +640,12 @@ func _physics_process(delta: float) -> void:
 	if _pit_dying:
 		_pit_step(delta)
 		return
+	if _pickup_frozen:
+		velocity = Vector2.ZERO
+		_visuals.update_pose(&"idle", _facing, delta)
+		return
 	var dir := Input.get_axis(InputActions.MOVE_LEFT, InputActions.MOVE_RIGHT)
 	var vdir := Input.get_axis(InputActions.MOVE_UP, InputActions.MOVE_DOWN)  # negative = up
-	if controls_swapped():      # radiation sickness
-		dir = -dir
-		vdir = -vdir
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_invuln_timer = maxf(0.0, _invuln_timer - delta)
 	_stun_timer = maxf(0.0, _stun_timer - delta)
@@ -647,7 +671,7 @@ func _physics_process(delta: float) -> void:
 		attack_heavy()
 
 	if hazard_count > 0 and mech == null:      # (the mech walks over spikes unharmed)
-		take_damage(roundi(max_health * hazard_fraction))  # ignored while invulnerable
+		take_damage(roundi(max_health * hazard_fraction), NAN, false)  # ignored while invulnerable (spikes are not an enemy: no extra for radiation)
 
 	# Up/down grabs a ladder when one is in reach: standing at its bottom, standing on its
 	# top deck (down only), or catching it mid-jump. Otherwise up falls through to a jump.
@@ -678,7 +702,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = jump_speed
 		elif not is_on_floor():
 			velocity.y += GRAVITY * delta
-		elif Input.is_action_just_pressed(InputActions.JUMP) or (Input.is_action_just_pressed(up_action()) and not TouchControls.should_show() and not (mech != null and ladder_in_reach())):
+		elif Input.is_action_just_pressed(InputActions.JUMP) or (Input.is_action_just_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not (mech != null and ladder_in_reach())):
 			# "jump" (Space / the JUMP button) always jumps. On a keyboard "move_up" (W / Up)
 			# is both jump and climb: a ladder in reach was already grabbed above (so we'd be
 			# climbing, not here); otherwise it jumps. On a phone the D-pad's up never jumps.

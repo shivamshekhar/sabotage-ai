@@ -5,7 +5,7 @@ scripts/
   common/                 reusable, feature-independent pieces
     constants/            Groups, InputActions, PhysicsLayers, AssetPaths
     effects/              Explosion, Debris, ParticlePreset (anything that makes a visual effect)
-    ui/                   HealthBar, ScorePopups, Vignette (generic UI)
+    ui/                   HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines (generic UI)
     util/                 Sprites, Blend, Geom (small helpers)
   core/                   startup, input, music, running totals (GameStats)
   player/ enemy/ boss/ vehicle/ powerup/ level/ ui/     one folder per kind of thing in the game

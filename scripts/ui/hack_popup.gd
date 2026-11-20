@@ -9,11 +9,23 @@ signal closed
 
 # PANEL_SIZE: size in pixels of the window, in the game's 1280x720 reference screen. It must be big
 # enough for the biggest puzzle plus the title and close button.
-const PANEL_SIZE := Vector2(940, 540)
+const PANEL_SIZE := Vector2(940, 610)
 
 # CLOSE_SIZE: size in pixels of the small X button in the window's top-right corner. Keep it big enough for
-# a finger but small compared with the puzzle. Higher: easier to tap, but it takes more of the title row.
+# a finger but small compared with the puzzle. Higher: easier to tap, but it takes more of the title row. CLOSE_COLOR: its colour (a dull red).
 const CLOSE_SIZE := Vector2(64, 64)
+const CLOSE_COLOR := Color(0.62, 0.18, 0.22)
+
+# The look: STRIP_HEIGHT is the hazard stripe along the top (the one along the bottom is 60% of it); HEADER_ICON the size of the firewall icon and HINT_ICON
+# of the padlock beside the instructions; TITLE_SIZE / SUBTITLE_SIZE the font sizes of the title and the line under it.
+const STRIP_HEIGHT := 12.0
+const HEADER_ICON := Vector2(68, 68)
+const HINT_ICON := Vector2(44, 44)
+const TITLE_SIZE := 40
+const SUBTITLE_SIZE := 18
+
+# GRANTED_TEXT: the line under the title once the puzzle is solved.
+const GRANTED_TEXT := "ACCESS GRANTED  //  GATE %s OPEN"
 
 ## Every puzzle, by the name a terminal can ask for (the "game" value in LevelData.terminals()). The special
 ## name "random" (what the level terminals use) picks one at random each time the computer is used, never
@@ -36,6 +48,9 @@ var laser_id := ""
 var game: Minigame
 var game_name := ""
 var definition := {}      # settings for the puzzle (see open_definition())
+
+var _lock_icon: TextureRect
+var _subtitle: Label
 
 
 static func has_game(game_id: String) -> bool:
@@ -139,39 +154,41 @@ func _build(chosen_name: String) -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = PANEL_SIZE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.09, 0.14)
-	style.border_color = Color(0.3, 0.9, 0.5)
-	style.set_border_width_all(4)
-	style.set_corner_radius_all(18)
-	style.set_content_margin_all(24)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", HackStyle.panel())
 	center.add_child(panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	panel.add_child(col)
+	col.add_child(HazardStrip.make(STRIP_HEIGHT))
 
-	# Title row: the title in the middle, a small X in the top-right corner (a blank spacer of the same
-	# width on the left keeps the title centred). Nothing else shares this row, so the X can't overlap a puzzle.
+	# Header: the firewall icon, the title with a line under it, and a small X in the top-right corner. Nothing else shares this row, so the X can't overlap a puzzle.
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 16)
 	col.add_child(top)
-	var spacer := Control.new()
-	spacer.custom_minimum_size = CLOSE_SIZE
-	top.add_child(spacer)
+	top.add_child(_icon("icon_firewall", HEADER_ICON))
+	var titles := VBoxContainer.new()
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	titles.alignment = BoxContainer.ALIGNMENT_CENTER
+	titles.add_theme_constant_override("separation", 0)
+	top.add_child(titles)
 	var title := Label.new()
 	title.text = "FIREWALL TERMINAL"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_size_override("font_size", 44)
-	title.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
-	top.add_child(title)
+	title.add_theme_font_size_override("font_size", TITLE_SIZE)
+	HackStyle.style_text(title, HackStyle.MINT)
+	titles.add_child(title)
+	_subtitle = Label.new()
+	_subtitle.text = "LASER GATE %s  //  SECURITY OVERRIDE" % laser_id
+	_subtitle.add_theme_font_size_override("font_size", SUBTITLE_SIZE)
+	_subtitle.add_theme_color_override("font_color", HackStyle.CYAN)
+	titles.add_child(_subtitle)
 	var close := Button.new()
 	close.text = "X"
 	close.focus_mode = Control.FOCUS_NONE
 	close.custom_minimum_size = CLOSE_SIZE
-	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.add_theme_font_size_override("font_size", 30)
+	HackStyle.style_button(close, CLOSE_COLOR)
 	close.pressed.connect(close_popup)
 	top.add_child(close)
 
@@ -180,18 +197,36 @@ func _build(chosen_name: String) -> void:
 	if definition.has("questions"):
 		settings["questions"] = definition["questions"]
 	game.params = settings
+	# The instructions, in a strip of their own with a padlock beside them (it opens when the puzzle is solved).
+	var strip := PanelContainer.new()
+	strip.add_theme_stylebox_override("panel", HackStyle.inset(HackStyle.CYAN_DIM, 8))
+	col.add_child(strip)
+	var strip_row := HBoxContainer.new()
+	strip_row.add_theme_constant_override("separation", 14)
+	strip.add_child(strip_row)
+	_lock_icon = _icon("icon_lock", HINT_ICON)
+	strip_row.add_child(_lock_icon)
 	var hint := Label.new()
 	hint.text = game.instructions
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.add_theme_font_size_override("font_size", 28)
-	col.add_child(hint)
+	HackStyle.style_text(hint)
+	strip_row.add_child(hint)
 
+	# The puzzle itself on a dark screen with faint scanlines.
+	var screen := PanelContainer.new()
+	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen.add_theme_stylebox_override("panel", HackStyle.inset(HackStyle.CYAN_DIM, 4))
+	col.add_child(screen)
 	var area := Control.new()
 	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	area.custom_minimum_size = Vector2(0, 300)
-	col.add_child(area)
+	area.custom_minimum_size = Vector2(0, 280)
+	screen.add_child(area)
 	area.add_child(game)
+	screen.add_child(Scanlines.make())
 	game.solved.connect(_on_solved)
+	col.add_child(HazardStrip.make(STRIP_HEIGHT * 0.6))
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -200,7 +235,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## A picture of the window (see AssetPaths.ui()) at `size`.
+func _icon(name: String, size: Vector2) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = AssetPaths.ui(name)
+	t.custom_minimum_size = size
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
 func _on_solved() -> void:
+	_lock_icon.texture = AssetPaths.ui("icon_unlocked")      # the padlock opens
+	_subtitle.text = GRANTED_TEXT % laser_id
+	_subtitle.add_theme_color_override("font_color", HackStyle.MINT)
 	# Let the "ACCESS GRANTED" message be read for a moment, then hand control back.
 	await get_tree().create_timer(0.9, true, false, true).timeout
 	solved.emit(laser_id)

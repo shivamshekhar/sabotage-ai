@@ -39,6 +39,7 @@ id 1-9, keep `drop` to 6 rows or fewer, flats with a Bro (`B`) need at least 7 c
 | `list` | the levels of the game: id, title, next level, size, files |
 | `convert <id> <file>` | an existing level (or `test`) copied to a new file |
 | `set-tile <file> <col> <row> <tile>` | one tile. `<tile>` is a tile number (`12`), a key (`ground`, `decor_gear_half`) or a built-in map character (`#`) |
+| `pit-signs <file>` | the warning sign (a green skull for toxic waste, a flame for lava, the radiation trefoil for nuclear waste, a piranha for the piranha tank) on the ground before every deadly pit that has none; run it again any time, it only adds what is missing. `solve` fails while a pit has no sign |
 | `fill <file> <c0> <r0> <c1> <r1> <tile>` | rectangle (`0` or `.` erases) |
 | `catalog tiles [--search X] [--group X] [--limit N]` | the tile registry (there can be thousands): number, key, name, group, behaviour |
 | `export-csv <file> <csv>` / `import-csv <file> <csv>` | the tiles as a plain CSV grid of tile numbers (a spreadsheet or tile editor) and back |

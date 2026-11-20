@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b6a1o18c8r7be"
-path="res://.godot/imported/fire_3.png-fba22cc36457e20ac44f34e91fc61a48.ctex"
+uid="uid://ced7x35pd2p34"
+path="res://.godot/imported/icon_unlocked.png-dad5d2a7ec386b3acf80ce462eb57bd1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effects/fire_3.png"
-dest_files=["res://.godot/imported/fire_3.png-fba22cc36457e20ac44f34e91fc61a48.ctex"]
+source_file="res://assets/ui/icon_unlocked.png"
+dest_files=["res://.godot/imported/icon_unlocked.png-dad5d2a7ec386b3acf80ce462eb57bd1.ctex"]
 
 [params]
 

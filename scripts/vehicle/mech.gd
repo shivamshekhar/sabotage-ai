@@ -4,12 +4,12 @@ extends Node2D
 ## while the player is in it (Player.board_mech()): the player's own body, camera and every hazard check stay as they are, the mech
 ## only changes how the player moves, fights and takes damage:
 ##   - it is SIZE_IN_PLAYERS (1.5) times the player's size (the hit box grows), and the player sits in its cockpit
-##   - it has no health bar, only the energy bar: it survives HITS_TO_DESTROY (5) hits of any kind (an enemy, spikes, a thrown thing; the amount does not
-##     matter), each one showing on the mech itself (see MechVisual.set_damage()): cracks, a broken leg, smoke, fire, and on the last
-##     it explodes and the player drops out on foot with their own health untouched. A deadly pit still kills the player, mech and all
-##   - the legs climb steps (STEP_HEIGHT) without a jump. The jump is a rocket booster: hold the jump button and it lifts the mech while
+##   - it has no health bar, only the energy bar: it survives HITS_TO_DESTROY - 1 (2) hits of any kind (an enemy, a thrown thing; the amount does not
+##     matter) and the third destroys it. Each shows on the mech itself (see MechVisual.set_damage()): cracks, then a broken leg and smoke, and on the
+##     last it explodes and the player drops out on foot with their own health untouched. A deadly pit still kills the player, mech and all
+##   - the legs climb a step of one tile (STEP_HEIGHT) without a jump or a stop; a taller step stops it. The jump is a rocket booster: hold the jump button and it lifts the mech while
 ##     there is energy (the blue bar); out of energy it falls under gravity. The energy fills back up in REFILL_TIME seconds
-##   - "light attack" (Q) fires a missile from the missile turret (one every MISSILE_COOLDOWN seconds, fixed), "heavy attack" (S) works the laser
+##   - "light attack" (Q) fires a missile from the missile turret (it uses MISSILE_ENERGY_COST of the energy, and nothing else holds it back), "heavy attack" (S) works the laser
 ##     turret for as long as the button is held, using up the same energy; both turrets aim at the nearest enemy in front, otherwise straight ahead
 ## The picture is MechVisual (the art: assets/powerups/mech/, made by tools/art/generate_mech.py and generate_mech_effects.py).
 
@@ -19,7 +19,7 @@ signal destroyed
 const SIZE_IN_PLAYERS := 1.5
 
 # HITS_TO_DESTROY: how many hits the mech survives, counting the one that destroys it.
-const HITS_TO_DESTROY := 5
+const HITS_TO_DESTROY := 3
 
 # SPEED / ACCEL: top speed and acceleration (pixels per second). The player's own are 380 and 1600.
 const SPEED := 340.0
@@ -43,14 +43,24 @@ const REFILL_TIME := 3.0
 # uses its own share on top).
 const LASER_TIME := 4.0
 
-# STEP_HEIGHT: the tallest step the legs climb without a jump, in pixels (one tile is 70; the body's underside is about 80 above the floor, so
-# a step has to be lower than that). STEP_LIFT_SPEED: how fast the body rises over it.
+# STEPS. The mech walks up a step of one tile without a jump and without stopping; a taller step stops it (it needs the booster).
+#   STEP_HEIGHT: the tallest step the legs climb, in pixels (one tile is 70; the body's underside is about 80 above the floor, so a step has to be lower).
+#   STEP_MIN_RISE: a floor ahead that is not this much higher is not a step. STEP_LOOKAHEAD: how far in front of the body (px) a step is looked for, so
+#   the body is already rising as it reaches the step. STEP_LIFT_SPEED: how fast the body rises (px/s); it slows as it nears the step's height (STEP_LIFT_EASE per
+#   second of what is left, but never under STEP_LIFT_MIN), so it settles instead of stopping short. STEP_HOLD_TIME: the longest (seconds) the body
+#   is held at the height of a step while it moves over it. STEP_SNAP: how far down (px) the feet follow the floor, so walking down steps is smooth too.
 const STEP_HEIGHT := 76.0
-const STEP_LIFT_SPEED := 560.0
+const STEP_MIN_RISE := 3.0
+const STEP_LOOKAHEAD := 64.0
+const STEP_LIFT_SPEED := 520.0
+const STEP_LIFT_MIN := 140.0
+const STEP_LIFT_EASE := 14.0
+const STEP_HOLD_TIME := 0.4
+const STEP_SNAP := 80.0
 
-# MISSILE_COOLDOWN: seconds between two missiles. Fixed: no upgrade or power-up changes it. LASER_HIT_INTERVAL: seconds between the hits of a laser
-# beam that rests on an enemy (each takes LASER_FRACTION of its health).
-const MISSILE_COOLDOWN := 3.0
+# MISSILE_ENERGY_COST: the share of a full tank of energy one missile uses (0.6 = 60%); a missile needs that much energy left, and there is no other wait
+# between two. LASER_HIT_INTERVAL: seconds between the hits of a laser beam that rests on an enemy (each takes LASER_FRACTION of its health).
+const MISSILE_ENERGY_COST := 0.6
 const LASER_HIT_INTERVAL := 0.5
 
 # LASER_RANGE: how far the laser reaches (pixels). LASER_FRACTION / MISSILE_FRACTION: the share of an enemy's health a laser hit /
@@ -65,6 +75,11 @@ const BLAST_RADIUS := 110.0
 const AIM_RANGE := 950.0
 const AIM_UP := -0.85
 const AIM_DOWN := 0.6
+
+# CHASSIS_CUT: the solid body's two bottom corners are cut away: the flat underside is only as wide as the body's box, and from its ends the sides slant out
+# steeply (CHASSIS_CUT.x px sideways over CHASSIS_CUT.y px up: steeper than the floor angle). So the hull can never rest on the edge of a ledge or a block with the
+# feet dangling below it: such an edge meets a slanted side, which is not a floor, and the mech slides off it.
+const CHASSIS_CUT := Vector2(30.0, 40.0)
 
 # CHASSIS_SIZE: the solid body of the mech (the cab, the engine block and the hull, as drawn) as a second collision box, so it is stopped by walls and
 # gates where it is drawn instead of sinking into them; the legs are not solid. BARREL_SIZE: the laser's barrel, which sticks out in front of the
@@ -91,8 +106,8 @@ var _energy_bar: HealthBar
 var _chassis: CollisionShape2D
 var _barrel: CollisionShape2D
 var _bar_timer := 0
-var _step_lift := 0.0
-var _missile_timer := 0.0
+var _step_top := 0.0               # the height (y) of the step the body is climbing
+var _step_hold := 0.0              # seconds left to hold the body at that height while it moves over the step
 var _laser_hit_timer := 0.0
 var _beam: LaserBeam            # the beam on screen while the laser is on
 var _dead := false
@@ -103,6 +118,7 @@ func setup(the_player: Player) -> void:
 	name = "Mech"
 	player = the_player
 	player.set_body_scale(SIZE_IN_PLAYERS)
+	player.floor_snap_length = STEP_SNAP        # (walking down a step keeps the feet on the floor)
 	_make_shapes()
 	visual = MechVisual.new()
 	visual.mech = self
@@ -117,9 +133,11 @@ func setup(the_player: Player) -> void:
 ## The body's solid parts, added to the player (a collision shape must be a child of the body it belongs to).
 func _make_shapes() -> void:
 	_chassis = CollisionShape2D.new()
-	var box := RectangleShape2D.new()
-	box.size = CHASSIS_SIZE
-	_chassis.shape = box
+	var hull := ConvexPolygonShape2D.new()
+	var half := CHASSIS_SIZE / 2.0
+	hull.points = PackedVector2Array([Vector2(-half.x, -half.y), Vector2(half.x, -half.y), Vector2(half.x, half.y - CHASSIS_CUT.y), Vector2(half.x - CHASSIS_CUT.x, half.y),
+			Vector2(-half.x + CHASSIS_CUT.x, half.y), Vector2(-half.x, half.y - CHASSIS_CUT.y)])
+	_chassis.shape = hull
 	_chassis.position = MechVisual.BODY_MIDDLE
 	player.add_child(_chassis)
 	_barrel = CollisionShape2D.new()
@@ -149,26 +167,18 @@ func _jump_held() -> bool:
 	if Input.is_action_pressed(InputActions.JUMP):
 		return true
 	# (on a keyboard Up also jumps, but not at a ladder: the mech cannot climb, so Up there must not light the booster)
-	return Input.is_action_pressed(player.up_action()) and not TouchControls.should_show() and not player.ladder_in_reach()
+	return Input.is_action_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not player.ladder_in_reach()
 
 
 ## Called by the player every physics step just before it moves: the legs climb steps and the booster and the laser use energy while their buttons are held.
 func before_move(dir: float, delta: float) -> void:
-	_missile_timer = maxf(0.0, _missile_timer - delta)
 	_laser_hit_timer = maxf(0.0, _laser_hit_timer - delta)
 	_work_booster(delta)
 	_barrel.position = _barrel_position()
 	_bar_timer += 1
 	if _bar_timer % 6 == 0:
 		_place_energy_bar()
-	if _step_lift > 0.0:
-		var lift := minf(_step_lift, STEP_LIFT_SPEED * delta)
-		if not player.test_move(player.global_transform, Vector2(0.0, -lift)):
-			player.global_position.y -= lift
-		_step_lift -= lift
-		player.velocity.y = minf(player.velocity.y, 0.0) if _step_lift > 0.0 else player.velocity.y
-	elif dir != 0.0 and player.is_on_floor():
-		_try_step(dir)
+	_climb(dir, delta)
 
 
 ## The booster and the laser use the energy while their buttons are held; it refills while neither is on.
@@ -192,20 +202,50 @@ func _place_energy_bar() -> void:
 	_energy_bar.position = Vector2(0.0, -64.0) if low_ceiling else Vector2(0.0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
 
 
-## A wall ahead that is low enough to step over: find how high it is and start rising over it.
-func _try_step(dir: float) -> void:
-	var ahead := Vector2(signf(dir) * 6.0, 0.0)
-	if not player.test_move(player.global_transform, ahead):
-		return
-	var h := 10.0
-	while h <= STEP_HEIGHT:
-		var raised := player.global_transform.translated(Vector2(0.0, -h))
-		if not player.test_move(raised, ahead):
-			if not player.test_move(player.global_transform, Vector2(0.0, -h)):   # room above to rise
-				_step_lift = h + 2.0
+## True while the body is climbing a step (it is held at the step's height though the floor is not under it yet).
+func climbing_step() -> bool:
+	return _step_hold > 0.0
+
+
+## Climb steps: a floor ahead that is up to STEP_HEIGHT higher is where the body rises to, smoothly, as it walks up to it, and it is held at that height
+## (no gravity) until it is over the step. A taller step is not climbed: the mech stops at it.
+func _climb(dir: float, delta: float) -> void:
+	if dir != 0.0 and player.is_on_floor() or _step_hold > 0.0:
+		var top := _step_ahead(dir if dir != 0.0 else float(facing()))
+		if not is_nan(top):
+			_step_top = top
+			if _step_hold <= 0.0:
 				visual.step_up()
-			return
-		h += 7.0
+			_step_hold = STEP_HOLD_TIME
+	if _step_hold <= 0.0:
+		return
+	_step_hold -= delta
+	var rise := player.global_position.y - _step_top                  # how far up the body still has to go
+	if rise > 0.0:
+		var lift := minf(rise, clampf(rise * STEP_LIFT_EASE, STEP_LIFT_MIN, STEP_LIFT_SPEED) * delta)
+		if not player.test_move(player.global_transform, Vector2(0.0, -lift)):
+			player.global_position.y -= lift
+	player.velocity.y = minf(player.velocity.y, -1.0)         # (no gravity, and no snapping down to the floor, while it moves over the step: an upward speed switches the snap off)
+	if rise <= 0.5 and player.is_on_floor():
+		_step_hold = 0.0                                        # over the step: standing on it
+
+
+## The y of the floor a step ahead, or NAN if there is none: a floor in front of the body (within STEP_LOOKAHEAD of its edge) that is higher than the
+## feet by more than STEP_MIN_RISE and no more than STEP_HEIGHT, with room to rise to it. (A ray from above the tallest step down: a taller step is
+## taller than the ray starts, so it is not found.)
+func _step_ahead(dir: float) -> float:
+	var feet := player.global_position
+	var x := feet.x + signf(dir) * (Player.BODY_SIZE.x * SIZE_IN_PLAYERS * 0.5 + STEP_LOOKAHEAD)
+	var hit := Mech.world_ray(player.get_world_2d(), Vector2(x, feet.y - STEP_HEIGHT), Vector2(x, feet.y + 4.0), player.get_rid(), PhysicsLayers.FLOOR)
+	if hit.is_empty() or hit["normal"] == Vector2.ZERO:
+		return NAN
+	var top := float(hit["position"].y)
+	var rise := feet.y - top
+	if rise < STEP_MIN_RISE or rise > STEP_HEIGHT:
+		return NAN
+	if player.test_move(player.global_transform, Vector2(0.0, -rise)):      # no room above to rise
+		return NAN
+	return top
 
 
 ## The jump from the ground: the booster's first kick. Returns the upward speed to give the player.
@@ -250,9 +290,9 @@ func take_damage(_amount: int = 1) -> bool:
 # ---------------------------------------------------------------------------------------------------------------------------
 ## The missile turret fires (light attack).
 func fire_missile() -> void:
-	if _missile_timer > 0.0 or _dead:
+	if _dead or not energy.spend(MISSILE_ENERGY_COST):
 		return
-	_missile_timer = MISSILE_COOLDOWN
+	_energy_bar.set_ratio(energy.level)
 	var from := visual.missile_muzzle()
 	var dir := visual.missile_direction()
 	MechMissile.launch(player.get_parent(), from, dir, self)
@@ -300,9 +340,9 @@ func _stop_laser() -> void:
 
 
 ## A ray from `from` to `to` against the world (walls, floors, gates), as intersect_ray() answers it (empty if nothing is in the way), never hitting
-## the body `own_body` (the player in the mech). The laser and the missile start inside the mech's reach and must not hit the mech that fires them.
-static func world_ray(world: World2D, from: Vector2, to: Vector2, own_body: RID) -> Dictionary:
-	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
+## the body `own_body` (the player in the mech), against what is on the layers of `mask` (the world's). The laser and the missile start inside the mech's reach and must not hit the mech that fires them.
+static func world_ray(world: World2D, from: Vector2, to: Vector2, own_body: RID, mask: int = PhysicsLayers.WORLD) -> Dictionary:
+	var query := PhysicsRayQueryParameters2D.create(from, to, mask)
 	query.exclude = [own_body]
 	return world.direct_space_state.intersect_ray(query)
 
@@ -337,6 +377,7 @@ func release(explode: bool) -> void:
 		visual.shatter()
 		Explosion.spawn(player.get_parent(), player.global_position + EXPLOSION_OFFSET)
 	player.set_body_scale(1.0)
+	player.floor_snap_length = Player.FLOOR_SNAP
 	_chassis.queue_free()
 	_barrel.queue_free()
 	queue_free()

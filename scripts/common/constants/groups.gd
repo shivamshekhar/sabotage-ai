@@ -9,3 +9,4 @@ const PROJECTILES := &"projectiles"    # thrown objects in flight
 const LANDED_PROJECTILES := &"landed_projectiles"
 const BOSS_BULLETS := &"boss_bullets"
 const POWERUP_BOXES := &"powerup_boxes"
+const SCORE_POPUPS := &"score_popups"    # the "+100" texts floating up

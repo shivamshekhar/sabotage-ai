@@ -4,7 +4,7 @@ extends RefCounted
 ##   poison     (puffer fish)  green tint
 ##   burn       (lava ball)    orange tint and flames; thrown objects only go half as far
 ##   bleed      (piranha bite) the player flashes red and drips blood; the energy bar refills at half speed
-##   radiation  (eel touch)    a green-yellow radioactive glow; left and right, up and down are swapped (see Player.controls_swapped())
+##   radiation  (eel touch)    a green-yellow radioactive glow; every hit from an enemy does RADIATION_DAMAGE_TAKEN times its damage
 ## Player owns one and forwards apply_poison() / apply_burn() / apply_bleed() / apply_radiation() and the questions to it; nothing else needs to
 ## know how they work.
 
@@ -21,6 +21,9 @@ const BLEED_FLASH_MAX := 0.85
 
 # BURN_THROW_RANGE: how far a thrown object goes while burning, as a fraction of the normal range (0.5 = half).
 const BURN_THROW_RANGE := 0.5
+
+# RADIATION_DAMAGE_TAKEN: how much more damage an enemy's hit does to a player with radiation sickness (1.5 = half as much again).
+const RADIATION_DAMAGE_TAKEN := 1.5
 
 # BLEED_ENERGY_RECOVERY: the share of the normal energy recovery while bleeding (0.5 = half speed).
 const BLEED_ENERGY_RECOVERY := 0.5
@@ -81,6 +84,11 @@ func is_radiated() -> bool:
 ## How far thrown objects go right now, as a fraction of the normal range (1, or BURN_THROW_RANGE while burning).
 func throw_range_scale() -> float:
 	return BURN_THROW_RANGE if burn.active() else 1.0
+
+
+## How much damage an enemy's hit does right now, as a multiple of the normal (1, or RADIATION_DAMAGE_TAKEN with radiation sickness).
+func damage_taken_scale() -> float:
+	return RADIATION_DAMAGE_TAKEN if radiation.active() else 1.0
 
 
 ## How fast the energy bar refills right now, as a fraction of the normal speed (1, or BLEED_ENERGY_RECOVERY while bleeding).
