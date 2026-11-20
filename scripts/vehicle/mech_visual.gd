@@ -423,7 +423,7 @@ func laser_direction() -> Vector2:
 func _ground_y(x: float, fallback: float = NAN) -> float:
 	var p := mech.player
 	var query := PhysicsRayQueryParameters2D.create(Vector2(x, p.global_position.y - 130.0), Vector2(x, p.global_position.y + 120.0), PhysicsLayers.FLOOR)
-	query.exclude.append(p.get_rid())
+	query.exclude = [p.get_rid()]
 	query.hit_from_inside = true
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
@@ -476,7 +476,7 @@ func _animate_turrets(delta: float) -> void:
 		(turret.get_child(0) as Sprite2D).position.x = -float(_recoil[which]) * 7.0
 
 
-## The booster's flame: full while it lifts the mech (the jump button held with fuel), a short kick at the start of a jump, and a low
+## The booster's flame: full while it lifts the mech (the jump button held with energy), a short kick at the start of a jump, and a low
 ## flicker while the mech stands without all legs on a floor (hovering).
 func _animate_flame() -> void:
 	var big := mech.thrusting or _burst > 0.0
@@ -575,7 +575,7 @@ func _stance_x_toward(i: int, want: float) -> float:
 	var p := mech.player
 	var from := Vector2(p.global_position.x, p.global_position.y - 20.0)
 	var query := PhysicsRayQueryParameters2D.create(from, Vector2(want, from.y), PhysicsLayers.WORLD)
-	query.exclude.append(p.get_rid())
+	query.exclude = [p.get_rid()]
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
 		return want

@@ -682,7 +682,7 @@ func _update_terminal_hints() -> void:
 	for t in _terminals:
 		var near: bool = player != null and _player_box(player.global_position).intersects(t["rect"])
 		t["hint"].visible = near and laser_is_on(t["laser"])
-		# In a vehicle the prompt rides above the vehicle's fuel bar (the usual spot is where the vehicle's body and bar are).
+		# In a vehicle the prompt rides above the vehicle's energy bar (the usual spot is where the vehicle's body and bar are).
 		var hint: Label = t["hint"]
 		if near and player is Player and (player as Player).mech != null:
 			hint.position = Vector2(player.global_position.x - hint.size.x / 2.0, player.global_position.y - Mech.SIZE_IN_PLAYERS * Player.BODY_SIZE.y - 68.0)

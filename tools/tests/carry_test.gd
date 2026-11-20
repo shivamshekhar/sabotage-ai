@@ -1,5 +1,5 @@
 extends SceneTree
-## What goes with the player from level to level and the points text: the health and the vehicle (with its damage and fuel) are carried into the
+## What goes with the player from level to level and the points text: the health and the vehicle (with its damage and energy) are carried into the
 ## next level; points float up as a small pooled text; opening a power-up box while in the mech mends it and gives 500 points; the mech walks
 ## over spikes unharmed; enemies keep their distance from its wide body and it is stopped by walls where it is drawn; Up at a ladder does not
 ## light its booster. Exits non-zero on failure.
@@ -96,9 +96,9 @@ func _main() -> void:
 	player.mech.take_damage()
 	player.mech.take_damage()
 	player.mech.take_damage()
-	player.mech.fuel = 0.5
+	player.mech.energy.set_level(0.5)
 	GameStats.save_player(player)
-	_check("the player's state is remembered: health, vehicle, its damage and fuel", int(GameStats.carried["health"]) == 63 and GameStats.carried["mech"] == true and int(GameStats.carried["mech_hits"]) == 3 and is_equal_approx(float(GameStats.carried["mech_fuel"]), 0.5), str(GameStats.carried))
+	_check("the player's state is remembered: health, vehicle, its damage and energy", int(GameStats.carried["health"]) == 63 and GameStats.carried["mech"] == true and int(GameStats.carried["mech_hits"]) == 3 and is_equal_approx(float(GameStats.carried["mech_energy"]), 0.5), str(GameStats.carried))
 	main.queue_free()
 	await _wait(3)
 	main = await _level()
@@ -108,7 +108,7 @@ func _main() -> void:
 	_check("and the same vehicle", carried_mech != null)
 	if carried_mech != null:
 		_check("in the same state: three hits, the cracks, the broken leg and the smoke showing", carried_mech.hits == 3 and carried_mech.visual._cracks.visible and carried_mech.visual._broken == MechVisual.BROKEN_LEG and carried_mech.visual._smoke[0].emitting and not carried_mech.visual._fires[0].visible)
-		_check("and the fuel it had", carried_mech.fuel >= 0.5 and carried_mech.fuel < 0.6, "%.2f" % carried_mech.fuel)
+		_check("and the energy it had", carried_mech.energy.level >= 0.5 and carried_mech.energy.level < 0.6, "%.2f" % carried_mech.energy.level)
 		var debris := 0
 		for n in main.get_children():
 			if n is Debris:
@@ -122,12 +122,12 @@ func _main() -> void:
 	player = get_first_node_in_group(Groups.PLAYER)
 	_check("and starts on foot with full health", player.mech == null and player.health == player.max_health)
 
-	# ---- a power-up box opened while in the mech mends it, refuels it and gives 500 points
+	# ---- a power-up box opened while in the mech mends it, fills its energy and gives 500 points
 	player.board_mech()
 	await _wait(5)
 	for i in 3:
 		player.mech.take_damage()
-	player.mech.fuel = 0.1
+	player.mech.energy.set_level(0.1)
 	var box := PowerUpBox.new()
 	box.position = Vector2(TestArena.FLAT_X, TestArena.FLOOR_Y - 2.5 * Level.T)
 	main.add_child(box)
@@ -139,7 +139,7 @@ func _main() -> void:
 	var m := player.mech
 	player.global_position = Vector2(300.0, TestArena.FLOOR_Y)       # (back to the floor: the box hangs over a deadly pit)
 	player.velocity = Vector2.ZERO
-	_check("the box mends the mech (no damage) and fills the tank", m != null and m.hits == 0 and m.fuel >= 0.99 and m.visual.damage == 0 and not m.visual._cracks.visible and m.visual._broken == -1)
+	_check("the box mends the mech (no damage) and fills the tank", m != null and m.hits == 0 and m.energy.level >= 0.99 and m.visual.damage == 0 and not m.visual._cracks.visible and m.visual._broken == -1)
 	_check("and gives %d points" % GameStats.REPAIR_SCORE, GameStats.score == score_before + GameStats.REPAIR_SCORE, str(GameStats.score - score_before))
 	await _wait(100)
 	_check("the points float up from the box", not _popups().is_empty() and (_popups()[0] as ScorePopups.ScorePopup).text == "+500")

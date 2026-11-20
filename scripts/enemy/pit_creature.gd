@@ -82,13 +82,13 @@ const HURT_BOX := Vector2(84, 58)
 # `hide` how deep it waits (HIDE_DEPTH if missing), `splash` the colour of the spray it makes at the surface. Optional: `eye`
 # (the piranha's glowing eye), `glow` (a colour: an additive copy of the picture that pulses), `trail` (particles it leaves while
 # it is out of the water: colour, how many per second, how long they live, whether they glow), `poison` ([ticks, share of health
-# per tick] a hit makes the player suffer, see Player.apply_poison()), `burn` (the same for Player.apply_burn()), `leap_height`,
+# per tick] a hit makes the player suffer, see Player.apply_poison()), `burn` (the same for Player.apply_burn(): a lava ball's 16 ticks of 1%), `bleed` (Player.apply_bleed(): the piranha's bite, the same rate and time as a burn), `radiation` (Player.apply_radiation(): the eel, 0.75 of a burn's rate and 1.25 times as long: 20 ticks of 0.75%), `leap_height`,
 # `leap_reach`, `leap_time` ([min, max]), `lurk` (seconds hidden between appearances, instead of LURK_TIME), `vertical` (it only ever jumps straight up and down from its spot, never peeks or leaps
 # sideways), `fire` (it is made of fire: a thrown object that hits it burns up and does not hurt it) and `anchor` (the pixel of the
 # picture that is the creature's position, if not the middle: the fireball's head, so its flame trails behind it).
 const SPECIES := {
 	"piranha": {"liquid": "piranha_tank", "parts": ["fish_closed", "fish_slight", "fish_open", "fish_wide"], "scale": 0.56,
-		"hurt": Vector2(84, 58), "damage": 0.1, "anim": "mouth", "eye": true, "splash": Color(0.85, 0.95, 1.0, 0.9)},
+		"hurt": Vector2(84, 58), "damage": 0.1, "anim": "mouth", "eye": true, "splash": Color(0.85, 0.95, 1.0, 0.9), "bleed": [16, 0.01]},
 	"puffer": {"liquid": "toxic_waste", "parts": ["puffer_small", "puffer_mid", "puffer_big"], "scale": 0.5210,
 		"hurt": Vector2(64, 58), "damage": 0.08, "anim": "inflate", "hide": 53.0, "splash": Color(0.6, 1.0, 0.3, 0.9),
 		"poison": [4, 0.04], "trail": {"color": Color(0.55, 1.0, 0.25, 0.85), "rate": 14.0, "life": 0.9, "glow": false}},
@@ -99,9 +99,12 @@ const SPECIES := {
 		"trail": {"color": Color(1.0, 0.65, 0.2, 0.95), "rate": 30.0, "life": 0.7, "glow": true}},
 	"eel": {"liquid": "nuclear_waste", "parts": ["eel_a", "eel_b", "eel_c", "eel_d"], "scale": 0.4144,
 		"hurt": Vector2(83, 26), "damage": 0.12, "anim": "swim", "frame_time": 0.11, "hide": 29.0, "glow": Color(0.5, 1.0, 0.3),
-		"splash": Color(0.7, 1.0, 0.4, 0.95), "leap_reach": [110.0, 250.0], "leap_height": [90.0, 170.0], "leap_time": [1.0, 1.4],
+		"splash": Color(0.7, 1.0, 0.4, 0.95), "radiation": [20, 0.0075], "leap_reach": [110.0, 250.0], "leap_height": [90.0, 170.0], "leap_time": [1.0, 1.4],
 		"trail": {"color": Color(0.7, 1.0, 0.4, 0.9), "rate": 12.0, "life": 0.8, "glow": true}},
 }
+
+# AILMENTS: the SPECIES keys that make the player suffer something, each one [ticks, share of health per tick] for Player.apply_<name>().
+const AILMENTS := ["poison", "burn", "bleed", "radiation"]
 
 enum State { LURK, PEEK, LEAP, DEAD }
 
@@ -444,12 +447,11 @@ func _bite_check() -> void:
 	if hurtbox().intersects(box):
 		# invulnerable for a moment after a hit: no repeats
 		var landed: bool = (_player as Player).take_damage(roundi(Player.MAX_HEALTH * bite_fraction), global_position.x)
-		if landed and species.has("poison"):
-			var poison: Array = species["poison"]
-			(_player as Player).apply_poison(int(poison[0]), float(poison[1]))
-		if landed and species.has("burn"):
-			var burn: Array = species["burn"]
-			(_player as Player).apply_burn(int(burn[0]), float(burn[1]))
+		if landed:
+			for ailment in AILMENTS:
+				if species.has(ailment):
+					var values: Array = species[ailment]
+					(_player as Player).call("apply_" + ailment, int(values[0]), float(values[1]))
 
 
 # ---------- being hurt ----------

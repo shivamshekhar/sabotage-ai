@@ -125,7 +125,7 @@ func _physics_process(delta: float) -> void:
 	# 2. Did it run into a wall, a floor, a crate or a ledge? (A ray from here to there: it can't skip through.)
 	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
 	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
-		query.exclude.append((p as CollisionObject2D).get_rid())   # the thrower is on the world layer too
+		query.exclude = [(p as CollisionObject2D).get_rid()]   # the thrower is on the world layer too
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		var normal: Vector2 = hit["normal"]

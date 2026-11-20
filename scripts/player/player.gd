@@ -163,7 +163,20 @@ const STUN_TIME := 0.25
 # HEALTH_BAR_OFFSET: where the health bar's centre sits relative to the player's feet, in
 # pixels (negative y = above). It should clear the top of the sprite and hitbox (see
 # BODY_SIZE); make y more negative if the bar overlaps the head.
-const HEALTH_BAR_OFFSET := Vector2(0, -142)
+const HEALTH_BAR_OFFSET := Vector2(0, -154)
+
+# ENERGY_BAR_OFFSET / ENERGY_BAR_SIZE: where the blue energy bar sits (just under the health bar) and how big it is (slimmer than the health bar).
+const ENERGY_BAR_OFFSET := Vector2(0, -140)
+const ENERGY_BAR_SIZE := Vector2(76, 6)
+
+# ENERGY_BAR_FILL / ENERGY_BAR_BACK: the energy bar's colours (blue on dark blue; the mech's bar is the same).
+const ENERGY_BAR_FILL := Color("#3aa0ff")
+const ENERGY_BAR_BACK := Color("#14223c")
+
+# THROW_ENERGY_COST: the share of the energy bar one throw uses (0.05 = 5%); a throw needs this much energy left. ENERGY_RECOVERY: the share of the
+# bar that comes back every second while the player is not throwing (0.04 = 4% a second), a little every physics step. Bleeding halves it.
+const THROW_ENERGY_COST := 0.05
+const ENERGY_RECOVERY := 0.04
 
 # FALL_DEATH_HEIGHT: how far in pixels you can fall, measured from the highest point of the fall
 # (the top of a jump counts) down to where you land, before the landing kills you. Landing
@@ -233,9 +246,13 @@ var _facing := 1
 var _hurt_timer := 0.0
 var _invuln_timer := 0.0
 var _stun_timer := 0.0
-var _status: PlayerStatus     # the poison and the burning (made in _ready)
+var _status: PlayerStatus     # the poison, burning, bleeding and radiation (made in _ready)
 var _visuals: PlayerSprite
 var _health_bar: HealthBar
+var _energy_bar: HealthBar
+
+## What throwing uses (see THROW_ENERGY_COST). The mech has its own (Mech.energy).
+var energy := Energy.new()
 var _body_shape: CollisionShape2D
 var _body_rect: RectangleShape2D
 
@@ -270,6 +287,13 @@ func _ready() -> void:
 	health_changed.connect(func(current: int, maximum: int) -> void:
 		_health_bar.set_ratio(float(current) / maximum))
 	health_changed.emit(health, max_health)
+	_energy_bar = HealthBar.new()
+	_energy_bar.position = ENERGY_BAR_OFFSET
+	_energy_bar.bar_size = ENERGY_BAR_SIZE
+	_energy_bar.fill_color = ENERGY_BAR_FILL
+	_energy_bar.back_color = ENERGY_BAR_BACK
+	_energy_bar.set_ratio(energy.level)
+	add_child(_energy_bar)
 
 
 ## Returns true if the hit landed (not blocked by invulnerability).
@@ -343,6 +367,7 @@ func board_mech(carried_in := false) -> void:
 	mech.destroyed.connect(_on_mech_destroyed)
 	_visuals.visible = false
 	_health_bar.visible = false
+	_energy_bar.visible = false
 	_invuln_timer = maxf(_invuln_timer, 0.8)
 	if carried_in:
 		_invuln_timer = 0.0      # (it came with the player from the last level: nothing to protect from)
@@ -365,6 +390,7 @@ func _leave_mech(explode: bool) -> void:
 	m.release(explode)
 	_visuals.visible = true
 	_health_bar.visible = true
+	_energy_bar.visible = true
 
 
 ## A hit while in the mech: the mech takes it (the player's own health is untouched). Knocked back a little, then invulnerable briefly.
@@ -406,6 +432,40 @@ func is_burning() -> bool:
 	return _status.is_burning()
 
 
+## Bleeding (from a piranha bite): for the next `ticks` times, DamageOverTime.TICK_TIME seconds apart, lose `fraction` of the maximum health
+## (like burning, never below 1 point), and the energy bar refills at half speed meanwhile. The player flashes red and drips blood.
+func apply_bleed(ticks: int, fraction: float) -> void:
+	if not _immune_to_status():
+		_status.apply(_status.bleed, ticks, fraction)
+
+
+## True while a bleeding is still hurting.
+func is_bleeding() -> bool:
+	return _status.is_bleeding()
+
+
+## Radiation sickness (from an eel's touch): the same kind of health loss as the others, and the controls are swapped for as long as it lasts
+## (see controls_swapped()). The player has a radioactive glow.
+func apply_radiation(ticks: int, fraction: float) -> void:
+	if not _immune_to_status():
+		_status.apply(_status.radiation, ticks, fraction)
+
+
+## True while radiation sickness lasts.
+func is_radiated() -> bool:
+	return _status.is_radiated()
+
+
+## True while radiation sickness swaps the controls: the left key moves right and the right key left, the up key goes down and the down key up.
+func controls_swapped() -> bool:
+	return _status.is_radiated()
+
+
+## The key that jumps (as well as climbing up) on a keyboard: Up, or Down while the controls are swapped.
+func up_action() -> StringName:
+	return InputActions.MOVE_DOWN if controls_swapped() else InputActions.MOVE_UP
+
+
 ## How far thrown objects go right now, as a fraction of the normal range.
 func throw_range_scale() -> float:
 	return _status.throw_range_scale()
@@ -422,6 +482,13 @@ func _status_step(delta: float) -> void:
 	if lost > 0 and health > 1:
 		health = maxi(1, health - lost)
 		health_changed.emit(health, max_health)
+
+
+## The energy bar refills a little every step while the player is not throwing (and more slowly while bleeding).
+func _recover_energy(delta: float) -> void:
+	if _throw_timer <= 0.0 and _windup < 0.0:
+		energy.recover(delta, ENERGY_RECOVERY * _status.energy_recovery_scale())
+	_energy_bar.set_ratio(energy.level)
 
 
 func _clear_status() -> void:
@@ -445,8 +512,9 @@ func attack_light() -> void:
 	if mech != null:
 		mech.fire_missile()    # in the mech the light attack is the missile turret
 		return
-	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0:
+	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0 or not energy.spend(THROW_ENERGY_COST):
 		return
+	_energy_bar.set_ratio(energy.level)
 	_throw_timer = throw_cooldown
 	_windup = THROW_WINDUP
 	_throw_pose_timer = THROW_POSE_TIME
@@ -460,10 +528,9 @@ func _release_throw() -> void:
 	threw.emit(obj)
 
 
-## Slow, strong attack. Not implemented yet.
+## Slow, strong attack. Not implemented on foot; in the mech it is the laser turret, which the Mech works itself while the button is held.
 func attack_heavy() -> void:
-	if mech != null:
-		mech.fire_laser()      # in the mech the heavy attack is the laser turret
+	pass
 
 
 ## Apply a level's values (see the "player" and "terrain" sections of a level file; tools/level_editor/catalog.json lists them).
@@ -534,6 +601,7 @@ func die(cause: String = "health") -> void:
 	_clear_status()
 	died.emit(cause)
 	_peak_y = spawn.y
+	energy.fill()
 	health = max_health
 	health_changed.emit(health, max_health)
 	global_position = spawn
@@ -551,11 +619,16 @@ func _physics_process(delta: float) -> void:
 		return
 	var dir := Input.get_axis(InputActions.MOVE_LEFT, InputActions.MOVE_RIGHT)
 	var vdir := Input.get_axis(InputActions.MOVE_UP, InputActions.MOVE_DOWN)  # negative = up
+	if controls_swapped():      # radiation sickness
+		dir = -dir
+		vdir = -vdir
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_invuln_timer = maxf(0.0, _invuln_timer - delta)
 	_stun_timer = maxf(0.0, _stun_timer - delta)
 	_status_step(delta)
 	_throw_timer = maxf(0.0, _throw_timer - delta)
+	if mech == null:
+		_recover_energy(delta)
 	_throw_pose_timer = maxf(0.0, _throw_pose_timer - delta)
 	if _windup >= 0.0:
 		_windup -= delta
@@ -605,7 +678,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = jump_speed
 		elif not is_on_floor():
 			velocity.y += GRAVITY * delta
-		elif Input.is_action_just_pressed(InputActions.JUMP) or (Input.is_action_just_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not (mech != null and ladder_in_reach())):
+		elif Input.is_action_just_pressed(InputActions.JUMP) or (Input.is_action_just_pressed(up_action()) and not TouchControls.should_show() and not (mech != null and ladder_in_reach())):
 			# "jump" (Space / the JUMP button) always jumps. On a keyboard "move_up" (W / Up)
 			# is both jump and climb: a ladder in reach was already grabbed above (so we'd be
 			# climbing, not here); otherwise it jumps. On a phone the D-pad's up never jumps.

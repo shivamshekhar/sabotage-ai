@@ -51,6 +51,7 @@ const SPARK_SIZE := Vector2(0.12, 0.26)
 
 var velocity := Vector2.ZERO
 var mech: Mech
+var _owner_body: RID            # the player in the mech that fired it: the missile never hits it
 var _age := 0.0
 var _speed := START_SPEED
 var _flame: Sprite2D
@@ -61,6 +62,7 @@ var _done := false
 static func launch(parent: Node, from: Vector2, dir: Vector2, owner_mech: Mech) -> MechMissile:
 	var m := MechMissile.new()
 	m.mech = owner_mech
+	m._owner_body = owner_mech.player.get_rid()
 	m.position = from
 	m.rotation = dir.angle()
 	m.velocity = dir.normalized() * START_SPEED
@@ -152,10 +154,7 @@ func _physics_process(delta: float) -> void:
 			_explode()
 			return
 	# a wall or the floor?
-	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
-	if mech != null and is_instance_valid(mech):
-		query.exclude.append(mech.player.get_rid())
-	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	var hit := Mech.world_ray(get_world_2d(), from, to, _owner_body)
 	if not hit.is_empty():
 		global_position = hit["position"]
 		_explode()

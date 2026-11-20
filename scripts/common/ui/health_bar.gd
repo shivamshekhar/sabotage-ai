@@ -40,9 +40,12 @@ const TITLE_COLOR := Color(1, 1, 1, 0.85)
 var ratio := 1.0
 var title := ""
 
-## The colours of the fill and of the empty part: a health bar is green on red; another kind of bar (the mech's fuel) sets its own.
+## The colours of the fill and of the empty part: a health bar is green on red; another kind of bar (an energy bar) sets its own.
 var fill_color := GREEN
 var back_color := RED
+
+## The size of the bar (SIZE; a slimmer bar for a secondary meter).
+var bar_size := SIZE
 
 
 ## The name drawn above the bar (empty for none).
@@ -70,7 +73,7 @@ func set_ratio(value: float) -> void:
 
 
 func _draw() -> void:
-	var bar := Rect2(-SIZE.x / 2.0, -SIZE.y / 2.0, SIZE.x, SIZE.y)
+	var bar := Rect2(-bar_size.x / 2.0, -bar_size.y / 2.0, bar_size.x, bar_size.y)
 	draw_rect(bar.grow(2.0), OUTLINE)
 	draw_rect(bar, back_color)
 	var fill := Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y))

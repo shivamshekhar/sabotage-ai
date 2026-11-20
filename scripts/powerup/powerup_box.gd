@@ -3,7 +3,7 @@ extends Node2D
 ## A floating power-up box (the "powerup_box" tile): a flat slate cube with a "?" because what is inside is random. It hovers and
 ## bobs. Jump on it (come down on its top) and the player bounces off it, it breaks apart in a few frames (assets/powerups/box_break_*.png,
 ## made by tools/art/generate_powerup.py) and the power-up inside, picked at random (see PowerUps), is given to the player. Walking
-## into it from the side or from below does nothing. A player who already has that vehicle gets it mended and refuelled, and 500 points.
+## into it from the side or from below does nothing. A player who already has that vehicle gets it mended and its energy filled, and 500 points.
 
 signal opened(kind: String)
 

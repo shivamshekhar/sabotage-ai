@@ -191,7 +191,7 @@ func _on_goal_reached() -> void:
 		next = LevelData.DEFAULT_ID if LevelData.is_campaign(_level_id) else _level_id
 		GameStats.reset()   # the game starts over: the score, the health and the vehicle too
 	elif _player != null and is_instance_valid(_player):
-		GameStats.save_player(_player)   # the health and the vehicle (with its damage and fuel) go with the player into the next level
+		GameStats.save_player(_player)   # the health and the vehicle (with its damage and energy) go with the player into the next level
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	var label := Label.new()

@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	# a floor or a wall: a ray from here to there, so a fast piece cannot skip through
 	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
 	for p in get_tree().get_nodes_in_group(Groups.PLAYER):
-		query.exclude.append((p as CollisionObject2D).get_rid())
+		query.exclude = [(p as CollisionObject2D).get_rid()]
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		_shatter(hit["position"], hit["normal"])

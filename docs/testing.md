@@ -25,7 +25,8 @@ godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/lase
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/levels_test.gd         # the campaign: chained levels, titles, backgrounds
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/level_traversal_test.gd # ANY level can be played: exit reachable, no dead ends, gates, power-up box (LEVEL=id or LEVEL_FILE=path for one)
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/powerup_levels_test.gd # the power-up boxes and laser gates of every level, with the real physics
-godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd           # the mech: size, legs, booster, fuel, weapons, damage stages (in the test arena)
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd           # the mech: size, legs, booster, energy, weapons, damage stages (in the test arena)
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/energy_test.gd         # the player's energy bar, bleeding, radiation sickness, the mech weapons' rays
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/carry_test.gd          # carry-over between levels, points text, repair, spikes, walls
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/editor_sync_test.gd    # the level editor offers everything the game has
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/solver_calibration_test.gd # the solver's jump matches the engine's

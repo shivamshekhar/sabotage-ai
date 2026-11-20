@@ -12,7 +12,7 @@ static func random_kind() -> String:
 
 
 ## Give the player the power-up `kind`; `at` is where the box was (the points text of a repair floats up from there). A player who already
-## has that vehicle gets it mended and refuelled instead, and GameStats.REPAIR_SCORE points.
+## has that vehicle gets it mended and its energy filled instead, and GameStats.REPAIR_SCORE points.
 static func grant(player: Player, kind: String, at: Vector2 = Vector2.INF) -> void:
 	match kind:
 		"mech":

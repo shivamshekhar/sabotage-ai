@@ -4,13 +4,13 @@ extends Node2D
 ## while the player is in it (Player.board_mech()): the player's own body, camera and every hazard check stay as they are, the mech
 ## only changes how the player moves, fights and takes damage:
 ##   - it is SIZE_IN_PLAYERS (1.5) times the player's size (the hit box grows), and the player sits in its cockpit
-##   - it has no health bar: it survives HITS_TO_DESTROY (5) hits of any kind (an enemy, spikes, a thrown thing; the amount does not
+##   - it has no health bar, only the energy bar: it survives HITS_TO_DESTROY (5) hits of any kind (an enemy, spikes, a thrown thing; the amount does not
 ##     matter), each one showing on the mech itself (see MechVisual.set_damage()): cracks, a broken leg, smoke, fire, and on the last
 ##     it explodes and the player drops out on foot with their own health untouched. A deadly pit still kills the player, mech and all
 ##   - the legs climb steps (STEP_HEIGHT) without a jump. The jump is a rocket booster: hold the jump button and it lifts the mech while
-##     there is fuel (the blue bar); out of fuel it falls under gravity. The fuel fills back up in REFILL_TIME seconds
-##   - "light attack" (Q) fires a missile from the missile turret, "heavy attack" (S) a laser from the laser turret; both turrets aim at
-##     the nearest enemy in front, otherwise straight ahead
+##     there is energy (the blue bar); out of energy it falls under gravity. The energy fills back up in REFILL_TIME seconds
+##   - "light attack" (Q) fires a missile from the missile turret (one every MISSILE_COOLDOWN seconds, fixed), "heavy attack" (S) works the laser
+##     turret for as long as the button is held, using up the same energy; both turrets aim at the nearest enemy in front, otherwise straight ahead
 ## The picture is MechVisual (the art: assets/powerups/mech/, made by tools/art/generate_mech.py and generate_mech_effects.py).
 
 signal destroyed
@@ -28,27 +28,30 @@ const ACCEL := 1500.0
 # KICK_SPEED: the upward speed the booster gives at the moment of a jump from the ground (a tap on the button is a hop of about this).
 const KICK_SPEED := -520.0
 
-# THRUST: how hard the booster pushes while the jump button is held and there is fuel (pixels per second squared, against gravity's 2000).
+# THRUST: how hard the booster pushes while the jump button is held and there is energy (pixels per second squared, against gravity's 2000).
 # RISE_SPEED: the upward speed the mech settles at while the booster burns, in pixels per second. (Close to KICK_SPEED, so a held jump
 # lifts off smoothly instead of kicking and then slowing.)
 const THRUST := 2400.0
 const RISE_SPEED := 400.0
 
-# BURN_TIME: seconds of fuel in a full tank (the booster burns it while the button is held). REFILL_TIME: seconds the tank takes to fill
-# up again from empty, progressively, whenever the booster is off. RESTART_FUEL: after the tank has run dry the booster only lights again
-# when it has filled this far (a share of a full tank), so it cannot stutter on the last drops.
-const BURN_TIME := 1.2
+# BURN_TIME: seconds of boosting in a full tank of energy (the booster uses it while the button is held; 10% more than the 1.2 s it once was).
+# REFILL_TIME: seconds the tank takes to fill up again from empty, progressively, whenever neither the booster nor the laser is on.
+const BURN_TIME := 1.32
 const REFILL_TIME := 3.0
-const RESTART_FUEL := 0.2
+
+# LASER_TIME: seconds of laser in a full tank of energy (the beam uses it for as long as the button is held; a booster burning at the same time
+# uses its own share on top).
+const LASER_TIME := 4.0
 
 # STEP_HEIGHT: the tallest step the legs climb without a jump, in pixels (one tile is 70; the body's underside is about 80 above the floor, so
 # a step has to be lower than that). STEP_LIFT_SPEED: how fast the body rises over it.
 const STEP_HEIGHT := 76.0
 const STEP_LIFT_SPEED := 560.0
 
-# MISSILE_COOLDOWN / LASER_COOLDOWN: seconds between shots.
-const MISSILE_COOLDOWN := 0.9
-const LASER_COOLDOWN := 0.5
+# MISSILE_COOLDOWN: seconds between two missiles. Fixed: no upgrade or power-up changes it. LASER_HIT_INTERVAL: seconds between the hits of a laser
+# beam that rests on an enemy (each takes LASER_FRACTION of its health).
+const MISSILE_COOLDOWN := 3.0
+const LASER_HIT_INTERVAL := 0.5
 
 # LASER_RANGE: how far the laser reaches (pixels). LASER_FRACTION / MISSILE_FRACTION: the share of an enemy's health a laser hit /
 # a missile blast takes (see take_hit() of the enemies; a thrown object takes 0.5). The blast reaches BLAST_RADIUS pixels.
@@ -69,33 +72,30 @@ const AIM_DOWN := 0.6
 const CHASSIS_SIZE := Vector2(150.0, 104.0)
 const BARREL_SIZE := Vector2(46.0, 14.0)
 
-# FUEL_BAR_CEILING_GAP: when a ceiling is closer than this above the mech's top, the fuel bar moves down under the hull so it is not drawn inside the ceiling.
-const FUEL_BAR_CEILING_GAP := 50.0
+# ENERGY_BAR_CEILING_GAP: when a ceiling is closer than this above the mech's top, the energy bar moves down under the hull so it is not drawn inside the ceiling.
+const ENERGY_BAR_CEILING_GAP := 50.0
 
 # MUZZLE_PUFF: the size of the puff of fire at the missile turret's muzzle when it fires (see Explosion). EXPLOSION_OFFSET: where the mech's own
 # explosion is, from its feet (the middle of its body).
 const MUZZLE_PUFF := 0.2
 const EXPLOSION_OFFSET := Vector2(0.0, -90.0)
 
-# FUEL_COLOR / FUEL_BACK: the colours of the fuel bar (blue on dark blue).
-const FUEL_COLOR := Color("#3aa0ff")
-const FUEL_BACK := Color("#14223c")
-
 var player: Player
 var visual: MechVisual
 var hits := 0
-var fuel := 1.0                 # 0 = empty, 1 = full
+var energy := Energy.new()      # the one tank the booster and the laser use
 var thrusting := false          # the booster is burning this step
+var lasing := false             # the laser is on this step
 
-var _fuel_bar: HealthBar
+var _energy_bar: HealthBar
 var _chassis: CollisionShape2D
 var _barrel: CollisionShape2D
 var _bar_timer := 0
 var _step_lift := 0.0
 var _missile_timer := 0.0
-var _laser_timer := 0.0
+var _laser_hit_timer := 0.0
+var _beam: LaserBeam            # the beam on screen while the laser is on
 var _dead := false
-var _dry := false               # the tank ran empty and has not refilled enough to restart
 
 
 ## Get in: called by Player.board_mech() once the mech is a child of the player.
@@ -107,12 +107,11 @@ func setup(the_player: Player) -> void:
 	visual = MechVisual.new()
 	visual.mech = self
 	add_child(visual)
-	_fuel_bar = HealthBar.new()
-	_fuel_bar.fill_color = FUEL_COLOR
-	_fuel_bar.back_color = FUEL_BACK
-	_fuel_bar.position = Vector2(0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
-	_fuel_bar.set_title("FUEL")
-	add_child(_fuel_bar)
+	_energy_bar = HealthBar.new()
+	_energy_bar.fill_color = Player.ENERGY_BAR_FILL
+	_energy_bar.back_color = Player.ENERGY_BAR_BACK
+	_energy_bar.position = Vector2(0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
+	add_child(_energy_bar)
 
 
 ## The body's solid parts, added to the player (a collision shape must be a child of the body it belongs to).
@@ -150,18 +149,18 @@ func _jump_held() -> bool:
 	if Input.is_action_pressed(InputActions.JUMP):
 		return true
 	# (on a keyboard Up also jumps, but not at a ladder: the mech cannot climb, so Up there must not light the booster)
-	return Input.is_action_pressed(InputActions.MOVE_UP) and not TouchControls.should_show() and not player.ladder_in_reach()
+	return Input.is_action_pressed(player.up_action()) and not TouchControls.should_show() and not player.ladder_in_reach()
 
 
-## Called by the player every physics step just before it moves: the legs climb steps and the booster burns fuel while the button is held.
+## Called by the player every physics step just before it moves: the legs climb steps and the booster and the laser use energy while their buttons are held.
 func before_move(dir: float, delta: float) -> void:
 	_missile_timer = maxf(0.0, _missile_timer - delta)
-	_laser_timer = maxf(0.0, _laser_timer - delta)
+	_laser_hit_timer = maxf(0.0, _laser_hit_timer - delta)
 	_work_booster(delta)
 	_barrel.position = _barrel_position()
 	_bar_timer += 1
 	if _bar_timer % 6 == 0:
-		_place_fuel_bar()
+		_place_energy_bar()
 	if _step_lift > 0.0:
 		var lift := minf(_step_lift, STEP_LIFT_SPEED * delta)
 		if not player.test_move(player.global_transform, Vector2(0.0, -lift)):
@@ -172,28 +171,25 @@ func before_move(dir: float, delta: float) -> void:
 		_try_step(dir)
 
 
+## The booster and the laser use the energy while their buttons are held; it refills while neither is on.
 func _work_booster(delta: float) -> void:
-	if _dry and fuel >= RESTART_FUEL:
-		_dry = false
-	thrusting = _jump_held() and fuel > 0.0 and not _dry
+	thrusting = _jump_held() and energy.drain(delta / BURN_TIME)
 	if thrusting:
-		# lift towards RISE_SPEED (a faster launch than that settles down to it), burning fuel
+		# lift towards RISE_SPEED (a faster launch than that settles down to it)
 		player.velocity.y = move_toward(player.velocity.y, -RISE_SPEED, THRUST * delta)
-		fuel = maxf(0.0, fuel - delta / BURN_TIME)
-		if fuel <= 0.0:
-			_dry = true
-	else:
-		fuel = minf(1.0, fuel + delta / REFILL_TIME)
-	_fuel_bar.set_ratio(fuel)
+	_work_laser(delta)
+	if not thrusting and not lasing:
+		energy.recover(delta, 1.0 / REFILL_TIME)
+	_energy_bar.set_ratio(energy.level)
 
 
-## The fuel bar floats above the mech; under a low ceiling it moves down beneath the hull instead of being drawn inside the ceiling.
-func _place_fuel_bar() -> void:
+## The energy bar floats above the mech; under a low ceiling it moves down beneath the hull instead of being drawn inside the ceiling.
+func _place_energy_bar() -> void:
 	var top := player.global_position + Vector2(0.0, -SIZE_IN_PLAYERS * Player.BODY_SIZE.y)
-	var query := PhysicsRayQueryParameters2D.create(top, top + Vector2(0.0, -(FUEL_BAR_CEILING_GAP + 24.0)), PhysicsLayers.WORLD)
-	query.exclude.append(player.get_rid())
+	var query := PhysicsRayQueryParameters2D.create(top, top + Vector2(0.0, -(ENERGY_BAR_CEILING_GAP + 24.0)), PhysicsLayers.WORLD)
+	query.exclude = [player.get_rid()]
 	var low_ceiling := not player.get_world_2d().direct_space_state.intersect_ray(query).is_empty()
-	_fuel_bar.position = Vector2(0.0, -64.0) if low_ceiling else Vector2(0.0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
+	_energy_bar.position = Vector2(0.0, -64.0) if low_ceiling else Vector2(0.0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
 
 
 ## A wall ahead that is low enough to step over: find how high it is and start rising over it.
@@ -222,19 +218,17 @@ func start_jump() -> float:
 func repair() -> void:
 	hits = 0
 	_dead = false
-	fuel = 1.0
-	_dry = false
+	energy.fill()
 	visual.clear_damage()
-	_fuel_bar.set_ratio(1.0)
+	_energy_bar.set_ratio(1.0)
 
 
-## Take over a state carried from the previous level: `hit_count` hits already taken (their damage showing at once) and `fuel_level` in the tank.
-func set_state(hit_count: int, fuel_level: float) -> void:
+## Take over a state carried from the previous level: `hit_count` hits already taken (their damage showing at once) and `energy_level` in the tank.
+func set_state(hit_count: int, energy_level: float) -> void:
 	hits = clampi(hit_count, 0, HITS_TO_DESTROY - 1)
-	fuel = clampf(fuel_level, 0.0, 1.0)
-	_dry = fuel <= 0.0
+	energy.set_level(energy_level)
 	visual.set_damage(hits, true)
-	_fuel_bar.set_ratio(fuel)
+	_energy_bar.set_ratio(energy.level)
 
 
 ## A hit (any kind: the amount does not matter): the mech shows the damage, and on the last hit it is destroyed. Returns true if it was.
@@ -266,18 +260,16 @@ func fire_missile() -> void:
 	visual.recoil(&"missile")
 
 
-## The laser turret fires (heavy attack): an instant beam to the first wall or enemy in its line.
-func fire_laser() -> void:
-	if _laser_timer > 0.0 or _dead:
+## The laser: on while the heavy attack button is held and there is energy. The beam is drawn every step from the muzzle to the first wall or
+## enemy in its line (the mech's own body is never in the way), and an enemy it rests on is hurt every LASER_HIT_INTERVAL seconds.
+func _work_laser(delta: float) -> void:
+	lasing = not _dead and Input.is_action_pressed(InputActions.ATTACK_HEAVY) and energy.drain(delta / LASER_TIME)
+	if not lasing:
+		_stop_laser()
 		return
-	_laser_timer = LASER_COOLDOWN
 	var from := visual.laser_muzzle()
-	var dir := visual.laser_direction()
-	var to := from + dir * LASER_RANGE
-	var space := player.get_world_2d().direct_space_state
-	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
-	query.exclude.append(player.get_rid())
-	var wall := space.intersect_ray(query)
+	var to := from + visual.laser_direction() * LASER_RANGE
+	var wall := world_ray(player.get_world_2d(), from, to, player.get_rid())
 	if not wall.is_empty():
 		to = wall["position"]
 	# the first enemy along the beam
@@ -290,9 +282,29 @@ func fire_laser() -> void:
 			best = e
 	if best != null:
 		to = from + (to - from) * best_t
+	if _beam == null or not is_instance_valid(_beam):
+		_beam = LaserBeam.hold(player.get_parent(), from, to, best != null)
+		visual.recoil(&"laser")
+	_beam.aim(from, to, best != null)
+	if best != null and _laser_hit_timer <= 0.0:
+		_laser_hit_timer = LASER_HIT_INTERVAL
 		best.take_hit(LASER_FRACTION, from.x)
-	LaserBeam.show_beam(player.get_parent(), from, to, best != null)
-	visual.recoil(&"laser")
+		visual.recoil(&"laser")
+
+
+func _stop_laser() -> void:
+	lasing = false
+	if _beam != null and is_instance_valid(_beam):
+		_beam.release()
+	_beam = null
+
+
+## A ray from `from` to `to` against the world (walls, floors, gates), as intersect_ray() answers it (empty if nothing is in the way), never hitting
+## the body `own_body` (the player in the mech). The laser and the missile start inside the mech's reach and must not hit the mech that fires them.
+static func world_ray(world: World2D, from: Vector2, to: Vector2, own_body: RID) -> Dictionary:
+	var query := PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WORLD)
+	query.exclude = [own_body]
+	return world.direct_space_state.intersect_ray(query)
 
 
 ## The nearest living enemy in front of `from` within AIM_RANGE (its middle), or null.
@@ -320,6 +332,7 @@ func blast(at: Vector2) -> void:
 
 ## The mech blows up (the last hit) or the player leaves it: the player is back on foot. `explode` makes the blast, and the parts fly.
 func release(explode: bool) -> void:
+	_stop_laser()
 	if explode:
 		visual.shatter()
 		Explosion.spawn(player.get_parent(), player.global_position + EXPLOSION_OFFSET)

@@ -1,6 +1,6 @@
 extends SceneTree
 ## The power-up box and the first vehicle, the four-legged mech: the box tile and its art, jumping on it, the mech's size, five-hit
-## durability and the damage it shows, steps, hovering, the fuel and the booster, missiles, laser and legs, and getting out again. Played in the test arena (tools/tests/lib/test_arena.gd), not in a real level.
+## durability and the damage it shows, steps, hovering, the energy and the booster, missiles, laser and legs, and getting out again. Played in the test arena (tools/tests/lib/test_arena.gd), not in a real level.
 ## Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd
 
@@ -118,8 +118,8 @@ func _main() -> void:
 	var mech: Mech = player.mech
 	_check("it is 1.5 times the player's size", is_equal_approx(player._body_rect.size.y, Player.BODY_SIZE.y * 1.5) and is_equal_approx(player._body_rect.size.x, Player.BODY_SIZE.x * 1.5), str(player._body_rect.size))
 	_check("it survives five hits and starts undamaged", Mech.HITS_TO_DESTROY == 5 and mech.hits == 0 and mech.visual.damage == 0)
-	var fuel_bar: HealthBar = mech._fuel_bar
-	_check("the only bar is a blue fuel bar (no health or hits are shown)", not player._health_bar.visible and fuel_bar.title == "FUEL" and fuel_bar.fill_color.b > 0.8 and fuel_bar.fill_color.r < 0.4)
+	var energy_bar: HealthBar = mech._energy_bar
+	_check("the only bar is a blue energy bar with no word above it (no health or hits are shown)", not player._health_bar.visible and not player._energy_bar.visible and energy_bar.title == "" and energy_bar.fill_color.b > 0.8 and energy_bar.fill_color.r < 0.4)
 	var bars := 0
 	for n in player.get_children() + mech.get_children():
 		if n is HealthBar and n.visible:
@@ -165,11 +165,11 @@ func _main() -> void:
 
 	player.global_position = Vector2(150.0, ground_y)
 	player.velocity = Vector2.ZERO
-	# the booster: a tap is a hop, a held button lifts the mech while there is fuel (the bar drains), then it falls; the fuel fills back in 3 s
+	# the booster: a tap is a hop, a held button lifts the mech while there is energy (the bar drains), then it falls; the energy fills back in 3 s
 	player.global_position = Vector2(150.0, ground_y)
 	player.velocity = Vector2.ZERO
 	await _wait(20)
-	_check("the tank starts full", is_equal_approx(mech.fuel, 1.0))
+	_check("the tank starts full", is_equal_approx(mech.energy.level, 1.0))
 	var peak_tap := ground_y
 	Input.action_press(InputActions.JUMP)
 	await _wait(2)
@@ -180,19 +180,19 @@ func _main() -> void:
 		peak_tap = minf(peak_tap, player.global_position.y)
 		flame_seen = flame_seen or vis._flame.visible
 	await _wait(200)
-	_check("the fuel is full again after a hop", mech.fuel > 0.99)
+	_check("the energy is full again after a hop", mech.energy.level > 0.99)
 	var peak_hold := ground_y
 	var feet_tucked := true
-	var fuel_at_half := 1.0
+	var energy_at_half := 1.0
 	Input.action_press(InputActions.JUMP)
 	for k in 60:
 		await process_frame
 		peak_hold = minf(peak_hold, player.global_position.y)
 		if k == 36:
-			fuel_at_half = mech.fuel
+			energy_at_half = mech.energy.level
 			for f in vis.feet:
 				feet_tucked = feet_tucked and ground_y - f.y > 18.0
-	_check("holding jump burns fuel: about half the %.1f s tank has gone after 0.6 s" % Mech.BURN_TIME, fuel_at_half > 0.3 and fuel_at_half < 0.7, "%.2f" % fuel_at_half)
+	_check("holding jump uses energy: about half the %.1f s tank has gone after 0.6 s" % Mech.BURN_TIME, energy_at_half > 0.3 and energy_at_half < 0.7, "%.2f" % energy_at_half)
 	var rose_while_held := ground_y - player.global_position.y
 	_check("held, the booster lifts the mech well above a hop (%.0f vs %.0f px)" % [rose_while_held, ground_y - peak_tap], rose_while_held > ground_y - peak_tap + 60.0)
 	var fell := false
@@ -202,7 +202,7 @@ func _main() -> void:
 		apex_y = minf(apex_y, player.global_position.y)
 		if player.velocity.y > 100.0:
 			fell = true
-	_check("out of fuel the mech drops, even with the button held", mech.fuel < 0.25 and fell, "fuel %.2f" % mech.fuel)
+	_check("out of energy the mech drops, even with the button held", mech.energy.level < 0.25 and fell, "energy %.2f" % mech.energy.level)
 	Input.action_release(InputActions.JUMP)
 	_check("the flame shows on a jump", flame_seen)
 	_check("in the air the legs curl up under the belly", feet_tucked)
@@ -214,11 +214,11 @@ func _main() -> void:
 	for f in vis.feet:
 		planted = planted and absf(f.y - ground_y) < 8.0
 	_check("after landing all four feet come down onto the floor (the legs do not stay curled)", planted, str(vis.feet))
-	mech.fuel = 0.0
+	mech.energy.set_level(0.0)
 	await _wait(90)
-	_check("the fuel fills back up progressively (about half after 1.5 s)", mech.fuel > 0.35 and mech.fuel < 0.65, "%.2f" % mech.fuel)
+	_check("the energy fills back up progressively (about half after 1.5 s)", mech.energy.level > 0.35 and mech.energy.level < 0.65, "%.2f" % mech.energy.level)
 	await _wait(100)
-	_check("and is full after 3 s", mech.fuel > 0.97, "%.2f" % mech.fuel)
+	_check("and is full after 3 s", mech.energy.level > 0.97, "%.2f" % mech.energy.level)
 
 	# hovering: on a narrow platform not all the legs have a floor, so the booster burns low (just for show) and those legs curl up
 	var plat := StaticBody2D.new()
@@ -287,8 +287,9 @@ func _main() -> void:
 	await _wait(10)
 	var hp := bro.health
 	player._facing = 1
-	player.attack_heavy()
-	await _wait(3)
+	var energy_before := mech.energy.level
+	Input.action_press(InputActions.ATTACK_HEAVY)
+	await _wait(6)
 	_check("the laser hurts what is in front of it", bro.health < hp, "%d -> %d" % [hp, bro.health])
 	_check("the laser's reach is limited", mech.LASER_RANGE < 900.0)
 	var beam_seen := false
@@ -305,7 +306,15 @@ func _main() -> void:
 				if c is CPUParticles2D:
 					ember_nodes += 1
 	_check("the laser is blue and glows: a flare at both ends, blue embers and sparks along it", LaserBeam.BLUE.b > 0.9 and LaserBeam.BLUE.r < 0.4 and flares >= 2 and ember_nodes >= 1, "%d flares, %d particle emitters" % [flares, ember_nodes])
-	await _wait(40)
+	await _wait(54)
+	_check("the laser stays on while the button is held, and uses energy", mech.lasing and mech.energy.level < energy_before - 0.1, "energy %.2f -> %.2f" % [energy_before, mech.energy.level])
+	var held_beams := 0
+	for n in main.get_children():
+		held_beams += 1 if n is LaserBeam else 0
+	_check("one beam is drawn all the time it is held (not a new one each step)", held_beams == 1, str(held_beams))
+	Input.action_release(InputActions.ATTACK_HEAVY)
+	await _wait(60)
+	_check("letting go turns it off and the beam fades away", not mech.lasing and main.get_children().all(func(n: Node) -> bool: return not (n is LaserBeam)))
 	player.attack_light()
 	await _wait(3)
 	var missiles := 0
@@ -313,6 +322,7 @@ func _main() -> void:
 		if n is MechMissile:
 			missiles += 1
 	_check("the missile turret launches a missile", missiles == 1)
+	_check("then it needs %.0f s to fire the next (fixed)" % Mech.MISSILE_COOLDOWN, Mech.MISSILE_COOLDOWN == 3.0 and mech._missile_timer > Mech.MISSILE_COOLDOWN - 0.2)
 	var detailed := false
 	for n in main.get_children():
 		if n is MechMissile:
@@ -323,6 +333,9 @@ func _main() -> void:
 				emitters += 1 if c is CPUParticles2D else 0
 			detailed = sprites >= 3 and emitters >= 2 and n._flame != null and n._glow != null
 	_check("the missile has an exhaust flame, a glow, sparks and a smoke trail", detailed)
+	await _wait(60)
+	player.attack_light()
+	_check("a second press after one second does not fire (the wait is not restarted either)", mech._missile_timer < Mech.MISSILE_COOLDOWN - 0.9)
 	await _wait(150)
 	_check("the missile blows up the Bro", not is_instance_valid(bro) or bro.health == 0 or bro._dead)
 	var before: Vector2 = mech.visual.missile_muzzle()
