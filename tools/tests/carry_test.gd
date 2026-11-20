@@ -114,6 +114,11 @@ func _main() -> void:
 			if n is Debris:
 				debris += 1
 		_check("nothing falls off as it arrives", debris == 0)
+		await _wait(40)
+		var floating := 0.0
+		for f in carried_mech.visual.feet:
+			floating = maxf(floating, player.global_position.y - f.y)
+		_check("it arrives standing: all four feet are on the floor, not hovering above it", player.is_on_floor() and floating < 4.0, "feet up to %.1f px above the floor" % floating)
 	main.queue_free()
 	await _wait(3)
 	GameStats.reset()

@@ -11,6 +11,7 @@ THE PARTS (every picture faces right; the game flips them to face left; they are
     missile_turret.png, laser_turret.png   the two turrets; they turn about their pivot (their pivots and muzzles are constants of MechVisual)
     link.png, joint.png, claw.png, hip.png the pieces of a leg. The game draws each leg as a chain of links along a smooth curve from the
                       hip to the foot (that is what gives the octopus movement), a joint between every two links and the claw at the end
+    (claw_open.png is the same foot standing open and flat on the floor; the game shows it while the foot is down)
     flame_1..3.png    the rocket booster's flame (pointing down), shown while jumping
     (the missile, the damage effects and the weapon effects are drawn by generate_mech_effects.py)
 HOW IT IS DRAWN: like the boss (generate_boss_shaker.py): every part is a mask, lit into a bevelled surface at 4x and shrunk.
@@ -381,6 +382,33 @@ def draw_claw():
     return c
 
 
+OCW, OCH = 92, 66            # the open claw: a foot standing on the floor, palm on top, three toes spread out and down, flat pads at the bottom
+OC_PAD = 3                   # empty rows under the toe pads (the picture's bottom edge is that far below the floor line)
+
+
+def draw_claw_open():
+    c = Image.new("RGBA", (OCW * S, OCH * S), (0, 0, 0, 0))
+    palm = rr(mk(OCW, OCH), (24, 2, 68, 28), 10)
+    part(c, palm, vgrad(2, 28, YEL_L, YEL_D), radius=3.0, bump=2.4, outline_w=1.2)
+    part(c, ell(mk(OCW, OCH), 46, 15, 6), (70, 76, 92), radius=1.2, bump=2.4, outline_w=0.8)
+    floor = OCH - OC_PAD - 1
+    def toe(points, w):
+        m = mk(OCW, OCH)
+        for a, b in zip(points, points[1:]):
+            line(m, a, b, w)
+        for p in points:
+            ell(m, p[0], p[1], w / 2)
+        part(c, m, vgrad(20, OCH, (150, 158, 176), (52, 58, 74)), radius=1.8, bump=2.4, spec=0.7, outline_w=1.0)
+        # the flat pad at the end of the toe, on the floor line
+        x = points[-1][0]
+        pad = rr(mk(OCW, OCH), (x - 8, floor - 5, x + 8, floor + 1), 2)
+        part(c, pad, vgrad(floor - 5, floor + 1, (225, 230, 240), (120, 128, 146)), radius=0.8, bump=2.0, spec=0.8, outline_w=0.8)
+    toe([(34, 26), (22, 36), (13, 48), (11, floor - 3)], 10)
+    toe([(58, 26), (70, 36), (79, 48), (81, floor - 3)], 10)
+    toe([(46, 28), (46, floor - 3)], 9)
+    return c
+
+
 def draw_hip():
     c = Image.new("RGBA", (56 * S, 56 * S), (0, 0, 0, 0))
     ball = ell(mk(56, 56), 28, 28, 25)
@@ -522,7 +550,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     parts = {}
     for name, fn in (("body", draw_body), ("canopy", draw_canopy), ("missile_turret", draw_missile_turret), ("laser_turret", draw_laser_turret),
-                     ("link", draw_link), ("joint", draw_joint), ("claw", draw_claw), ("hip", draw_hip)):
+                     ("link", draw_link), ("joint", draw_joint), ("claw", draw_claw), ("claw_open", draw_claw_open), ("hip", draw_hip)):
         parts[name] = finish(fn(), os.path.join(OUT, name + ".png"))
     for i in range(3):
         parts["flame_%d" % (i + 1)] = finish(draw_flame(i), os.path.join(OUT, "flame_%d.png" % (i + 1)))

@@ -115,7 +115,8 @@ jobs:
             gh release upload "$tag" "$apk" --clobber
             gh release edit "$tag" --notes "$notes"
             # drop APKs of older commits of this version that have a different file name
-            gh release view "$tag" --json assets --jq '.assets[].name' | grep -v "^$(basename "$apk")$" | while read -r old; do
+            # (grep exits 1 when there is nothing else to delete, which is the normal case: that must not fail the step under pipefail)
+            gh release view "$tag" --json assets --jq '.assets[].name' | { grep -v "^$(basename "$apk")$" || true; } | while read -r old; do
               gh release delete-asset "$tag" "$old" -y || true
             done
           else

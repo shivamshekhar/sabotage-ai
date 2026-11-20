@@ -51,7 +51,7 @@ func _main() -> void:
 	for i in 6:
 		files.append("box_break_%d" % (i + 1))
 	_check("the box and its six break-apart frames exist", files.all(func(f: String) -> bool: return ResourceLoader.exists("res://assets/powerups/%s.png" % f)))
-	var mech_parts := ["body", "canopy", "missile_turret", "laser_turret", "link", "joint", "claw", "hip", "flame_1", "flame_2", "flame_3", "missile",
+	var mech_parts := ["body", "canopy", "missile_turret", "laser_turret", "link", "joint", "claw", "claw_open", "hip", "flame_1", "flame_2", "flame_3", "missile",
 			"body_cracks", "canopy_cracks", "link_broken", "body_burn", "missile_flame_1", "missile_flame_2", "missile_flame_3"]
 	_check("every mech part has its picture", mech_parts.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.MECH + f + ".png")))
 	var effects := ["spark", "spark_blue", "smoke_1", "smoke_2", "smoke_3", "fire_1", "fire_2", "fire_3", "fire_4", "missile_glow", "laser_orb"]
@@ -219,6 +219,60 @@ func _main() -> void:
 	_check("the energy fills back up progressively (about half after 1.5 s)", mech.energy.level > 0.35 and mech.energy.level < 0.65, "%.2f" % mech.energy.level)
 	await _wait(100)
 	_check("and is full after 3 s", mech.energy.level > 0.97, "%.2f" % mech.energy.level)
+
+	# the gait, on a long flat floor of its own (the arena's floor has crates and steps on it): a diagonal trot, calm, with the body bobbing and the claws on the floor
+	var flat := StaticBody2D.new()
+	flat.collision_layer = PhysicsLayers.WORLD
+	flat.collision_mask = 0
+	var flat_shape := CollisionShape2D.new()
+	var flat_rect := RectangleShape2D.new()
+	flat_rect.size = Vector2(5000.0, 40.0)
+	flat_shape.shape = flat_rect
+	var flat_y := ground_y - 700.0
+	flat.position = Vector2(2500.0, flat_y + 20.0)
+	flat.add_child(flat_shape)
+	root.add_child(flat)
+	player.global_position = Vector2(600.0, flat_y - 4.0)
+	player.velocity = Vector2.ZERO
+	await _wait(60)
+	Input.action_press(InputActions.MOVE_RIGHT)
+	await _wait(30)
+	var thin_frames := 0
+	var pairs_mixed := 0
+	var steps_started := 0
+	var lowest_claw := 0.0
+	var was_in_air := [false, false, false, false]
+	var walk_frames := 120
+	for k in walk_frames:
+		await process_frame
+		var in_air := 0
+		for i in 4:
+			var up: bool = float(vis._step_t[i]) >= 0.0
+			in_air += 1 if up else 0
+			steps_started += 1 if up and not was_in_air[i] else 0
+			was_in_air[i] = up
+			lowest_claw = maxf(lowest_claw, vis.feet[i].y - flat_y)
+		thin_frames += 1 if in_air > 2 else 0
+		# a diagonal trot: the legs in the air at one time are of one pair (0 and 2, or 1 and 3), never one of each
+		var even_up: bool = float(vis._step_t[0]) >= 0.0 or float(vis._step_t[2]) >= 0.0
+		var odd_up: bool = float(vis._step_t[1]) >= 0.0 or float(vis._step_t[3]) >= 0.0
+		pairs_mixed += 1 if even_up and odd_up else 0
+	Input.action_release(InputActions.MOVE_RIGHT)
+	_check("the gait is a trot: two feet are on the ground all the time (bar a frame or two as the pairs hand over)", thin_frames <= 2, "%d frames with fewer" % thin_frames)
+	_check("the two pairs of legs take turns (never one leg of each pair in the air together, bar a frame or two)", pairs_mixed <= 2, "%d frames mixed" % pairs_mixed)
+	var steps_per_second := float(steps_started) / (float(walk_frames) / 60.0) / 4.0
+	_check("each foot steps at a calm rate (under 3.5 steps a second at full speed; it was nearly 4)", steps_per_second > 1.5 and steps_per_second < 3.5, "%.1f steps/s per foot" % steps_per_second)
+	_check("no foot is ever below the floor", lowest_claw < 3.0, "%.1f px" % lowest_claw)
+	await _wait(60)
+	var square := true
+	for i in 4:
+		square = square and absf(vis.feet[i].x - (player.global_position.x + MechVisual.STANCE[i])) < MechVisual.SETTLE_OFFSET + 2.0
+	_check("standing again, the feet settle square under their stances", square)
+	flat.queue_free()
+	player.global_position = Vector2(150.0, ground_y)
+	player._peak_y = ground_y       # (a teleport, not a fall)
+	player.velocity = Vector2.ZERO
+	await _wait(60)
 
 	# hovering: on a narrow platform not all the legs have a floor, so the booster burns low (just for show) and those legs curl up
 	var plat := StaticBody2D.new()

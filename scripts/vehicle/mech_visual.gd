@@ -28,7 +28,7 @@ const BODY_MIDDLE := Vector2(0.0, -BELLY - 99.0 + 53.5)
 # ROOTS: where each of the four hips is (pixels right of the middle), STANCE: where each foot likes to stand. NEAR: the legs drawn in front
 # of the body; the others are behind it, darker.
 const ROOTS := [-54.0, -24.0, 22.0, 52.0]
-const STANCE := [-122.0, -66.0, 60.0, 118.0]
+const STANCE := [-100.0, -60.0, 60.0, 100.0]
 const NEAR := [true, false, false, true]
 
 # MISSILE_MOUNT / LASER_MOUNT: where each turret's pivot is, in pixels from the middle of the body picture (a body picture pixel is half of
@@ -44,21 +44,58 @@ const FAR_SHADE := 0.6
 const LEG_LINKS := 6
 const LINK_THICKNESS := 21.0
 
-# STEP_TRIGGER: how far (px) a foot may be from its stance before it steps. STEP_TIME: how long a step takes. STEP_LIFT: how high the foot
-# swings. LEAD: how far ahead of the body (as a fraction of the speed) a foot is put down. MAX_REACH: the farthest a foot can be from its hip.
-const STEP_TRIGGER := 44.0
+# THE GAIT. The mech walks with a diagonal trot: its legs are two pairs (legs 0 and 2, legs 1 and 3, counting from the rear), and while one pair is
+# in the air the other carries the body, so at least two feet are always down. The cycle advances with the distance walked, not with time, so the
+# steps follow the speed: slower walking, slower steps.
+#   GAIT_STRIDE: how far (px) the mech walks in one full cycle, which is how far each foot is carried forward in its one step per cycle.
+#   GAIT_SWING: the share of the cycle a foot is in the air (the rest it stands: 0.4 means a foot is down 60% of the time).
+#   GAIT_SLOW_SPEED: a step is timed as if the mech walked at least this fast (px/s), so a step started just before stopping is not endless.
+#   GAIT_IDLE_SPEED / SETTLE_DELAY / SETTLE_OFFSET: below this speed the mech stands; after SETTLE_DELAY seconds standing, a foot more than SETTLE_OFFSET px
+#   from its stance takes one more step to stand square (a pair at a time).
+#   GAIT_BOB: how far (px) the body rises and sinks with the steps at full speed (twice a cycle, once for each pair that takes the weight).
+const GAIT_STRIDE := 120.0
+const GAIT_SWING := 0.4
+const GAIT_SLOW_SPEED := 120.0
+const GAIT_IDLE_SPEED := 30.0
+const SETTLE_DELAY := 0.15
+const SETTLE_OFFSET := 14.0
+const GAIT_BOB := 3.0
+
+# STEP_TRIGGER: how far (px) a foot may be from its stance before it takes an extra step out of the rhythm (a wall dragged it, or the mech turned
+# round). STEP_TIME: how long such an emergency step, and a step down from the air, takes. STEP_LIFT: how high the foot swings. MAX_REACH: the
+# farthest a foot can be from its hip.
+const STEP_TRIGGER := 80.0
 const STEP_TIME := 0.2
 const STEP_LIFT := 32.0
-const LEAD := 0.2
 const MAX_REACH := 145.0
 
 # REACH_SOFT: a foot farther than this from its hip steps at once, whatever the other legs are doing; MAX_REACH is the hard limit: a foot is never
 # allowed farther than that (it is dragged along with the body), so a leg never stretches into a long rod. A leg at rest is about 116 long.
-const REACH_SOFT := 128.0
+const REACH_SOFT := 136.0
 
-# FOOT_LIFT_LIMIT: a standing foot more than this many pixels above the floor under its stance has been left in the air (see _step_legs()): it
-# is put down at once.
+# LEG_ARCH / LEG_ARCH_MIN / LEG_ARCH_MAX: how high a leg arches out of the straight line from hip to foot: this share of that distance, kept between the two limits (px).
+const LEG_ARCH := 0.38
+const LEG_ARCH_MIN := 12.0
+const LEG_ARCH_MAX := 56.0
+
+# CLAW_REACH: how far the claw reaches past the end of the drawn leg (the claw's tip is the foot, which stands on the floor). A foot that is down
+# shows the open claw instead (claw_open.png: an upright foot, palm on top, three toes spread out flat on the floor): the leg then ends CLAW_OPEN_REACH
+# above the floor, at the palm, and the picture's empty bottom rows (CLAW_OPEN_PAD, in picture pixels) sit under the floor line. CLAW_LEAN_RATE: how fast
+# (per second) a leg's end moves between the two, so the foot does not jump when it lifts off or comes down.
+const CLAW_REACH := 34.0
+const CLAW_OPEN_REACH := 26.0
+const CLAW_OPEN_PAD := 3.0
+const CLAW_LEAN_RATE := 10.0
+
+# FOOT_LIFT_LIMIT: a foot that starts a step more than this many pixels above the floor it comes down on (a curled one after a jump) just drops: it does
+# not swing up first (see _step_legs()).
 const FOOT_LIFT_LIMIT := 24.0
+
+# FOOT_FLOAT_LIMIT: a foot that is meant to be standing is never more than this many pixels above the floor: one that is comes down at once (a mech
+# that arrives in a level, or lands from a tiny hop, would otherwise stand on its toes). CURL_DELAY: seconds the mech must have been off the floor
+# before its legs curl up (a frame in the air, as at the start of a level or over a bump, does not move them).
+const FOOT_FLOAT_LIMIT := 4.0
+const CURL_DELAY := 0.1
 
 # BROKEN_LEG: the leg that snaps on the 2nd hit (the near front leg). SNAP_LINKS: how many links stay on it, the last one torn. LINK_LENGTH: how
 # long each hanging link is, in pixels.
@@ -101,7 +138,9 @@ var hovering := false                # standing without all legs on the floor: t
 var break_tip := Vector2.ZERO        # where the snapped leg ends, in the world (while a leg is broken)
 
 var _t := 0.0
-var _walk := 0.0
+var _gait := 0.0                     # where the walking cycle is (0 to 1), see GAIT_STRIDE
+var _air_time := 0.0                 # seconds since the mech was last on the floor
+var _standing_for := 1.0             # seconds the mech has stood still
 var _body: Node2D
 var _pilot: Sprite2D
 var _cracks: Sprite2D
@@ -120,6 +159,9 @@ var _sparks: CPUParticles2D
 var _step_from: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
 var _step_to: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
 var _step_t: Array[float] = [-1.0, -1.0, -1.0, -1.0]
+var foot_down: Array[bool] = [true, true, true, true]       # the foot stands on the floor (it shows the open claw)
+var _claw_lean: Array[float] = [1.0, 1.0, 1.0, 1.0]            # 1 when the foot is down, 0 in the air: how the end of the leg and the claw are shown
+var _step_time: Array[float] = [STEP_TIME, STEP_TIME, STEP_TIME, STEP_TIME]   # how long each foot's step in the air takes
 var _broken := -1
 var _airborne := false
 var _dip := 0.0
@@ -311,7 +353,7 @@ func leg_points(i: int, hip: Vector2, foot: Vector2) -> Array[Vector2]:
 	var n := Vector2(-d.y, d.x).normalized() if dist > 0.01 else Vector2.UP
 	if n.y > 0.0:
 		n = -n                                  # the leg arches upwards, like an elbow
-	var curl := clampf(dist * 0.5, 20.0, 70.0)
+	var curl := clampf(dist * LEG_ARCH, LEG_ARCH_MIN, LEG_ARCH_MAX)
 	var sway := sin(_t * 2.3 + float(i) * 1.7) * 3.0
 	var outward := Vector2(signf(ROOTS[i]) * dist * 0.2, 0.0)
 	var ctrl := hip + d * 0.5 + n * (curl + sway) + outward
@@ -400,7 +442,7 @@ func hip_world(i: int) -> Vector2:
 
 ## How far the body is moved down from its standing height (a dip when landing, a small bob while walking).
 func _body_offset() -> float:
-	return _dip - sin(_walk * 2.0) * 2.0 * clampf(absf(mech.player.velocity.x) / 300.0, 0.0, 1.0)
+	return _dip - sin(_gait * TAU * 2.0) * GAIT_BOB * clampf(absf(mech.player.velocity.x) / 300.0, 0.0, 1.0)
 
 
 func missile_muzzle() -> Vector2:
@@ -441,11 +483,11 @@ func _physics_process(delta: float) -> void:
 	_t += delta
 	var grounded := p.is_on_floor()
 	var speed := absf(p.velocity.x)
-	_walk += speed * delta * 0.03
 	_dip = move_toward(_dip, 0.0, 40.0 * delta)
 	if grounded and _airborne:
 		_dip = 9.0       # landing: the body dips on its legs
 	_airborne = not grounded
+	_air_time = 0.0 if grounded else _air_time + delta
 	_burst = maxf(0.0, _burst - delta)
 	_hurt = maxf(0.0, _hurt - delta)
 	_body.scale.x = float(mech.facing())
@@ -508,17 +550,32 @@ func _animate_damage(delta: float) -> void:
 
 func _step_legs(delta: float, grounded: bool) -> void:
 	var p := mech.player
+	var speed := absf(p.velocity.x)
+	var moving := grounded and speed > GAIT_IDLE_SPEED
+	var cycle_before := _gait
+	if moving:
+		if _standing_for > 0.0:
+			_gait = 1.0 - 0.0001          # setting off: the first pair steps at once
+			cycle_before = _gait
+		_standing_for = 0.0
+		_gait = fposmod(_gait + speed * delta / GAIT_STRIDE, 1.0)
+	elif grounded:
+		_standing_for += delta
 	var lacking := 0
 	for i in 4:
 		if i == _broken:
 			continue
 		var hip := hip_world(i)
+		foot_down[i] = false
 		if not grounded:
-			# curled up under the belly
-			_curl(i, hip, delta)
+			if _air_time > CURL_DELAY:
+				# curled up under the belly
+				_curl(i, hip, delta)
+			else:
+				foot_down[i] = _step_t[i] < 0.0      # (just left the floor: the legs stay as they are for a moment)
 			continue
 		if _step_t[i] >= 0.0:
-			_step_t[i] += delta / STEP_TIME
+			_step_t[i] += delta / _step_time[i]
 			var t := clampf(_step_t[i], 0.0, 1.0)
 			var e := t * t * (3.0 - 2.0 * t)
 			# (a foot that is already well above its floor, like a curled one after a jump, just drops: no swing up first)
@@ -527,10 +584,14 @@ func _step_legs(delta: float, grounded: bool) -> void:
 			if _step_t[i] >= 1.0:
 				_step_t[i] = -1.0
 				feet[i] = _step_to[i]
+				foot_down[i] = true
 			continue
 		var stance_x: float = _stance_x(i)
-		var to_x := stance_x + clampf(p.velocity.x * LEAD, -60.0, 60.0)
-		to_x = _stance_x_toward(i, to_x)
+		# where the foot comes down for a step in the rhythm: ahead of its stance by half of what the body walks while the foot stands, and further
+		# by what the body walks while the foot is in the air
+		var swing_time := GAIT_SWING * GAIT_STRIDE / maxf(speed, GAIT_SLOW_SPEED)
+		var heading := signf(p.velocity.x) if moving else 0.0
+		var to_x := _landing_x(i, stance_x, speed, heading, swing_time)
 		var floor_y := _ground_y(to_x)
 		if is_nan(floor_y):
 			# no floor under this foot's stance (a narrow ledge, an edge): it cannot stand, it curls up
@@ -538,22 +599,26 @@ func _step_legs(delta: float, grounded: bool) -> void:
 			_curl(i, hip, delta)
 			continue
 		# a foot well above the floor it should stand on (curled up after a jump, or left on a crate the mech has walked off) comes down at once
-		var off_ground := feet[i].y < floor_y - FOOT_LIFT_LIMIT
+		var off_ground := feet[i].y < floor_y - FOOT_FLOAT_LIMIT
 		var over_reach := feet[i].distance_to(hip) > REACH_SOFT
-		var too_far := off_ground or over_reach or absf(feet[i].x - stance_x) > STEP_TRIGGER or feet[i].y < p.global_position.y - 130.0
-		if not too_far:
+		var emergency := off_ground or over_reach or absf(feet[i].x - stance_x) > STEP_TRIGGER or feet[i].y < p.global_position.y - 130.0
+		var in_rhythm := moving and _swing_starts(i, cycle_before)
+		var settling := not moving and _standing_for > SETTLE_DELAY and absf(feet[i].x - stance_x) > SETTLE_OFFSET and not _other_pair_stepping(i)
+		if not (emergency or in_rhythm or settling):
+			foot_down[i] = true
 			continue
-		# the legs of one group do not step together (except to come down from the air, when all of them go at once)
-		var group_busy := false
-		for j in 4:
-			if j != i and j % 2 == i % 2 and _step_t[j] >= 0.0:
-				group_busy = true
-		if group_busy and not off_ground and not over_reach:
-			continue
+		var rhythm_step := in_rhythm and not emergency
+		var duration := swing_time if rhythm_step else STEP_TIME
+		if not rhythm_step:
+			to_x = _landing_x(i, stance_x, speed, heading, STEP_TIME)
+			floor_y = _ground_y(to_x, floor_y)
 		_step_from[i] = feet[i]
 		_step_to[i] = Vector2(to_x, floor_y)
+		_step_time[i] = duration
 		_step_t[i] = 0.0
 	hovering = grounded and lacking > 0
+	for i in 4:
+		_claw_lean[i] = move_toward(_claw_lean[i], 1.0 if foot_down[i] else 0.0, CLAW_LEAN_RATE * delta)
 	# no leg is ever longer than MAX_REACH: a foot that would be is dragged in towards its hip
 	for i in 4:
 		if i == _broken:
@@ -563,6 +628,27 @@ func _step_legs(delta: float, grounded: bool) -> void:
 			feet[i] = hip_world(i) + along.normalized() * MAX_REACH
 	if _broken >= 0:
 		_update_break_tip()
+
+
+## Where a foot that steps now, and is in the air for `air_time` seconds, comes down: ahead of its stance in the direction of travel (`heading`, 0 when
+## standing) by half of what the body walks while a foot stands, and further by what it walks meanwhile, so the foot is where the stance is by then.
+func _landing_x(i: int, stance_x: float, speed: float, heading: float, air_time: float) -> float:
+	return _stance_x_toward(i, stance_x + heading * (GAIT_STRIDE * (1.0 - GAIT_SWING) * 0.5 + speed * air_time))
+
+
+## True if leg `i` starts its step in the air in this step of the cycle (the cycle was at `before`, it is at _gait now). One pair starts as the cycle
+## wraps, the other half a cycle later.
+func _swing_starts(i: int, before: float) -> bool:
+	var offset := 0.5 * float(i % 2)
+	return fposmod(_gait + offset, 1.0) < fposmod(before + offset, 1.0)
+
+
+## True while a leg of the other pair than leg `i` is in the air.
+func _other_pair_stepping(i: int) -> bool:
+	for j in 4:
+		if j % 2 != i % 2 and _step_t[j] >= 0.0:
+			return true
+	return false
 
 
 ## Where leg `i`'s foot likes to stand: its stance beside the mech, but never inside a wall: a wall beside the mech makes the leg fold in and
@@ -634,7 +720,12 @@ class MechLegs:
 
 	func _draw_leg(i: int) -> void:
 		var hip := to_local(visual.hip_world(i))
-		var foot := to_local(visual.feet[i])
+		var tip := to_local(visual.feet[i])
+		# the leg ends where the claw starts. In the air the claw points on along the leg and its tip is the foot; on the floor it stands upright and open,
+		# and the leg ends at its palm
+		var lean: float = visual._claw_lean[i]
+		var pointing := (tip - hip).normalized().lerp(Vector2.DOWN, lean).normalized()
+		var foot := tip - pointing * lerpf(MechVisual.CLAW_REACH, MechVisual.CLAW_OPEN_REACH, lean)
 		var points := visual.leg_points(i, hip, foot)
 		var col := Color(shade, shade, shade, 1.0)
 		var links := MechVisual.LEG_LINKS
@@ -654,6 +745,14 @@ class MechLegs:
 			draw_set_transform(b, 0.0, Vector2.ONE)
 			var jr := thick * 0.62
 			draw_texture_rect(joint_tex, Rect2(-jr, -jr, jr * 2.0, jr * 2.0), false, col)
+		if lean > 0.5:
+			# the open claw, standing on the floor: its toe pads are at the foot
+			var open_tex := visual._tex_of("claw_open")
+			var size := open_tex.get_size() * MechVisual.TEX
+			draw_set_transform(tip, 0.0, Vector2.ONE)
+			draw_texture_rect(open_tex, Rect2(-size.x / 2.0, -size.y + MechVisual.CLAW_OPEN_PAD * MechVisual.TEX, size.x, size.y), false, col)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 		# the claw, pointing along the last link
 		var last := points[links] - points[links - 1]
 		draw_set_transform(foot - last.normalized() * 6.0, last.angle(), Vector2(1.0, -1.0 if last.x < 0.0 else 1.0))
