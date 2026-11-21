@@ -56,7 +56,7 @@ func _main() -> void:
 	_check("a Bro has 20% of the player's health", AIBro.starting_health() == roundi(Player.MAX_HEALTH * 0.2), str(AIBro.starting_health()))
 	_check("a Bro's hit takes 10% of the player's health", AIBro.contact_damage() == roundi(Player.MAX_HEALTH * 0.1), str(AIBro.contact_damage()))
 	_check("spikes take 20% of the player's health", Player.hazard_damage() == roundi(Player.MAX_HEALTH * 0.2), str(Player.hazard_damage()))
-	_check("a thrown object takes 50% of a Bro's health", Projectile.HIT_FRACTION == 0.5)
+	_check("a thrown object does 10 damage, the laser 20 and a missile 80", Projectile.DAMAGE == 10 and Mech.LASER_DAMAGE == 20 and Mech.MISSILE_DAMAGE == 80)
 
 	# ---- patrol
 	_flat_world(-3000.0)

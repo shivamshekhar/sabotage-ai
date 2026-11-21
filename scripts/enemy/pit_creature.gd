@@ -479,7 +479,7 @@ func burns_projectiles() -> bool:
 
 ## A thrown object hit: one hit destroys it (whatever `fraction` is: a creature has no health). It is back after RESPAWN_TIME (5 s).
 ## A creature of fire cannot be hurt at all.
-func take_hit(_fraction: float, _from_x: float = NAN) -> void:
+func take_hit(_damage: int, _from_x: float = NAN) -> void:
 	if state == State.DEAD or burns_projectiles():
 		return
 	state = State.DEAD

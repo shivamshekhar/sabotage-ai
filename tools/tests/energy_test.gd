@@ -1,5 +1,5 @@
 extends SceneTree
-## The player's energy bar (throwing costs 10%, it refills at 4% a second, gradually) and the two ailments that go with it: bleeding (a piranha bite: health
+## The player's energy bar (throwing costs 10%, it refills at Player.ENERGY_RECOVERY a second, gradually) and the two ailments that go with it: bleeding (a piranha bite: health
 ## loss like a burn, energy refills at half speed, the player flashes red) and radiation sickness (an eel: health loss at a third of a burn's rate for twice
 ## as long, enemies' hits do 1.5 times the damage, a radioactive glow). Also that the mech's weapons are never blocked by the mech itself. Played in the test arena.
 ## Exits non-zero on failure.
@@ -105,10 +105,11 @@ func _main() -> void:
 	for k in steps.size():
 		gradual = gradual and steps[k] > (base if k == 0 else steps[k - 1])
 	_check("the bar refills a little every step (not once a second)", gradual and steps[0] - base < 0.002, "first step +%.5f" % (steps[0] - base))
+	player.energy.set_level(0.5)        # (half full: a full bar could not show how fast it refills)
 	var level_before := player.energy.level
 	await _wait(FRAMES_PER_SECOND)
 	var gained := player.energy.level - level_before
-	_check("and by 4%% of the bar in one second", absf(gained - Player.ENERGY_RECOVERY) < 0.004, "%.4f" % gained)
+	_check("and by ENERGY_RECOVERY (%d%%) of the bar in one second" % roundi(Player.ENERGY_RECOVERY * 100.0), absf(gained - Player.ENERGY_RECOVERY) < 0.004, "%.4f" % gained)
 
 	player.energy.set_level(Player.THROW_ENERGY_COST * 0.5)
 	thrown[0] = 0

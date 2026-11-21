@@ -1,4 +1,4 @@
-﻿class_name AIBro
+class_name AIBro
 extends CharacterBody2D
 ## The first enemy: an "AI Bro" (a zombie sprite). It paces back and forth around its home spot and never
 ## steps off a ledge. When the player comes close and the Bro is facing them, it chases: it climbs steps
@@ -456,11 +456,11 @@ func _strike(player: Player) -> void:
 
 # ---------- being hurt ----------
 
-## A thrown object landed. `fraction` is the share of maximum health it takes; `from_x` is where it hit.
-func take_hit(fraction: float, from_x: float = NAN) -> void:
+## A hit (a thrown object, the laser, a missile). `damage` is how many hit points it takes; `from_x` is where it hit.
+func take_hit(damage: int, from_x: float = NAN) -> void:
 	if _dead:
 		return
-	health = maxi(0, health - roundi(max_health * fraction))
+	health = maxi(0, health - damage)
 	_bar.set_ratio(float(health) / max_health)
 	if state != State.CHASE:
 		state = State.CHASE   # being hit gets its attention, even from behind

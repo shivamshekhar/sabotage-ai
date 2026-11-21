@@ -28,6 +28,7 @@ godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/powe
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/mech_test.gd           # the mech: size, legs, booster, energy, weapons, damage stages (in the test arena)
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/energy_test.gd         # the player's energy bar, bleeding, radiation sickness, the mech weapons' rays
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/carry_test.gd          # carry-over between levels, points text, repair, spikes, walls
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/emp_test.gd            # the EMP gun: fires while the button is held, 40 damage every 0.6 s, 1.5 s of energy, reach, one held bolt, the gun in the hand, no fire in the mech
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/door_test.gd           # the exit door: opens as you near it, takes you in (on foot and in the mech), finishes the level once
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/settings_test.gd       # volumes and audio buses, key bindings (change, clash, reserved, file), the block meter, the settings window
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/pause_menu_test.gd    # the in-game menu button and pause menu: resume, settings, quit to title

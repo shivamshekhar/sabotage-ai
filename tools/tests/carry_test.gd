@@ -66,7 +66,7 @@ func _main() -> void:
 	root.add_child(bro)
 	await _wait(3)
 	var before := GameStats.score
-	bro.take_hit(1.0)
+	bro.take_hit(bro.max_health)
 	var kill_text := _popups()
 	_check("killing a Bro scores %d, and the text floats up from above its head at that moment" % GameStats.KILL_SCORE, GameStats.score == before + GameStats.KILL_SCORE and kill_text.size() == 1 and (kill_text[0] as Node2D).position.y < 600.0 - 100.0 and (kill_text[0] as ScorePopups.ScorePopup).text == "+%d" % GameStats.KILL_SCORE)
 	await _wait(100)
@@ -79,7 +79,7 @@ func _main() -> void:
 		creature.state = PitCreature.State.PEEK
 		creature.position = Vector2(800.0, 560.0)
 		var score_before := GameStats.score
-		creature.take_hit(1.0)
+		creature.take_hit(Projectile.DAMAGE)
 		var expected: int = 0 if kind == "lava_ball" else GameStats.PIT_CREATURE_SCORE
 		_check("destroying a %s scores %d" % [kind, expected], GameStats.score == score_before + expected, str(GameStats.score - score_before))
 		if expected > 0:
@@ -94,9 +94,9 @@ func _main() -> void:
 	await _wait(2)
 	twice.state = PitCreature.State.PEEK
 	twice.position = Vector2(800.0, 560.0)
-	twice.take_hit(1.0)
+	twice.take_hit(Projectile.DAMAGE)
 	var after_one := GameStats.score
-	twice.take_hit(1.0)
+	twice.take_hit(Projectile.DAMAGE)
 	_check("a creature that is already destroyed does not score again", GameStats.score == after_one)
 	twice.queue_free()
 	await _wait(80)

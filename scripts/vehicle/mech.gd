@@ -59,16 +59,16 @@ const STEP_HOLD_TIME := 0.4
 const STEP_SNAP := 80.0
 
 # MISSILE_ENERGY_COST: the share of a full tank of energy one missile uses (0.6 = 60%); a missile needs that much energy left, and there is no other wait
-# between two. LASER_HIT_INTERVAL: seconds between the hits of a laser beam that rests on an enemy (each takes LASER_FRACTION of its health).
+# between two. LASER_HIT_INTERVAL: seconds between the hits of a laser beam that rests on an enemy (each takes LASER_DAMAGE).
 const MISSILE_ENERGY_COST := 0.6
 const LASER_HIT_INTERVAL := 0.5
 
-# LASER_RANGE: how far the laser reaches (pixels). LASER_FRACTION / MISSILE_FRACTION: the share of an enemy's health a laser hit /
-# a missile blast takes (see take_hit() of the enemies; a thrown object takes 0.5). The blast reaches BLAST_RADIUS pixels.
+# LASER_RANGE: how far the laser reaches (pixels). LASER_DAMAGE / MISSILE_DAMAGE: the hit points a laser hit / a missile blast takes off an enemy (see take_hit() of the
+# enemies; a thrown object does Projectile.DAMAGE = 10, a Bro has 20). The blast reaches BLAST_RADIUS pixels.
 const LASER_RANGE := 760.0
 const BEAM_MARGIN := 6.0          # how far round an enemy's hit box the laser still hits, in pixels
-const LASER_FRACTION := 0.34
-const MISSILE_FRACTION := 1.0
+const LASER_DAMAGE := 20
+const MISSILE_DAMAGE := 80
 const BLAST_RADIUS := 110.0
 
 # AIM_RANGE: enemies farther than this are not aimed at. AIM_UP / AIM_DOWN: how far up and down (radians) a turret can turn from straight ahead.
@@ -334,7 +334,7 @@ func _work_laser(delta: float) -> void:
 	_beam.aim(from, to, best != null)
 	if best != null and _laser_hit_timer <= 0.0:
 		_laser_hit_timer = LASER_HIT_INTERVAL
-		best.take_hit(LASER_FRACTION, from.x)
+		best.take_hit(LASER_DAMAGE, from.x)
 		visual.recoil(&"laser")
 
 
@@ -373,7 +373,7 @@ func blast(at: Vector2) -> void:
 		var r: Rect2 = e.hurtbox()
 		var nearest := Vector2(clampf(at.x, r.position.x, r.end.x), clampf(at.y, r.position.y, r.end.y))
 		if nearest.distance_to(at) <= BLAST_RADIUS:
-			e.take_hit(MISSILE_FRACTION, at.x)
+			e.take_hit(MISSILE_DAMAGE, at.x)
 
 
 ## The mech blows up (the last hit) or the player leaves it: the player is back on foot. `explode` makes the blast, and the parts fly.

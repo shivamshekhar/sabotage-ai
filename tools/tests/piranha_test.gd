@@ -115,7 +115,7 @@ func _main() -> void:
 	_check("a thrown object's path through it counts as a hit", path_hits)
 	var destroyed := [false]
 	target.defeated.connect(func() -> void: destroyed[0] = true)
-	target.take_hit(0.01)      # a feeble hit still destroys it: it has no health
+	target.take_hit(1)      # a feeble hit still destroys it: it has no health
 	_check("one hit destroys it, however light", destroyed[0] and target.state == Piranha.State.DEAD)
 	_check("a destroyed piranha cannot be hit or bite", target.hurtbox().size == Vector2.ZERO)
 	await _wait(int(Piranha.RESPAWN_TIME * 60.0) - 30)

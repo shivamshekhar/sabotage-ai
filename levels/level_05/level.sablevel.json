@@ -10,23 +10,7 @@
 		"title": "THE MAINFRAME"
 	},
 	"minigames": [],
-	"objects": {
-		"131,16": {
-			"name": "BOSS BRO",
-			"props": {
-				"chase_speed": 200.0,
-				"health_fraction": 0.6
-			},
-			"type": "ai_bro"
-		},
-		"137,16": {
-			"name": "BRO JR",
-			"props": {
-				"health_fraction": 0.3
-			},
-			"type": "ai_bro"
-		}
-	},
+	"objects": {},
 	"player": {},
 	"terrain": {
 		"background": "background",

@@ -178,7 +178,7 @@ func _main() -> void:
 	await _wait(3)
 	player.attack_light()
 	await _wait(20)
-	_check("a throw at point-blank range hits", close.health == close.max_health - roundi(close.max_health * Projectile.HIT_FRACTION), str(close.health))
+	_check("a throw at point-blank range hits", close.health == close.max_health - Projectile.DAMAGE, str(close.health))
 	await _drop_world()
 
 	# ---- no leaks: create and kill 200 Bros
@@ -191,7 +191,7 @@ func _main() -> void:
 	await _wait(20)
 	_check("200 Bros are alive", get_nodes_in_group(Groups.ENEMIES).size() == 200, str(get_nodes_in_group(Groups.ENEMIES).size()))
 	for e in get_nodes_in_group(Groups.ENEMIES):
-		e.take_hit(1.0)
+		e.take_hit(e.max_health)
 	await _wait(60)
 	await _wait(ceili(ScorePopups.LIFE * 60.0) + 10)       # (each kill floats up its own points text for a moment)
 	_check("killed Bros leave the enemies group at once", get_nodes_in_group(Groups.ENEMIES).is_empty())

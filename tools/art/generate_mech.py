@@ -26,7 +26,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import art_lib  # noqa: E402
-from art_lib import S, INK, lit, outline, paste, solid  # noqa: E402
+from art_lib import S, INK, lit, outline, paste, solid, mk, P, pl, poly, rr, ell, line, vgrad, part, finish, inside  # noqa: E402
 
 OUT = os.path.join(art_lib.ROOT, "assets", "vehicles", "mech")
 
@@ -38,67 +38,6 @@ STEEL_D = (46, 52, 66)
 BLACK = (28, 30, 38)
 CYAN = (60, 140, 255)          # the laser is blue
 RED = (230, 52, 40)
-
-
-def mk(w, h):
-    return Image.new("L", (w * S, h * S), 0)
-
-
-def P(x, y):
-    return (x * S, y * S)
-
-
-def pl(points):
-    return [P(x, y) for x, y in points]
-
-
-def poly(m, points, v=255):
-    ImageDraw.Draw(m).polygon(pl(points), fill=v)
-    return m
-
-
-def rr(m, box, r, v=255):
-    x0, y0, x1, y1 = box
-    ImageDraw.Draw(m).rounded_rectangle([P(x0, y0), P(x1, y1)], radius=r * S, fill=v)
-    return m
-
-
-def ell(m, cx, cy, rx, ry=None, v=255):
-    ry = rx if ry is None else ry
-    ImageDraw.Draw(m).ellipse([P(cx - rx, cy - ry), P(cx + rx, cy + ry)], fill=v)
-    return m
-
-
-def line(m, a, b, width, v=255):
-    ImageDraw.Draw(m).line([P(*a), P(*b)], fill=v, width=max(1, int(width * S)))
-    return m
-
-
-def vgrad(y0, y1, top, bottom):
-    def fn(xx, yy):
-        t = np.clip((yy / S - y0) / max(1e-6, (y1 - y0)), 0, 1)[..., None]
-        return np.array(top, np.float32) * (1 - t) + np.array(bottom, np.float32) * t
-    return fn
-
-
-def part(canvas, m, base, outline_w=1.1, **kw):
-    """Light the mask `m` with `base` (colour or function) and paste it with a dark outline."""
-    kw.setdefault("radius", 2.4)
-    kw.setdefault("bump", 2.0)
-    canvas.alpha_composite(lit(m, base, **kw))
-    if outline_w:
-        canvas.alpha_composite(outline(m, outline_w))
-
-
-def finish(canvas, path):
-    w, h = canvas.size[0] // S, canvas.size[1] // S
-    out = canvas.resize((w, h), Image.LANCZOS)
-    out.save(path)
-    return out
-
-
-def inside(m, clip):
-    return ImageChops.multiply(m, clip)
 
 
 def stripes(w, h, period, width, slant=1.0):

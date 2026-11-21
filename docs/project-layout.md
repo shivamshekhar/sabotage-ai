@@ -10,7 +10,7 @@ scripts/
   common/                   Reusable pieces any feature can use
     constants/              Groups, InputActions, PhysicsLayers, AssetPaths: the names, layers and paths (no other script writes them as strings)
     audio/                  AudioBuses (the Music and SFX buses), Sfx (one-shot sound effects)
-    effects/                Explosion, Debris, ParticlePreset, GlowPulse, WhiteFlash: anything that makes a visual effect
+    effects/                Explosion, Debris, ElectricArc, ParticlePreset, GlowPulse, WhiteFlash: anything that makes a visual effect
     ui/                     HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines, SegmentedMeter, ScreenFlash: generic interface pieces
     util/                   Sprites, Blend, Geom, Energy: small helpers (sprite settings, blend materials, segment/rectangle geometry, an energy tank)
   core/
@@ -50,7 +50,7 @@ scripts/
     title/                  The title screen: TitleScreen (the scene), TitleBackdrop (the distant out-of-focus view, defocus.gdshader), TitleMenu, TitleBro
 levels/                     Level data only: one folder per level (level.sablevel.json) and common/ (the tile registry)
 assets/                     ALL pictures and sounds, as <category>/<feature>/: levels/ (tiles, machines, pit hazards, backgrounds), vehicles/mech/, powerups/box/,
-                            bosses/saltman/, characters/, projectiles/, effects/ (generic), ui/ (icons/, captcha/, title/), audio/ (music/, sfx/) (see art.md)
+                            bosses/saltman/, characters/, projectiles/, weapons/emp_gun/, effects/ (generic), ui/ (icons/, captcha/, title/), audio/ (music/, sfx/) (see art.md)
 tools/
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
   run_tests.sh              Runs every headless test in tools/tests/ with time limits (REPEAT=n to hunt flaky tests)

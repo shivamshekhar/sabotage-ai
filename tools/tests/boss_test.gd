@@ -1,7 +1,7 @@
 extends SceneTree
 ## The boss stage demo (level_06, played through the game's Main scene): RAM Saltman is 2.16 times the player's height, hovers where thrown objects can reach it,
 ## swoops over the player and turns upside down to spray hardware (and cannot be hurt then), flips back and hovers again, and is
-## defeated by HITS_TO_DEFEAT hits. Exits non-zero on failure.
+## defeated by MAX_HEALTH hit points of damage. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/boss_test.gd
 
 var ok := true
@@ -60,7 +60,7 @@ func _main() -> void:
 	# hovering: vulnerable and within reach of a throw from the ground
 	_check("it starts hovering", boss.state == SaltShakerBoss.State.HOVER)
 	_check("with an angry idle face", visual.expression == "idle")
-	_check("and plenty of health (%d hits)" % SaltShakerBoss.HITS_TO_DEFEAT, SaltShakerBoss.HITS_TO_DEFEAT >= 20)
+	_check("and 500 hit points", SaltShakerBoss.MAX_HEALTH == 500)
 	var reach := boss.hurtbox().grow(Projectile.HIT_RADIUS)
 	var hand := Vector2(boss.global_position.x, boss.floor_y - 92.0)
 	_check("a thrown object leaving the hand can reach its body", reach.has_point(hand + Vector2(0.0, -20.0)), str(reach))
@@ -112,7 +112,7 @@ func _main() -> void:
 	_check("it is above the player", absf(boss.global_position.x - player.global_position.x) < 400.0 and boss.global_position.y < player.global_position.y - 200.0)
 	_check("it cannot be hurt while attacking", boss.hurtbox().size == Vector2.ZERO)
 	var health_before := boss.health
-	boss.take_hit(0.5)
+	boss.take_hit(Projectile.DAMAGE)
 	_check("a hit while attacking does nothing", boss.health == health_before)
 	# AI Bros come in from both sides during the spray: one each, never more
 	var seen_off_screen := false
@@ -176,13 +176,13 @@ func _main() -> void:
 	# hits
 	var seen_defeat := [false]
 	boss.defeated.connect(func() -> void: seen_defeat[0] = true)
-	boss.take_hit(0.5)
-	_check("a hit takes health off", boss.health == SaltShakerBoss.HITS_TO_DEFEAT - 1)
+	boss.take_hit(Projectile.DAMAGE)
+	_check("a thrown object takes %d hit points off" % Projectile.DAMAGE, boss.health == SaltShakerBoss.MAX_HEALTH - Projectile.DAMAGE)
 	await _wait(2)
 	_check("and he winces", visual.expression == "hurt")
-	for i in SaltShakerBoss.HITS_TO_DEFEAT - 1:
-		boss.take_hit(0.5)
-	_check("%d hits defeat it" % SaltShakerBoss.HITS_TO_DEFEAT, seen_defeat[0] and boss.state == SaltShakerBoss.State.DEAD)
+	for i in SaltShakerBoss.MAX_HEALTH / Projectile.DAMAGE - 1:
+		boss.take_hit(Projectile.DAMAGE)
+	_check("%d thrown objects defeat it" % (SaltShakerBoss.MAX_HEALTH / Projectile.DAMAGE), seen_defeat[0] and boss.state == SaltShakerBoss.State.DEAD)
 	_check("a defeated boss is no longer an enemy", not boss.is_in_group(Groups.ENEMIES))
 	await _wait(3)
 	_check("and has the dead face", visual.expression == "dead")

@@ -53,12 +53,21 @@ const BLINK_HALF := 0.06
 # visible blink.
 const BLINK_LOW := 0.2
 
+# The EMP gun in the hand (see EmpGun). GUN_SCALE: its size against the character's art (the picture is 224 px wide; at 0.42 it is about 113 px wide on screen).
+# GUN_HAND: where the hand is, in art pixels from the middle of the sprite, towards the way the character faces (it is the hand of the arm held out in the pose "action2").
+# GUN_GRIP / GUN_MUZZLE: the grip and the muzzle in the gun's own picture (pixels): the grip sits in the hand and the discharge leaves from the muzzle.
+const GUN_SCALE := 0.42
+const GUN_HAND := Vector2(34.0, 12.0)
+const GUN_GRIP := Vector2(66.0, 88.0)
+const GUN_MUZZLE := Vector2(200.0, 54.0)
+
 ## Which Kenney character this sprite shows; defaults to CHARACTER. AIBro sets it to "zombie".
 var character := CHARACTER
 
 var _base_scale := SCALE   # the scale at rest for the current art (see base_scale())
 var _pose_name := ""   # the pose currently shown, so an unchanged pose costs nothing
 var _clock := 0.0
+var _gun: Sprite2D        # the EMP gun in the hand (made the first time it is shown)
 var _flinch_tween: Tween
 var _blink_tween: Tween
 
@@ -91,6 +100,32 @@ func update_pose(state: StringName, facing: int, delta: float) -> void:
 			_set_pose("action2")   # arm snapped forward
 		_:
 			_set_pose(String(state))
+
+
+## Show the EMP gun in the hand (`on`), held out the way the character faces (`facing` 1 right, -1 left), or put it away.
+func set_gun(on: bool, facing: int) -> void:
+	if _gun == null:
+		if not on:
+			return
+		_gun = Sprite2D.new()
+		_gun.texture = AssetPaths.texture(AssetPaths.EMP_GUN)
+		_gun.centered = false
+		_gun.offset = -GUN_GRIP             # (so the grip is the point it is placed and turned by)
+		_gun.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		add_child(_gun)
+	_gun.visible = on
+	_gun.position = Vector2(float(facing) * GUN_HAND.x, GUN_HAND.y)
+	_gun.scale = Vector2(float(facing) * GUN_SCALE, GUN_SCALE)
+
+
+## True while the EMP gun is shown.
+func gun_shown() -> bool:
+	return _gun != null and _gun.visible
+
+
+## Where the EMP gun's muzzle is in the world, as the gun is shown now (see set_gun()).
+func gun_muzzle() -> Vector2:
+	return _gun.to_global(GUN_MUZZLE - GUN_GRIP)
 
 
 ## Blink animation: pulse the sprite's alpha for `duration` seconds, then restore it.

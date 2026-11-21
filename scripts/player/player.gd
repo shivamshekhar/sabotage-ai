@@ -177,9 +177,9 @@ const ENERGY_BAR_FILL := Color("#3aa0ff")
 const ENERGY_BAR_BACK := Color("#14223c")
 
 # THROW_ENERGY_COST: the share of the energy bar one throw uses (0.1 = 10%); a throw needs this much energy left. ENERGY_RECOVERY: the share of the
-# bar that comes back every second while the player is not throwing (0.04 = 4% a second), a little every physics step. Bleeding halves it.
+# bar that comes back every second while the player is not throwing or firing the EMP gun (0.1 = 10% a second), a little every physics step. Bleeding halves it.
 const THROW_ENERGY_COST := 0.1
-const ENERGY_RECOVERY := 0.04
+const ENERGY_RECOVERY := 0.1
 
 # FALL_DEATH_HEIGHT: how far in pixels you can fall, measured from the highest point of the fall
 # (the top of a jump counts) down to where you land, before the landing kills you. Landing
@@ -242,6 +242,9 @@ var _pit_timer := -1.0     # counts down once the player has landed at the botto
 var _throw_timer := 0.0   # while above zero, another throw is not allowed
 var _windup := -1.0       # seconds until a started throw leaves the hand (negative = no throw pending)
 var _throw_pose_timer := 0.0   # while above zero, the throwing pose is shown
+var _emp := EmpGun.new()    # the EMP gun: it fires for as long as the heavy attack button is held (see EmpGun)
+var _emp_firing := false      # the EMP gun fired in the last step
+var _emp_pose_timer := 0.0     # while above zero, the EMP gun is in the hand and the arm is out (see EmpGun.POSE_TIME)
 var _regrab_timer := 0.0  # while above zero, ladders cannot be grabbed (after jumping off one)
 var _peak_y := 0.0     # highest point (smallest y) reached since last standing/climbing
 var _ladder := Rect2()  # the ladder being climbed (valid while climbing)
@@ -330,6 +333,7 @@ func take_damage(amount: int, source_x: float = NAN, from_enemy := true) -> bool
 		_stun_timer = stun_seconds
 		_windup = -1.0            # a hit interrupts a throw
 		_throw_pose_timer = 0.0
+		_emp_pose_timer = 0.0
 		_stop_climb()
 		var push := -_facing
 		if not is_nan(source_x) and not is_equal_approx(source_x, global_position.x):
@@ -383,6 +387,7 @@ func freeze_for_pickup() -> void:
 	_stop_climb()
 	_windup = -1.0
 	_throw_pose_timer = 0.0
+	_emp_pose_timer = 0.0
 
 
 ## The player's own picture and bars go (the pilot in the new vehicle takes their place).
@@ -431,6 +436,7 @@ func board_mech(carried_in := false) -> void:
 	_clear_status()
 	_windup = -1.0
 	_throw_pose_timer = 0.0
+	_emp_pose_timer = 0.0
 	global_position.y -= 2.0
 	mech = Mech.new()
 	add_child(mech)
@@ -546,9 +552,9 @@ func _status_step(delta: float) -> void:
 		health_changed.emit(health, max_health)
 
 
-## The energy bar refills a little every step while the player is not throwing (and more slowly while bleeding).
+## The energy bar refills a little every step while the player is not throwing or firing the EMP gun (and more slowly while bleeding).
 func _recover_energy(delta: float) -> void:
-	if _throw_timer <= 0.0 and _windup < 0.0:
+	if _throw_timer <= 0.0 and _windup < 0.0 and not _emp_firing:
 		energy.recover(delta, ENERGY_RECOVERY * _status.energy_recovery_scale())
 	_energy_bar.set_ratio(energy.level)
 
@@ -573,7 +579,7 @@ func interact() -> void:
 func attack_light() -> void:
 	if mech != null:
 		return    # in the mech the light attack is the laser: the Mech works it for as long as the button is held
-	if _throw_timer > 0.0 or climbing or _stun_timer > 0.0 or not energy.spend(THROW_ENERGY_COST):
+	if _throw_timer > 0.0 or _emp_firing or climbing or _stun_timer > 0.0 or not energy.spend(THROW_ENERGY_COST):
 		return
 	_energy_bar.set_ratio(energy.level)
 	_throw_timer = throw_cooldown
@@ -589,7 +595,8 @@ func _release_throw() -> void:
 	threw.emit(obj)
 
 
-## Slow, strong attack. Not implemented on foot; in the mech it is the missile turret.
+## The heavy attack at the moment the button goes down: in the mech the missile turret. (On foot the heavy attack is the EMP gun, which fires for as long as the button is held:
+## see EmpGun and _physics_process().)
 func attack_heavy() -> void:
 	if mech != null:
 		mech.fire_missile()
@@ -638,6 +645,7 @@ func fall_in_pit() -> void:
 	_stop_climb()
 	_windup = -1.0
 	_throw_pose_timer = 0.0
+	_emp_pose_timer = 0.0
 	_visuals.update_pose(&"hurt", _facing, 0.0)
 
 
@@ -691,9 +699,13 @@ func _physics_process(delta: float) -> void:
 	_stun_timer = maxf(0.0, _stun_timer - delta)
 	_status_step(delta)
 	_throw_timer = maxf(0.0, _throw_timer - delta)
+	_emp_firing = _emp.work(self, mech == null and not climbing and _stun_timer <= 0.0 and not is_walking_to() and Input.is_action_pressed(InputActions.ATTACK_HEAVY), delta)
+	if _emp_firing:
+		_emp_pose_timer = EmpGun.POSE_TIME
 	if mech == null:
 		_recover_energy(delta)
 	_throw_pose_timer = maxf(0.0, _throw_pose_timer - delta)
+	_emp_pose_timer = maxf(0.0, _emp_pose_timer - delta)
 	if _windup >= 0.0:
 		_windup -= delta
 		if _windup <= 0.0:
@@ -764,6 +776,7 @@ func _physics_process(delta: float) -> void:
 	if dir != 0.0 and not climbing:
 		_facing = 1 if dir > 0.0 else -1
 	_visuals.update_pose(_pose_state(vdir), _facing, delta)
+	_visuals.set_gun(_emp_pose_timer > 0.0 and mech == null, _facing)
 
 
 ## Track the highest point of the current fall and die if we land too far below it.
@@ -831,6 +844,8 @@ func _keep_on_ladder(vdir: float) -> void:
 func _pose_state(vdir: float) -> StringName:
 	if _hurt_timer > 0.0:
 		return &"hurt"
+	if _emp_pose_timer > 0.0 and not climbing:
+		return &"throw_release"
 	if _throw_pose_timer > 0.0 and not climbing:
 		return &"throw_windup" if _windup >= 0.0 else &"throw_release"
 	if climbing:

@@ -16,8 +16,8 @@ enum State { HOVER, WINDUP, FLIP_DOWN, SPRAY, FLIP_UP, RETURN, DEAD }
 # SIZE_IN_PLAYERS: how tall the boss is, in player heights (Player.BODY_SIZE.y). 2.16 = a bit over twice the player.
 const SIZE_IN_PLAYERS := 2.16
 
-# HITS_TO_DEFEAT: how many thrown objects it takes. Higher: a longer fight.
-const HITS_TO_DEFEAT := 28
+# MAX_HEALTH: his hit points (a thrown object does Projectile.DAMAGE = 10 of them, a laser hit 20, a missile 80). Higher: a longer fight.
+const MAX_HEALTH := 500
 
 # HOVER_HEIGHT: how far above the floor the middle of the boss floats while hovering, in pixels. It must be low enough for thrown
 # objects (which leave the hand about 92 px up) to reach the boss's body, and high enough that the player walks safely beneath it.
@@ -88,7 +88,7 @@ const LEAN_MAX := 0.3
 const BOSS_NAME := "RAM SALTMAN"
 
 var state := State.HOVER
-var health := HITS_TO_DEFEAT
+var health := MAX_HEALTH
 var arena := Rect2()        # the open space of the arena in world pixels (the boss stays inside it)
 var floor_y := 0.0          # the floor's height
 var visual: SaltmanVisual   # what he looks like (layers, expressions)
@@ -161,12 +161,12 @@ func set_active(_value: bool) -> void:
 	pass
 
 
-## A thrown object landed (see Projectile). Every hit takes one of HITS_TO_DEFEAT; the share the object carries is ignored.
-func take_hit(_fraction: float, from_x: float = NAN) -> void:
+## A hit (a thrown object, a laser hit or a missile blast: see Projectile, Mech) takes `damage` hit points off, while he is hovering or returning.
+func take_hit(damage: int, from_x: float = NAN) -> void:
 	if state == State.DEAD or not (state == State.HOVER or state == State.RETURN):
 		return
-	health = maxi(0, health - 1)
-	_bar.set_ratio(float(health) / HITS_TO_DEFEAT)
+	health = maxi(0, health - damage)
+	_bar.set_ratio(float(health) / MAX_HEALTH)
 	_hurt_flash = 0.25
 	_hurt_face = HURT_FACE_TIME
 	GameStats.add_score(GameStats.BOSS_HIT_SCORE, _score_spot())
@@ -184,7 +184,7 @@ func _score_spot() -> Vector2:
 
 ## Below half health he sprays for longer and faster.
 func enraged() -> bool:
-	return health * 2 <= HITS_TO_DEFEAT
+	return health * 2 <= MAX_HEALTH
 
 
 func _home() -> Vector2:

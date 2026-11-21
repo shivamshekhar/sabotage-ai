@@ -4,7 +4,7 @@ extends Node2D
 ## true ballistic arc: constant horizontal speed, vertical speed changed by gravity every step,
 ##     position += velocity * dt;   velocity.y += GRAVITY * dt
 ## which is a parabola, like a thrown stone. It spins while it flies and disappears when it hits
-## a wall or floor, or an enemy (which takes HIT_FRACTION of its health). A thing made of fire (a lava ball, see
+## a wall or floor, or an enemy (which takes DAMAGE hit points). A thing made of fire (a lava ball, see
 ## PitCreature.burns_projectiles()) is not hurt: the object burns up instead. An object that falls into a deadly pit sinks out of
 ## sight for good (it never lies at the bottom, where its edge would show past the liquid). A burning thrower throws shorter (see launch()).
 
@@ -36,10 +36,9 @@ const SPIN_SPEED := 7.0
 # not a screen-filling slab; pixel art stays crisp (nearest-neighbour filtering).
 const SPRITE_SCALE := 1.25
 
-# HIT_FRACTION: share of an enemy's maximum health taken by one hit.
-#     damage = round(enemy max health * HIT_FRACTION)
+# DAMAGE: the hit points one thrown object takes off an enemy (a Bro has Player.MAX_HEALTH * AIBro.HEALTH_FRACTION = 20, so two throws beat one).
 # Higher: enemies die in fewer hits.
-const HIT_FRACTION := 0.5
+const DAMAGE := 10
 
 # REST_TIME: seconds a thrown object lies on the ground, fully visible, before it starts to blink.
 # Higher: players get longer to see what they threw. Lower: the floor clears quickly.
@@ -119,7 +118,7 @@ func _physics_process(delta: float) -> void:
 			if e.has_method("burns_projectiles") and e.burns_projectiles():
 				_burn_up()
 				return
-			e.take_hit(HIT_FRACTION, from.x)
+			e.take_hit(DAMAGE, from.x)
 			_finish()
 			return
 	# 2. Did it run into a wall, a floor, a crate or a ledge? (A ray from here to there: it can't skip through.)

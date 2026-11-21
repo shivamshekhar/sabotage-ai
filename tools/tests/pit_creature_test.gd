@@ -214,7 +214,7 @@ func _main() -> void:
 	await _wait(10)
 	_check("a thrown object that flies into a fireball burns up", not thrown.is_in_group(Groups.PROJECTILES) and thrown._done)
 	_check("and the fireball is not put out", not destroyed[0] and ball.state != PitCreature.State.DEAD)
-	ball.take_hit(1.0)
+	ball.take_hit(Projectile.DAMAGE)
 	_check("nothing hurts it", ball.state != PitCreature.State.DEAD and not destroyed[0])
 	await _wait(60)
 	_check("the burnt object is gone", not is_instance_valid(thrown))
@@ -279,7 +279,7 @@ func _main() -> void:
 	pufferfish.global_position = Vector2(spot, pufferfish.surface_y - 30.0)
 	var gone := [false]
 	pufferfish.defeated.connect(func() -> void: gone[0] = true)
-	pufferfish.take_hit(0.001)
+	pufferfish.take_hit(1)
 	await _wait(5)
 	_check("one thrown object destroys a puffer fish", gone[0] and pufferfish.state == PitCreature.State.DEAD)
 	pufferfish._timer = 0.1

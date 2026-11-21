@@ -19,6 +19,7 @@ const PROJECTILES := ASSETS + "projectiles/pixel_art/"
 const MUSIC := ASSETS + "audio/music/"
 const SFX := ASSETS + "audio/sfx/"                      # the short sound effects (see Sfx)
 const TITLE_LOGO := ASSETS + "ui/title/logo.png"        # the title screen's logo
+const EMP_GUN := ASSETS + "weapons/emp_gun/emp_gun.png"    # the player's EMP gun (see EmpGun, PlayerSprite)
 
 # Level art, shared by all levels (assets/levels/common/) and one background per level (assets/levels/<id>/background/).
 const LEVEL_ART := ASSETS + "levels/"
