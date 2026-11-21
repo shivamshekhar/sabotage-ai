@@ -22,9 +22,9 @@ const HELP := """level_cli: create and check level files (*.sablevel.json) from 
 Every command prints one JSON object; its "ok" field says whether it worked. File paths are absolute, res://, user:// or relative
 to the project root. Commands that change a file change it in place and add the level's current "problems" to the result.
 
-Where levels live: levels/<id>/level.sablevel.json, with the level's background layers in levels/<id>/background/ (levels/common/
-holds the art every level shares). Give `new` / `from-plan` a file of that form and the level's id is the folder name and its
-background/ folder is created (copied from level_01's, or --background-from <id>); `needs_import` in the result says Godot has to
+Where levels live: levels/<id>/level.sablevel.json (levels/common/ holds what every level shares), with the level's background layers in
+assets/levels/<id>/background/ (assets/levels/common/ holds the art every level shares). Give `new` / `from-plan` a file of that form and
+the level's id is the folder name and its background folder is created (copied from level_01's, or --background-from <id>); `needs_import` in the result says Godot has to
 import the copied images (tools/level_cli.sh does that for you). Chain levels with `set <file> meta next=<id>`.
 
 Make a level
@@ -310,7 +310,7 @@ static func _meta(data: Dictionary, flags: Dictionary) -> void:
 
 
 ## For a file at levels/<id>/level.sablevel.json: the level's id is the folder name (unless --id is given) and the level gets its
-## own background/ folder, copied from another level's (--background-from <id>, default the first level) if it has none yet.
+## own background folder in assets/levels/<id>/, copied from another level's (--background-from <id>, default the first level) if it has none yet.
 ## Returns true if the background images were copied, which Godot has to import before the game can show them (the
 ## `tools/level_cli.sh` wrapper does that).
 static func _setup_level_folder(path: String, data: Dictionary, flags: Dictionary) -> bool:
@@ -320,10 +320,11 @@ static func _setup_level_folder(path: String, data: Dictionary, flags: Dictionar
 	var folder := target.get_base_dir()
 	if not flags.has("id"):
 		(data["meta"] as Dictionary)["id"] = folder.get_file()
-	var background := folder + "/background"
+	var id := folder.get_file()
+	var background := LevelData.art_dir(id) + LevelData.BACKGROUND_FOLDER
 	if DirAccess.dir_exists_absolute(background):
 		return false
-	var source := LevelData.level_dir(_flag(flags, "background-from", LevelData.DEFAULT_ID)) + "background"
+	var source := LevelData.art_dir(_flag(flags, "background-from", LevelData.DEFAULT_ID)) + LevelData.BACKGROUND_FOLDER
 	DirAccess.make_dir_recursive_absolute(background)
 	var copied := false
 	for f in DirAccess.get_files_at(source):

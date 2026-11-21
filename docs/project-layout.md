@@ -41,8 +41,9 @@ scripts/
     hud.gd                  Score and level number
     touch_controls.gd       On-screen buttons for phones
     hack_popup.gd, hack_style.gd, minigames/   The unlock puzzle window (its look: HackStyle) and the puzzles
-levels/                     One folder per level (level.sablevel.json + background/) and common/ (art shared by all levels)
-assets/                     effects/ (generic: explosion, smoke, sparks, glows), powerups/, bosses/, characters/, captcha/, projectiles/, ui/ (the puzzle window's icons) (see art.md)
+levels/                     Level data only: one folder per level (level.sablevel.json) and common/ (the tile registry)
+assets/                     ALL pictures and sounds, as <category>/<feature>/: levels/ (tiles, machines, pit hazards, backgrounds), vehicles/mech/, powerups/box/,
+                            bosses/saltman/, characters/, projectiles/, effects/ (generic), ui/ (icons/, captcha/), audio/ (see art.md)
 tools/
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
   run_tests.sh              Runs every headless test in tools/tests/ with time limits (REPEAT=n to hunt flaky tests)

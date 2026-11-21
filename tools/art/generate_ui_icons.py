@@ -5,7 +5,7 @@
     icon_unlocked.png     an open padlock (green): access granted
 
 Usage (from the repo root; needs Pillow, numpy, opencv):
-    python tools/art/generate_ui_icons.py       writes assets/ui/icon_*.png (128x128) and tmp/art_previews/ui_icons.png (all three, for looking at only)
+    python tools/art/generate_ui_icons.py       writes assets/ui/icons/icon_*.png (128x128) and tmp/art_previews/ui_icons.png (all three, for looking at only)
 """
 import os
 
@@ -15,7 +15,7 @@ from PIL import Image, ImageChops, ImageDraw
 import art_lib
 from art_lib import S, lit, outline, solid, paste, glow, rrect_mask, poly_mask, gradient_y, blur
 
-OUT = os.path.join(art_lib.ROOT, "assets", "ui")
+OUT = os.path.join(art_lib.ROOT, "assets", "ui", "icons")
 N = 128                      # the icon's size, in final pixels
 W = N * S
 

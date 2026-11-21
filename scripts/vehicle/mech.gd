@@ -11,7 +11,7 @@ extends Node2D
 ##     there is energy (the blue bar); out of energy it falls under gravity. The energy fills back up in REFILL_TIME seconds
 ##   - "light attack" (Q) fires a missile from the missile turret (it uses MISSILE_ENERGY_COST of the energy, and nothing else holds it back), "heavy attack" (S) works the laser
 ##     turret for as long as the button is held, using up the same energy; both turrets aim at the nearest enemy in front, otherwise straight ahead
-## The picture is MechVisual (the art: assets/powerups/mech/, made by tools/art/generate_mech.py and generate_mech_effects.py).
+## The picture is MechVisual (the art: assets/vehicles/mech/, made by tools/art/generate_mech.py and generate_mech_effects.py).
 
 signal destroyed
 

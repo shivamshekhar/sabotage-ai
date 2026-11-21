@@ -5,7 +5,7 @@ Usage (from the repo root):
     python tools/sync_editor.py --check    changes nothing; exit code 1 and a list if something is missing (for tests and hooks)
 
 How the editor learns about things: its palette is built from the tile registry (levels/common/tile_registry.json), so a picture in
-levels/common/tiles/** is only placeable once it has an entry there. This tool finds the pictures that have no entry (nothing in the registry or
+assets/levels/common/tiles/** is only placeable once it has an entry there. This tool finds the pictures that have no entry (nothing in the registry or
 the game code names them) and adds one each, as decor (a picture behind the player) in a group named after its folder, with the next free id.
 Change `behavior` to "solid" (a block the player stands on) or move the entry to another group by hand if the new tile should be something else.
 It also reports registry entries whose picture no longer exists. Other things the editor lists (objects, minigames, level/terrain/player values)
@@ -19,7 +19,7 @@ import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 REGISTRY = os.path.join(ROOT, "levels", "common", "tile_registry.json")
-TILE_FOLDERS = (os.path.join("levels", "common", "tiles", "data_center"), os.path.join("levels", "common", "tiles", "kenney_industrial"))
+TILE_FOLDERS = (os.path.join("assets", "levels", "common", "tiles", "data_center"), os.path.join("assets", "levels", "common", "tiles", "kenney_industrial"))
 NEXT_DECOR_ID = 1000                      # decor and anything else starts here (see the registry's own doc)
 GROUP_PREFIX = "Extra decor: "
 # BUILT_IN_FAMILIES: tile families the game picks by building the name (SpriteLibrary.TILE_CATEGORIES): ground_start / _middle / _end ..., ledge_*, ladder_* ...

@@ -18,9 +18,9 @@ relative to the project root (so `levels/my.sablevel.json`).
 1. Write a plan: a JSON list of pieces (see `pieces`). Example, saved as `plan.json`:
    `[["flat",8,"PK"],["hurdle"],["pit",3,"A"],["rise",4],["flat",8,"B"],["tunnel","1"],["flat",7,"B"],["drop",3],["flat",6,"K"],["exit"]]`
 2. `tools/level_cli.sh from-plan levels/level_06/level.sablevel.json --plan @plan.json --title "MY LEVEL"`. A level lives in
-   `levels/<id>/level.sablevel.json`: the id is the folder name, and the level gets its own `levels/<id>/background/` folder (copied
-   from level_01's, or `--background-from <id>`; the wrapper then makes Godot import the images). `levels/common/` holds the art
-   all levels share and is not a level.
+   `levels/<id>/level.sablevel.json`: the id is the folder name, and the level gets its own `assets/levels/<id>/background/` folder (copied
+   from level_01's, or `--background-from <id>`; the wrapper then makes Godot import the images). `levels/common/` holds what
+   all levels share (the tile registry) and is not a level.
 3. `tools/level_cli.sh solve levels/level_06/level.sablevel.json` proves the exit is reachable, with no dead ends, and gates open in order.
 4. Fine-tune: `place`, `set-tile`, `fill`, `set player speed=450`, `minigame add ...`; `show` to look at the map.
 5. Chain it into the game: `tools/level_cli.sh set levels/level_05/level.sablevel.json meta next=level_06` (a level's `meta.next`

@@ -4,11 +4,11 @@ that glow. The box adds a cross of cuts, four glowing corner brackets and a "?" 
 
 Usage (from the repo root; needs Pillow):
     python tools/art/generate_powerup.py      writes
-        levels/common/tiles/data_center/powerups/powerup_box.png   70x70, the picture the level editor shows (amber "?")
-        assets/powerups/box_base.png                               the box without the "?"
-        assets/powerups/box_question.png                           just the "?" and its halo, in white: the game tints it, so it can
+        assets/levels/common/tiles/data_center/powerups/powerup_box.png   70x70, the picture the level editor shows (amber "?")
+        assets/powerups/box/box_base.png                               the box without the "?"
+        assets/powerups/box/box_question.png                           just the "?" and its halo, in white: the game tints it, so it can
                                                                    fade slowly through colours and blink (see PowerUpBox)
-        assets/powerups/box_break_1.png .. box_break_6.png         the break-apart frames, same size as box.png
+        assets/powerups/box/box_break_1.png .. box_break_6.png         the break-apart frames, same size as box.png
         tmp/art_previews/box.png, box_sheet.png                    the whole box and all the frames in a row (for looking at only)
 
 The box is cut along its cross into four pieces; the break frames move, turn and fade those pieces (1: a crack of light, 2: the
@@ -24,8 +24,8 @@ import art_lib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
-OUT_ASSETS = os.path.join(ROOT, "assets", "powerups")
-OUT_TILE = os.path.join(ROOT, "levels", "common", "tiles", "data_center", "powerups")
+OUT_ASSETS = os.path.join(ROOT, "assets", "powerups", "box")
+OUT_TILE = os.path.join(ROOT, "assets", "levels", "common", "tiles", "data_center", "powerups")
 
 K = 4                        # final pixels per unit (one unit = one pixel of a 70 px tile)
 SS = 8                       # drawing resolution per unit (drawn at this and shrunk, so edges are smooth)

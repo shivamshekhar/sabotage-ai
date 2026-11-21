@@ -10,6 +10,7 @@ A file counts as used when
   * a part of its name up to an underscore appears in the code as the start of a built name (`"face_" + expression`, `"explosion_%d"`), or
   * for the Kenney character poses (`<skin>_<pose>.png`): the skin is named in the code and the pose is one the game shows (tools/audit_rules.json).
 Pictures made only for people to look at (sprite sheets, previews) are reported separately: art tools must write those into tmp/, not the repo.
+Pictures and sounds outside assets/ (in levels/, scripts/ or scenes/) are reported too.
 
 Exit code 1 when something unused is found, so the check can run in a test or a hook.
 """
@@ -21,8 +22,11 @@ import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 RULES = json.load(open(os.path.join(ROOT, "tools", "audit_rules.json"), encoding="utf-8"))
-ASSET_DIRS = ("assets", "levels", "scripts")
+ASSET_DIRS = ("assets", "scripts")
 ASSET_EXT = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".mp3", ".ogg", ".wav", ".gd", ".gdshader", ".tres", ".tscn", ".ttf", ".otf")
+# Pictures and sounds belong in assets/ only: levels/ is data, scripts/ is code, scenes/ is scenes.
+MEDIA_EXT = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".mp3", ".ogg", ".wav")
+MEDIA_FREE_DIRS = ("levels/", "scripts/", "scenes/")
 CORPUS_EXT = (".gd", ".tscn", ".tres", ".json", ".cfg", ".godot", ".gdshader")
 LOOKS_ONLY = re.compile(RULES["looking_only_pattern"])
 
@@ -72,6 +76,11 @@ def main():
     text = corpus(files)
     words = set(re.findall(r"[A-Za-z0-9_]+", text))
     unused, looks_only, used = [], [], []
+    misplaced = [f for f in files if f.startswith(MEDIA_FREE_DIRS) and f.endswith(MEDIA_EXT)]
+    if misplaced:
+        print("Pictures or sounds outside assets/ (move them there, grouped as assets/<category>/<feature>/):")
+        for f in misplaced:
+            print("  ", f)
     for f in files:
         if not f.startswith(ASSET_DIRS) or not f.endswith(ASSET_EXT) or f in RULES["always_used"]:
             continue
@@ -93,7 +102,7 @@ def main():
         for f in unused:
             print("  ", f)
     print("%d used, %d unused, %d only for looking at" % (len(used), len(unused), len(looks_only)))
-    return 1 if unused or looks_only else 0
+    return 1 if unused or looks_only or misplaced else 0
 
 
 if __name__ == "__main__":

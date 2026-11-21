@@ -64,18 +64,21 @@ func _initialize() -> void:
 	_check("convert a built-in level", r["ok"] and r["problems"].is_empty(), str(r))
 	r = LevelCli.run(["list"])
 	_check("list shows the levels of the game", r["ok"] and r["levels"].size() >= 3 and r["levels"][0]["id"] == LevelData.DEFAULT_ID, str(r.get("levels", []).size()))
-	# a level made inside levels/<id>/ gets that id and its own background folder
+	# a level made inside levels/<id>/ gets that id and its own background folder (assets/levels/<id>/background/)
 	var folder := LevelData.LEVELS_DIR + "zz_cli_test"
 	r = LevelCli.run(["new", folder + "/level.sablevel.json", "--cols", "30", "--rows", "16"])
 	var made := LevelFile.load_file(folder + "/level.sablevel.json")
 	_check("a level in levels/<id>/ takes the folder name as its id", r["ok"] and (made["data"]["meta"] as Dictionary)["id"] == "zz_cli_test", str(r))
-	_check("and gets its own background folder, copied from the first level's", r["needs_import"] and FileAccess.file_exists(folder + "/background/far.png"))
-	for f in DirAccess.get_files_at(folder + "/background"):
-		DirAccess.remove_absolute(folder + "/background/" + f)
-	DirAccess.remove_absolute(folder + "/background")
+	var art := LevelData.art_dir("zz_cli_test")
+	var background := art + LevelData.BACKGROUND_FOLDER
+	_check("and gets its own background folder in assets/levels/, copied from the first level's", r["needs_import"] and FileAccess.file_exists(background + "/far.png"))
+	for f in DirAccess.get_files_at(background):
+		DirAccess.remove_absolute(background + "/" + f)
+	DirAccess.remove_absolute(background)
+	DirAccess.remove_absolute(art)
 	DirAccess.remove_absolute(folder + "/level.sablevel.json")
 	DirAccess.remove_absolute(folder)
-	_check("(test level folder removed again)", not DirAccess.dir_exists_absolute(folder))
+	_check("(test level folders removed again)", not DirAccess.dir_exists_absolute(folder) and not DirAccess.dir_exists_absolute(art))
 	r = LevelCli.run(["catalog", "objects"])
 	_check("catalog lists objects", r["ok"] and r["objects"].size() >= 5)
 	r = LevelCli.run(["pieces"])

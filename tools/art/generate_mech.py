@@ -2,7 +2,7 @@
 tentacles, with a missile turret and a laser turret and a rocket booster under its belly.
 
 Usage (from the repo root; needs Pillow, numpy and opencv):
-    python tools/art/generate_mech.py       writes assets/powerups/mech/*.png (and a picture of the mech assembled into tmp/art_previews/)
+    python tools/art/generate_mech.py       writes assets/vehicles/mech/*.png (and a picture of the mech assembled into tmp/art_previews/)
 
 THE PARTS (every picture faces right; the game flips them to face left; they are drawn at twice the size they are shown at):
     body.png          the crane cab, engine block, counterweight and hull. The cockpit window is a TRANSPARENT hole: the game puts the
@@ -28,7 +28,7 @@ sys.path.insert(0, HERE)
 import art_lib  # noqa: E402
 from art_lib import S, INK, lit, outline, paste, solid  # noqa: E402
 
-OUT = os.path.join(art_lib.ROOT, "assets", "powerups", "mech")
+OUT = os.path.join(art_lib.ROOT, "assets", "vehicles", "mech")
 
 YEL = (255, 198, 26)
 YEL_D = (214, 140, 10)

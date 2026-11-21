@@ -1,7 +1,7 @@
 class_name MechVisual
 extends Node2D
 ## What the mech looks like and how it moves: the crane body with the player sitting in the cockpit, the two turrets, the booster flame,
-## four tentacle legs and the damage it shows. The art is assets/powerups/mech/ (tools/art/generate_mech.py and generate_mech_effects.py;
+## four tentacle legs and the damage it shows. The art is assets/vehicles/mech/ (tools/art/generate_mech.py and generate_mech_effects.py;
 ## every picture faces right, drawn at twice the size it is shown at). The origin is the player's feet.
 ##
 ## THE LEGS are what makes it move like an octopus. Each leg has a hip under the hull and a foot that stands in the world. A leg is drawn

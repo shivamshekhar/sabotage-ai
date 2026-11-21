@@ -9,10 +9,11 @@ scripts/
     util/                 Sprites, Blend, Geom (small helpers)
   core/                   startup, input, music, running totals (GameStats)
   player/ enemy/ boss/ vehicle/ powerup/ level/ ui/     one folder per kind of thing in the game
-assets/
+assets/                   ALL pictures and sounds, grouped as <category>/<feature>/ (same rule everywhere: a category folder, then the feature's own folder)
   effects/                generic effect pictures (explosion, smoke, fire, sparks, glows)
-  <feature>/              pictures that belong to one feature (powerups/, powerups/mech/, bosses/, characters/, captcha/, projectiles/)
-levels/                   one folder per level + common/ (tiles, machines, pit hazards, the tile registry)
+  levels/                 level art: common/ (tiles, machines, pit_hazards) and <id>/background/ (the art side of levels/)
+  vehicles/mech/  powerups/box/  bosses/saltman/  characters/  projectiles/  ui/{icons,captcha}/  audio/music/
+levels/                   level DATA only (no pictures): one folder per level + common/tile_registry.json
 tools/                    scripts, art generators (tools/art/), level editor, tests (tools/tests/)
 docs/                     the project's documentation
 tmp/                      scratch space (git-ignored)

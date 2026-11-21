@@ -5,5 +5,7 @@
 - Generators write pictures made only to look at (sprite sheets, previews) into `tmp/art_previews/` (`art_lib.preview_path()`), never into `assets/`.
 - **Nothing unused is checked in.** `python tools/audit_assets.py` lists files nothing refers to; fix every entry (delete it, or make the code use it).
   Unused pictures may exist locally as untracked files, but must not be committed.
-- Generic effect pictures live in `assets/effects/`; a feature's own pictures live in its folder. Load pictures through `AssetPaths`, not a path string.
+- **Every picture and sound lives in `assets/`**, grouped `assets/<category>/<feature>/` (never loose in a category folder, never in `levels/`,
+  `scripts/` or `scenes/`; the audit fails on that). Generic effect pictures live in `assets/effects/`; a feature's own pictures live in its folder
+  (a vehicle's in `assets/vehicles/<name>/`, not under power-ups). Load pictures through `AssetPaths`, not a path string.
 - New tile pictures: run `python tools/sync_editor.py` so the level editor offers them (see levels.md).

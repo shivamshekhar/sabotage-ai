@@ -1,7 +1,7 @@
 """Draws the mech's damage effects, its missile and the weapon effects. Run generate_mech.py first (this one draws on its body).
 
 Usage (from the repo root; needs Pillow, numpy and opencv):
-    python tools/art/generate_mech_effects.py       writes the mech's own pictures into assets/powerups/mech/ and the generic effects (explosion, smoke, sparks, glows) into assets/effects/
+    python tools/art/generate_mech_effects.py       writes the mech's own pictures into assets/vehicles/mech/ and the generic effects (explosion, smoke, sparks, glows) into assets/effects/
 
 DAMAGE (the mech survives two hits and is destroyed by the third; each one shows on the mech itself):
     body_cracks.png, canopy_cracks.png   hit 1: cracks across the cab, the engine block and the cockpit glass. They are drawn ON the

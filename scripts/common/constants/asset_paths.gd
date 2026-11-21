@@ -4,24 +4,31 @@ extends RefCounted
 ## file here and load it through these helpers. (How the folders are organised: docs/project-layout.md.)
 
 # ---- folders
+#
+# The pictures and sounds are all under ASSETS, grouped as  assets/<category>/<feature>/...  (the levels' data is not art: it is in LEVELS, below).
 const ASSETS := "res://assets/"
 const EFFECTS := ASSETS + "effects/"                    # generic effects any vehicle, enemy or boss can use: explosion, smoke, fire, sparks, glows
-const POWERUPS := ASSETS + "powerups/"                  # the power-up box and its break frames
-const MECH := POWERUPS + "mech/"                        # the mech's own parts, its damage layers and its missile
-const BOSSES := ASSETS + "bosses/"
-const BOSS_SALTMAN := BOSSES + "saltman/"
-const CAPTCHA := ASSETS + "captcha/"
-const UI := ASSETS + "ui/"                                # icons of the puzzle window
+const POWERUP_BOX := ASSETS + "powerups/box/"           # the power-up box and its break frames
+const MECH := ASSETS + "vehicles/mech/"                 # the mech's own parts, its damage layers and its missile
+const BOSS_SALTMAN := ASSETS + "bosses/saltman/"        # the boss's layers
+const BOSS_SPRAY := BOSS_SALTMAN + "spray/"             # what the boss shoots: RAM stick, CPU, chipset
+const UI_ICONS := ASSETS + "ui/icons/"                  # icons of the puzzle window
+const CAPTCHA := ASSETS + "ui/captcha/"                 # the captcha minigame's pictures, riddles and credits
 const CHARACTERS := ASSETS + "characters/kenney_platformer/"
 const PROJECTILES := ASSETS + "projectiles/pixel_art/"
 const MUSIC := ASSETS + "audio/music/"
 
+# Level art, shared by all levels (assets/levels/common/) and one background per level (assets/levels/<id>/background/).
+const LEVEL_ART := ASSETS + "levels/"
+const LEVEL_ART_COMMON := LEVEL_ART + "common/"
+const TILES_BASE := LEVEL_ART_COMMON + "tiles/kenney_industrial/"      # the original tile art (the fallback)
+const TILES_THEMED := LEVEL_ART_COMMON + "tiles/data_center/"          # the themed tile art (preferred when a tile has one)
+const MACHINES := LEVEL_ART_COMMON + "machines/data_center/"
+const PIT_HAZARDS := LEVEL_ART_COMMON + "pit_hazards/"
+
+# Level data (not art): levels/<id>/level.sablevel.json, and the tile registry every level shares.
 const LEVELS := "res://levels/"
 const LEVELS_COMMON := LEVELS + "common/"
-const TILES_BASE := LEVELS_COMMON + "tiles/kenney_industrial/"      # the original tile art (the fallback)
-const TILES_THEMED := LEVELS_COMMON + "tiles/data_center/"          # the themed tile art (preferred when a tile has one)
-const MACHINES := LEVELS_COMMON + "machines/data_center/"
-const PIT_HAZARDS := LEVELS_COMMON + "pit_hazards/"
 
 # ---- files
 const TILE_REGISTRY := LEVELS_COMMON + "tile_registry.json"
@@ -58,14 +65,14 @@ static func mech(name: String) -> Texture2D:
 
 ## An icon of the puzzle window by name ("icon_firewall", "icon_lock", "icon_unlocked").
 static func ui(name: String) -> Texture2D:
-	return texture(UI + name + ".png")
+	return texture(UI_ICONS + name + ".png")
 
 
-## A picture from the power-up folder by name ("box_base", "box_break_3").
+## A picture from the power-up box's folder by name ("box_base", "box_break_3").
 static func powerup(name: String) -> Texture2D:
-	return texture(POWERUPS + name + ".png")
+	return texture(POWERUP_BOX + name + ".png")
 
 
-## A picture from the boss folder by name ("cpu", "ram_stick").
-static func boss(name: String) -> Texture2D:
-	return texture(BOSSES + name + ".png")
+## A picture of what the boss shoots, by name ("cpu", "ram_stick", "chipset").
+static func boss_spray(name: String) -> Texture2D:
+	return texture(BOSS_SPRAY + name + ".png")

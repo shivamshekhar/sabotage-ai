@@ -4,8 +4,10 @@ extends RefCounted
 ## tools/level_editor/FORMAT.md) in its own folder:
 ##
 ##   levels/<id>/level.sablevel.json   the level: tiles, objects, player and terrain values, puzzles, title, next level
-##   levels/<id>/background/           that level's parallax background layers (see LevelBackground.LAYERS)
-##   levels/common/                    art every level shares: tiles/, machines/, pit_hazards/ (see SpriteLibrary)
+##   levels/common/tile_registry.json  the kinds of tile every level shares
+## and the pictures, the same way (data in levels/, art in assets/levels/):
+##   assets/levels/<id>/background/    that level's parallax background layers (see LevelBackground.LAYERS)
+##   assets/levels/common/             art every level shares: tiles/, machines/, pit_hazards/ (see SpriteLibrary)
 ##
 ## The ids are the folder names (level_01, level_02, ...). The game starts on DEFAULT_ID and finishing a level loads the one
 ## named in its meta.next. Two ids are special:
@@ -46,8 +48,11 @@ extends RefCounted
 const LEVELS_DIR := AssetPaths.LEVELS
 const LEVEL_FILE_NAME := "level.sablevel.json"
 
-# COMMON_FOLDER: the folder inside LEVELS_DIR that holds the art shared by all levels; it is not a level.
+# COMMON_FOLDER: the folder inside LEVELS_DIR that holds what all levels share (the tile registry); it is not a level.
 const COMMON_FOLDER := "common"
+
+# BACKGROUND_FOLDER: the name of the folder of a level's background layers, inside its art folder (art_dir()).
+const BACKGROUND_FOLDER := "background"
 
 # DEFAULT_ID: the level the game starts on when SABOTAGE_LEVEL is not set.
 const DEFAULT_ID := "level_01"
@@ -65,7 +70,7 @@ static var gravity_scale := 1.0
 ## The level loaded from a file (see use_file()): the parsed file, empty when none is loaded.
 static var file_data := {}
 
-## The folder that file was loaded from (its background/ folder is looked for there).
+## The folder that file was loaded from (its background folder is looked for there).
 static var file_dir := ""
 
 ## The level to play next when the game restarts after a level is finished; empty = use SABOTAGE_LEVEL or the default.
@@ -177,21 +182,27 @@ static func next_id(id: String) -> String:
 	return str(LevelFile.value(data_for(id), "meta", "next", ""))
 
 
+## The folder of a level's pictures ("res://assets/levels/<id>/"; ending in "/"): its background layers are in its background/ folder.
+static func art_dir(id: String) -> String:
+	return AssetPaths.LEVEL_ART + id + "/"
+
+
 ## The folder of the background layers of a level (ending in "/"): terrain.background in its level file is a folder, relative to
-## the level's own folder (the default, "background", is the folder next to the level file) or a full res:// path. If that
-## folder has no layers (a level file kept somewhere else), the first level's background is used.
+## the level's own art folder (the default, "background", is its background/ folder in assets/levels/<id>/; for a level file
+## given on the command line, the folder next to the file) or a full res:// path. If that folder has no layers, the first
+## level's background is used.
 static func background_dir(id: String) -> String:
-	var rel := str(LevelFile.value(data_for(id), "terrain", "background", "background"))
-	return resolve_background(rel, file_dir if id == FILE_ID else level_dir(id))
+	var rel := str(LevelFile.value(data_for(id), "terrain", "background", BACKGROUND_FOLDER))
+	return resolve_background(rel, file_dir if id == FILE_ID else art_dir(id))
 
 
-## The background folder (ending in "/") for a terrain.background value `rel`, for a level file in the folder `base`.
+## The background folder (ending in "/") for a terrain.background value `rel`, for a level file whose pictures are in the folder `base`.
 static func resolve_background(rel: String, base: String) -> String:
 	var dir := rel if rel.begins_with("res://") else base.path_join(rel)
 	if not dir.ends_with("/"):
 		dir += "/"
 	if not ResourceLoader.exists(dir + "far.png"):
-		dir = level_dir(DEFAULT_ID) + "background/"
+		dir = art_dir(DEFAULT_ID) + BACKGROUND_FOLDER + "/"
 	return dir
 
 

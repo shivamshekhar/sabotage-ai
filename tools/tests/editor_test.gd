@@ -273,7 +273,7 @@ func _main() -> void:
 	_check("a gate id can be changed to a free one", gd.set_gate_id("1", "5") and gd.get_cell(10, 18) == "5" and gd.get_cell(10, 17) == "5" and not gd.has_gate("1"))
 	gd.place(14, 18, "2")
 	_check("but not to one another gate uses", not gd.set_gate_id("5", "2") and gd.has_gate("5"))
-	_check("backgrounds are listed", EditorCatalog.backgrounds().has("background") and EditorCatalog.backgrounds().has(LevelData.level_dir(LevelData.DEFAULT_ID) + "background"))
+	_check("backgrounds are listed", EditorCatalog.backgrounds().has(LevelData.BACKGROUND_FOLDER) and EditorCatalog.backgrounds().has(LevelData.art_dir(LevelData.DEFAULT_ID) + LevelData.BACKGROUND_FOLDER))
 	print("preview supported by the game: ", EditorMinigames.game_can_preview())
 
 	await _ui_smoke()

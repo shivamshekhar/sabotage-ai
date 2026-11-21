@@ -36,6 +36,6 @@ func _main() -> void:
 	_check("each level has its own title", titles.size() == level_ids.size(), str(titles.keys()))
 	for id in level_ids:
 		var dir := LevelData.background_dir(id)
-		_check("level %s: its own background folder holds every layer" % id, LevelBackground.LAYERS.all(func(l: String) -> bool: return ResourceLoader.exists(dir + l + ".png")) and dir.begins_with(LevelData.level_dir(id)), dir)
+		_check("level %s: its own background folder holds every layer" % id, LevelBackground.LAYERS.all(func(l: String) -> bool: return ResourceLoader.exists(dir + l + ".png")) and dir.begins_with(LevelData.art_dir(id)), dir)
 	print("ALL PASS" if ok else "SOME FAILED")
 	quit(0 if ok else 1)

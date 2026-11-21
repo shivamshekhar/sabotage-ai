@@ -7,7 +7,7 @@ level tiles (navy steel, a hazard-striped yellow frame, the same lit bevels), sh
     sign_pit_piranha    the game's own robot piranha leaping half out of cartoon waves   (the piranha tank: the bites)
 
 Usage (from the repo root; needs Pillow, numpy, opencv):
-    python tools/art/generate_pit_signs.py      writes levels/common/tiles/data_center/signage/sign_pit_*.png
+    python tools/art/generate_pit_signs.py      writes assets/levels/common/tiles/data_center/signage/sign_pit_*.png
                                                 (and tmp/art_previews/pit_signs.png, all four side by side, for looking at only)
 
 The post stands on the bottom edge of the tile, so the sign sits on the ground tile below it like a signboard planted in the floor. The board fills
@@ -23,8 +23,8 @@ import art_lib
 from art_lib import S, lit, outline, solid, paste, glow, rrect_mask, poly_mask, gradient_y, blur
 
 ROOT = art_lib.ROOT
-OUT = os.path.join(ROOT, "levels", "common", "tiles", "data_center", "signage")
-FISH = os.path.join(ROOT, "levels", "common", "pit_hazards", "piranha_tank", "pit_piranha_tank_fish_wide.png")
+OUT = os.path.join(ROOT, "assets", "levels", "common", "tiles", "data_center", "signage")
+FISH = os.path.join(ROOT, "assets", "levels", "common", "pit_hazards", "piranha_tank", "pit_piranha_tank_fish_wide.png")
 
 # ICON_SHARE: how big a picture is on its board, compared with its first design (0.85 = 85%).
 ICON_SHARE = 0.85

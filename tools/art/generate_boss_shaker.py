@@ -1,7 +1,7 @@
 """Draws the first boss: a glass salt shaker with a glowing angry face, its belly full of stolen data-center hardware.
 
 Usage (from the repo root; needs Pillow and numpy):
-    python tools/art/generate_boss_shaker.py          writes the boss layers and what he sprays into assets/bosses/ (and a picture of him whole into tmp/art_previews/)
+    python tools/art/generate_boss_shaker.py          writes the boss layers and what he sprays into assets/bosses/saltman/ (the spray in spray/) (and a picture of him whole into tmp/art_previews/)
 
 HOW IT IS DRAWN (so the detail is real shading, not flat shapes stacked up): everything is rendered at 4x and shrunk with a
 high-quality filter. Each part is a mask; `lit()` turns a mask into a bevelled, lit surface (it blurs the mask into a height map,
@@ -19,7 +19,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from art_lib import (INK, LIGHT, ROOT, S, arr, blur, glow, gradient_x, gradient_y, lit, outline, paste, poly_mask, preview_path, rrect_mask, s, solid, to_img)
 
-OUT = os.path.join(ROOT, "assets", "bosses")
+OUT = os.path.join(ROOT, "assets", "bosses", "saltman")
+SPRAY = os.path.join(OUT, "spray")                                    # what the boss shoots
 
 W, H = 600, 830            # the drawing canvas in pixels
 TRIM = 36                  # rows cut off the top at the end (the final picture is W x (H - TRIM))
@@ -671,7 +672,7 @@ def export_game_art():
     """The pictures the boss stage uses, in assets/bosses/saltman/: the shaker in layers that the game stacks (back, the pile of
     hardware, a face for each expression, the front glass and metal, the glowing cap holes) so the game can shake the hardware inside
     and cross-fade the expressions; a mask of the inside of the glass; where the cap holes are; and a finished picture of each pose.
-    Plus the three things it sprays (RAM stick, CPU, chipset) in assets/bosses/."""
+    Plus the three things it sprays (RAM stick, CPU, chipset) in assets/bosses/saltman/spray/."""
     import json
     layers = build(shadow=False)
     top = s(TRIM)
@@ -682,7 +683,7 @@ def export_game_art():
     base["faces"] = {k: cut(v) for k, v in layers["faces"].items()}
     box = tight_box(base["back"], 2 * S)
     box = (box[0] // S * S, box[1] // S * S, box[2] // S * S, box[3] // S * S)       # on whole final pixels, so the layers stay in register
-    folder = os.path.join(OUT, "saltman")
+    folder = OUT
     os.makedirs(folder, exist_ok=True)
     for f in os.listdir(folder):
         if f.endswith(".png"):                                  # (the engine's .import files stay: they hold each picture's id)
@@ -710,12 +711,12 @@ def export_game_art():
     # what it sprays
     for name, piece, size in (("ram_stick", ram_stick(seed=21), None), ("cpu", cpu(), (60, 60)), ("chipset", chipset(), (54, 54))):
         small = piece.resize(size or (piece.width // 4, piece.height // 4), Image.LANCZOS)
-        small.crop(small.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()).save(os.path.join(OUT, name + ".png"), optimize=True)
+        small.crop(small.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()).save(os.path.join(SPRAY, name + ".png"), optimize=True)
     print("wrote the game art (%dx%d layers, %d expressions, %d cap holes)" % (width, height, len(EXPRESSIONS), len(holes)))
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
+    os.makedirs(SPRAY, exist_ok=True)
     layers = build(shadow=True)
     big = composite(layers, "idle", with_shadow=True).crop((0, s(TRIM), W * S, H * S))
     final = big.resize((W, H - TRIM), Image.LANCZOS)

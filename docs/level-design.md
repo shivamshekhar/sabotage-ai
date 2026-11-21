@@ -4,11 +4,15 @@ Every level of the game is a **level file** in its own folder. They are made wit
 plays them as they are.
 
 ```
-levels/
+levels/                       the data
+  common/tile_registry.json   every kind of tile
+  level_01/
+    level.sablevel.json       the level: tiles, objects, player/terrain values, puzzles, title, next level
+  level_02/ ...
+assets/levels/                the art, the same shape (see art.md)
   common/                     art every level shares
     tiles/  machines/  pit_hazards/
   level_01/
-    level.sablevel.json       the level: tiles, objects, player/terrain values, puzzles, title, next level
     background/               this level's parallax background layers (far, mid_base, mid_leds_a, mid_leds_b, cables)
   level_02/ ...
 ```
@@ -99,7 +103,7 @@ turning arc and a still marker), a safe cracker (`safe_cracker`: nested rings lo
 block onto a tower), "don't press the red button", "press the button that SAYS green" (three buttons), "wrong answers only" (3
 questions), button mashing (tap a small red arcade button 4 times while it hops around) and a riddle captcha (a funny riddle told by the thing itself, such as "I have 88 keys but
 cannot open a single door. What am I?", and six cartoon pictures with one right answer; a stockpile of 28 riddles and 48 cartoon emoji
-pictures in `assets/captcha/`). The captcha is *resting*: it is not in the "random" choice (`HackPopup.RESTING`) but can still be
+pictures in `assets/ui/captcha/`). The captcha is *resting*: it is not in the "random" choice (`HackPopup.RESTING`) but can still be
 asked for by name. To add a puzzle, subclass `Minigame` (or `QuizGame` for multiple choice), give it `auto_solve()` / `auto_fail()` test
 hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`) and in `tools/level_editor/catalog.json`;
 `tools/tests/minigame_test.gd` then checks it. Always put a computer where the player can reach it before its laser.

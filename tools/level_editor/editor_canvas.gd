@@ -641,7 +641,7 @@ func _pit_kind(ch: String) -> String:
 
 func _load_background() -> void:
 	var bg := str(doc.get_setting("terrain", "background"))
-	var base := doc.path.get_base_dir() if doc.path != "" else LevelData.level_dir(LevelData.DEFAULT_ID)
+	var base := doc.path.get_base_dir() if doc.path != "" else LevelData.art_dir(LevelData.DEFAULT_ID)
 	if bg + "|" + base == _bg_name:
 		return
 	_bg_name = bg + "|" + base

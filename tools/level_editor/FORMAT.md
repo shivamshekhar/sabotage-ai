@@ -29,7 +29,7 @@ panels from them, so a new tile or a new tunable value is a data entry, not an e
   `meta.next` is the id of the level to play after this one is finished (`""` = the game restarts from the first level).
 * `grid.cols` x `grid.rows` is the size in tiles (one tile = 70 px, `Level.T`). `tiles` has exactly `rows` strings (row 0 is
   the top), each a CSV row of exactly `cols` tile numbers.
-* `terrain` holds level-wide physics and look. `background` is the folder of the level's parallax layers (`far`, `mid_base`, `mid_leds_a`, `mid_leds_b`, `cables` PNGs): a path relative to the level file's folder (the default, `background`, is the `background/` folder next to the file) or a full `res://` path. If it has no layers the first level's background is used. A level of the game lives in `levels/<id>/level.sablevel.json` with its own `levels/<id>/background/`.
+* `terrain` holds level-wide physics and look. `background` is the folder of the level's parallax layers (`far`, `mid_base`, `mid_leds_a`, `mid_leds_b`, `cables` PNGs): a path relative to the level's art folder (the default, `background`, is the `background/` folder in `assets/levels/<id>/`; for a file played with `--level-file`, the folder next to the file) or a full `res://` path. If it has no layers the first level's background is used. A level of the game lives in `levels/<id>/level.sablevel.json` with its own `assets/levels/<id>/background/`.
 * `player` holds the player's tunable values for this level (all optional; a missing key keeps the game's default).
   The spawn point is the `P` tile (see below), not a value here.
 * `tiles` is the map: a CSV grid of **tile numbers**, one JSON string per row, like the CSV layers of Tiled. A number is the `id`

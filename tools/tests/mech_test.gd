@@ -50,7 +50,7 @@ func _main() -> void:
 	var files := ["box_base", "box_question"]
 	for i in 6:
 		files.append("box_break_%d" % (i + 1))
-	_check("the box and its six break-apart frames exist", files.all(func(f: String) -> bool: return ResourceLoader.exists("res://assets/powerups/%s.png" % f)))
+	_check("the box and its six break-apart frames exist", files.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.POWERUP_BOX + "%s.png" % f)))
 	var mech_parts := ["body", "canopy", "missile_turret", "laser_turret", "link", "joint", "claw", "claw_open", "hip", "flame_1", "flame_2", "flame_3", "missile",
 			"body_cracks", "canopy_cracks", "link_broken", "missile_flame_1", "missile_flame_2", "missile_flame_3"]
 	_check("every mech part has its picture", mech_parts.all(func(f: String) -> bool: return ResourceLoader.exists(AssetPaths.MECH + f + ".png")))

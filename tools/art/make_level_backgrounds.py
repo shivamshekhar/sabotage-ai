@@ -1,5 +1,5 @@
-"""Give each level its own background: the layers in levels/level_01/background/ (made by generate_background.py) are colour-graded
-into levels/<level>/background/ for the other levels, so each level has a look of its own (cool water, hot foundry, green
+"""Give each level its own background: the layers in assets/levels/level_01/background/ (made by generate_background.py) are colour-graded
+into assets/levels/<level>/background/ for the other levels, so each level has a look of its own (cool water, hot foundry, green
 reactor, violet mainframe).
 
 Usage (from the repo root; needs Pillow):
@@ -12,7 +12,7 @@ import os
 
 from PIL import Image
 
-SOURCE = "levels/level_01/background"
+SOURCE = "assets/levels/level_01/background"
 
 # GRADES: for each level, the factor each colour channel (red, green, blue) of its background layers is multiplied by. Above 1
 # brightens that colour, below 1 removes it. Keep the values within about 0.6 to 1.3 so the racks stay readable.
@@ -34,7 +34,7 @@ def grade(img, factors):
 
 def main():
     for level, factors in GRADES.items():
-        out = "levels/%s/background" % level
+        out = "assets/levels/%s/background" % level
         os.makedirs(out, exist_ok=True)
         for f in sorted(glob.glob(SOURCE + "/*.png")):
             grade(Image.open(f), factors).save(os.path.join(out, os.path.basename(f)))

@@ -1,7 +1,7 @@
 """Draws the creatures that leap out of the deadly pits (besides the robot piranha of generate_pit_hazards.py).
 
 Usage (needs Pillow; from the repo root):  python tools/art/generate_pit_creatures.py [output folder]
-(The output folder is levels/common/pit_hazards by default, the same as generate_pit_hazards.py.)
+(The output folder is assets/levels/common/pit_hazards by default, the same as generate_pit_hazards.py.)
 
 PUFFER     toxic_waste/pit_toxic_waste_puffer_<small|mid|big>.png : a mutant pufferfish, acid green with a pale belly, bone-yellow
            spines and an orange eye. Three frames: deflated, half puffed, fully puffed up; the game inflates it as it leaps.

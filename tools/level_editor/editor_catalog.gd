@@ -162,11 +162,11 @@ static func default_of(props: Array, key: String) -> Variant:
 	return null
 
 
-## The selectable backgrounds: "background" (the folder next to the level file) and every level's background folder.
+## The selectable backgrounds: "background" (the level's own) and every level's background folder.
 static func backgrounds() -> Array[String]:
-	var out: Array[String] = ["background"]
+	var out: Array[String] = [LevelData.BACKGROUND_FOLDER]
 	for id in LevelData.level_ids():
-		out.append(LevelData.level_dir(id) + "background")
+		out.append(LevelData.art_dir(id) + LevelData.BACKGROUND_FOLDER)
 	return out
 
 

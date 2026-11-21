@@ -2,13 +2,13 @@
 
 Usage (needs Pillow; from the repo root):  python tools/art/generate_pit_hazards.py
 
-LIQUIDS  levels/common/pit_hazards/<kind>/pit_<kind>_liquid.png: a seamless tile of each liquid. They are recolours of the
+LIQUIDS  assets/levels/common/pit_hazards/<kind>/pit_<kind>_liquid.png: a seamless tile of each liquid. They are recolours of the
          hand-made lava and water tiles from Kenney's "Platformer Pack Redux" (CC0, kept in
          tools/art/sources/kenney_platformer_redux/, see its License.txt), so the waves have real art direction
          instead of being drawn from shapes in code: lava as it is, toxic waste (lava shifted to green), nuclear waste
          (water shifted to a glowing green-teal) and the piranha tank (water, deepened). The game animates them
          (see scripts/level/pit_liquid.gdshader).
-PIRANHA  levels/common/pit_hazards/piranha_tank/: the robot piranha drawn once per mouth pose (closed, slight, open, wide:
+PIRANHA  assets/levels/common/pit_hazards/piranha_tank/: the robot piranha drawn once per mouth pose (closed, slight, open, wide:
          pit_piranha_tank_fish_<pose>.png), so the closed mouth lines up exactly and the open ones show both rows of teeth;
          the game flips between them to make it bite. ..._fish_eye.png is a soft glow for the eyes. No CC0 piranha sprite
          exists, so these are painted here with shaded gradients, plating, outlines and highlights; swap in other art with
@@ -23,7 +23,7 @@ import sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "levels", "common", "pit_hazards")
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "assets", "levels", "common", "pit_hazards")
 SRC = os.path.join(HERE, "sources", "kenney_platformer_redux")
 
 

@@ -5,7 +5,7 @@ extends Minigame
 ## is met with a suspicious remark and a new riddle with new pictures. The riddles are easy to crack but need a moment's thought, and
 ## none of them is about the player.
 ##
-## The riddles and pictures are a stockpile in assets/captcha/ (see manifest.json; tools/art/fetch_captcha_images.py makes it from cartoon
+## The riddles and pictures are a stockpile in assets/ui/captcha/ (see manifest.json; tools/art/fetch_captcha_images.py makes it from cartoon
 ## emoji pictures downloaded from the web, a few KB each). A riddle names its right picture (`answer`) and the pictures that could also
 ## fit it (`exclude`), which are never shown with it. A round picks a riddle at random, then five other pictures at random, shuffled.
 ## Add riddles and pictures to the manifest and they are used.

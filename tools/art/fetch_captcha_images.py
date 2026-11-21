@@ -3,8 +3,8 @@ and writes what the game needs.
 
 Usage (needs Pillow and an internet connection; from the repo root):
     python tools/art/fetch_captcha_images.py            download every emoji in PICTURES, put each on a soft pastel square, save them as
-                                                        small PNGs in assets/captcha/ and write the credits (assets/captcha/CREDITS.md)
-                                                        and the list the game reads (assets/captcha/manifest.json)
+                                                        small PNGs in assets/ui/captcha/ and write the credits (assets/ui/captcha/CREDITS.md)
+                                                        and the list the game reads (assets/ui/captcha/manifest.json)
 The game ships the pictures (it never needs the internet). To add a picture, add its code point to PICTURES; to add or change a riddle,
 edit RIDDLES; then run it again.
 
@@ -28,7 +28,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
-OUT = os.path.join(ROOT, "assets", "captcha")
+OUT = os.path.join(ROOT, "assets", "ui", "captcha")
 SOURCE = "https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@v2.047/png/128/emoji_u%s.png"   # (the published 128 px pictures of the v2.047 release)
 SOURCE_PAGE = "https://github.com/googlefonts/noto-emoji"
 USER_AGENT = "SabotageGameCaptchaImageFetcher/1.0"

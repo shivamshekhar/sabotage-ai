@@ -50,7 +50,7 @@ func _main() -> void:
 		total += FileAccess.get_file_as_bytes(path).size()
 	_check("every picture exists and is the size it is shown at (no wasted pixels)", problems.is_empty(), str(problems))
 	_check("and together they are small (%d KB, at most %d)" % [total / 1024, MAX_TOTAL_KB], total / 1024 <= MAX_TOTAL_KB)
-	_check("the picture credits are shipped", FileAccess.file_exists("res://assets/captcha/CREDITS.md"))
+	_check("the picture credits are shipped", FileAccess.file_exists("res://assets/ui/captcha/CREDITS.md"))
 
 	var broken := []
 	var answers := {}

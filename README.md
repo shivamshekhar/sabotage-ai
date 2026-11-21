@@ -34,6 +34,6 @@ Keyboard: arrows move, Space jumps, E uses computers, Q throws, S heavy attack. 
 
 ## License and credits
 
-Captcha pictures are Google Noto Emoji (Apache License 2.0; credits: [assets/captcha/CREDITS.md](assets/captcha/CREDITS.md)). Code and generated art are under the [MIT License](LICENSE). Character and tile art by [Kenney](https://kenney.nl) (CC0); the
+Captcha pictures are Google Noto Emoji (Apache License 2.0; credits: [assets/ui/captcha/CREDITS.md](assets/ui/captcha/CREDITS.md)). Code and generated art are under the [MIT License](LICENSE). Character and tile art by [Kenney](https://kenney.nl) (CC0); the
 thrown paintings are pixel-art reductions of public-domain works from Wikimedia Commons (Mona Lisa, The Starry Night, The Great
 Wave off Kanagawa, Girl with a Pearl Earring, The Scream, Vitruvian Man). Details in [docs/art.md](docs/art.md).

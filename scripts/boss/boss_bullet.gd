@@ -52,7 +52,7 @@ func _ready() -> void:
 	_spin = randf_range(-SPIN_SPEED, SPIN_SPEED)
 	rotation = randf() * TAU
 	_sprite = Sprite2D.new()
-	_sprite.texture = AssetPaths.boss(kind)
+	_sprite.texture = AssetPaths.boss_spray(kind)
 	_sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
 	add_child(_sprite)
 	if harmful:

@@ -10,7 +10,7 @@ extends Node2D
 ## in front (tiles, machines, player) stands out. Raise them for a brighter backdrop.
 
 # LAYERS: the image names every background folder must hold (far, mid_base, mid_leds_a, mid_leds_b, cables).
-# Each level keeps its own set in levels/<level>/background/ (see LevelData.background_dir()).
+# Each level keeps its own set in assets/levels/<level>/background/ (see LevelData.background_dir()).
 const LAYERS := ["far", "mid_base", "mid_leds_a", "mid_leds_b", "cables"]
 
 # TILE_W: width in pixels of each layer image. It is used as the parallax repeat size, so the
@@ -44,7 +44,7 @@ const CABLES_TINT := Color(0.46, 0.50, 0.64)
 
 ## The folder (ending in "/") the layer images come from. Set before adding the node to the tree; Level sets it from
 ## LevelData.background_dir().
-var dir := "res://levels/level_01/background/"
+var dir := LevelData.art_dir(LevelData.DEFAULT_ID) + LevelData.BACKGROUND_FOLDER + "/"
 
 
 func _ready() -> void:
