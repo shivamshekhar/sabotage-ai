@@ -1,0 +1,52 @@
+# Captcha pictures: credits
+
+The pictures are emoji from Google's Noto Emoji set (https://github.com/googlefonts/noto-emoji), licensed under the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). They are shown here on a soft coloured square and with a smaller palette; otherwise they are as published.
+
+- `keyboard.png`: U+1F3B9
+- `alarm_clock.png`: U+23F0
+- `coin.png`: U+1FA99
+- `sponge.png`: U+1F9FD
+- `candle.png`: U+1F56F
+- `book.png`: U+1F4D6
+- `fire.png`: U+1F525
+- `needle.png`: U+1FAA1
+- `umbrella.png`: U+2602
+- `telephone.png`: U+260E
+- `mushroom.png`: U+1F344
+- `banana.png`: U+1F34C
+- `shoe.png`: U+1F45F
+- `egg.png`: U+1F95A
+- `corn.png`: U+1F33D
+- `footprints.png`: U+1F463
+- `light_bulb.png`: U+1F4A1
+- `chair.png`: U+1FA91
+- `tree.png`: U+1F333
+- `snail.png`: U+1F40C
+- `newspaper.png`: U+1F4F0
+- `key.png`: U+1F511
+- `mirror.png`: U+1FA9E
+- `balloon.png`: U+1F388
+- `anchor.png`: U+2693
+- `magnet.png`: U+1F9F2
+- `ice_cube.png`: U+1F9CA
+- `rocket.png`: U+1F680
+- `guitar.png`: U+1F3B8
+- `violin.png`: U+1F3BB
+- `drum.png`: U+1F941
+- `trumpet.png`: U+1F3BA
+- `saxophone.png`: U+1F3B7
+- `palette.png`: U+1F3A8
+- `scarf.png`: U+1F9E3
+- `socks.png`: U+1F9E6
+- `pencil.png`: U+270F
+- `scissors.png`: U+2702
+- `factory.png`: U+1F3ED
+- `satellite.png`: U+1F6F0
+- `framed_picture.png`: U+1F5BC
+- `laptop.png`: U+1F4BB
+- `printer.png`: U+1F5A8
+- `joystick.png`: U+1F579
+- `paintbrush.png`: U+1F58C
+- `crayon.png`: U+1F58D
+- `pinata.png`: U+1FA85
+- `scroll.png`: U+1F4DC

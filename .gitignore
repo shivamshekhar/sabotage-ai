@@ -1,0 +1,24 @@
+# Godot 4
+.godot/
+*.translation
+
+# Android build / signing (never commit keystores)
+android/build/
+*.keystore
+*.jks
+
+# Misc
+.DS_Store
+Thumbs.db
+
+# Build output (APK/AAB)
+build/
+
+# Python bytecode from the art tools
+__pycache__/
+
+# Scratch space for anything temporary: scratch test scripts, screenshots, logs (see .claude/rules/testing.md). The folder is created on demand by the scripts that need it.
+tmp/
+
+# Local settings of AI tools (the shared rules in .claude/ are committed)
+.claude/settings.local.json

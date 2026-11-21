@@ -1,0 +1,134 @@
+﻿extends SceneTree
+## Headless test of the keyboard bindings and the jump / climb / action rules. Exits non-zero on failure.
+## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/controls_test.gd
+
+# LX: the x position of the centre of the ladder in level 1 (see ladder_test.gd).
+const LX := 1995.0
+
+var main: Node
+var player: Player
+var frames := 0
+var ok := true
+
+
+func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
+	root.add_child(main)
+
+
+func _check(name: String, cond: bool, detail := "") -> void:
+	print(("PASS  " if cond else "FAIL  "), name, "  ", detail)
+	if not cond:
+		ok = false
+
+
+func _wait(n: int) -> void:
+	for i in n:
+		await process_frame
+
+
+func _tp(x: float, y: float) -> void:
+	player.global_position = Vector2(x, y)
+	player.velocity = Vector2.ZERO
+
+
+func _has_key(action: String, keycode: Key) -> bool:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventKey and e.physical_keycode == keycode:
+			return true
+	return false
+
+
+func _release_all() -> void:
+	for a in InputActions.ALL:
+		Input.action_release(a)
+
+
+func _process(_d: float) -> bool:
+	# _process must not contain `await` (a coroutine's return value makes Godot quit).
+	frames += 1
+	if frames == 5:
+		_main()
+	if frames > 900:
+		print("FAIL  test timed out before finishing")
+		quit(1)
+	return false
+
+
+func _main() -> void:
+	for n in main.get_children():
+		if n is Player:
+			player = n
+
+	# ---- key bindings
+	_check("Space and W are bound to jump", _has_key(InputActions.JUMP, KEY_SPACE) and _has_key(InputActions.JUMP, KEY_W))
+	_check("Up is bound to move_up", _has_key(InputActions.MOVE_UP, KEY_UP))
+	_check("E is bound to interact", _has_key(InputActions.INTERACT, KEY_E))
+	_check("Q is bound to light attack", _has_key(InputActions.ATTACK_LIGHT, KEY_Q))
+	_check("S is bound to heavy attack", _has_key(InputActions.ATTACK_HEAVY, KEY_S))
+	_check("the arrow keys move", _has_key(InputActions.MOVE_LEFT, KEY_LEFT) and _has_key(InputActions.MOVE_RIGHT, KEY_RIGHT) and _has_key(InputActions.MOVE_DOWN, KEY_DOWN))
+	_check("A and D no longer move the player (they are free)", not _has_key(InputActions.MOVE_LEFT, KEY_A) and not _has_key(InputActions.MOVE_RIGHT, KEY_D))
+
+	# ---- Space jumps
+	_tp(300.0, 840.0)
+	await _wait(8)
+	var floor_y := player.global_position.y
+	Input.action_press(InputActions.JUMP)
+	await _wait(8)
+	_check("Space (jump) lifts the player off the floor", player.global_position.y < floor_y - 20.0,
+		"y=%d from %d" % [int(player.global_position.y), int(floor_y)])
+	_release_all()
+	await _wait(80)
+
+	# ---- Up still jumps too
+	_tp(300.0, 840.0)
+	await _wait(8)
+	Input.action_press(InputActions.MOVE_UP)
+	await _wait(8)
+	_check("Up still jumps (when no ladder is in reach)", player.global_position.y < floor_y - 20.0)
+	_release_all()
+	await _wait(80)
+
+	# ---- jump never grabs a ladder, Up does
+	_tp(LX + 15.0, 840.0)
+	await _wait(8)
+	Input.action_press(InputActions.JUMP)
+	await _wait(8)
+	_check("Space at a ladder's bottom jumps (does not climb)", not player.climbing and player.global_position.y < 835.0,
+		"climbing=%s y=%d" % [player.climbing, int(player.global_position.y)])
+	_release_all()
+	await _wait(80)
+	_tp(LX + 15.0, 840.0)
+	await _wait(8)
+	Input.action_press(InputActions.MOVE_UP)
+	await _wait(8)
+	_check("Up at a ladder's bottom climbs", player.climbing)
+	_release_all()
+
+	# ---- jump while on a ladder leaps off it
+	await _wait(5)
+	var y_on_ladder := player.global_position.y
+	Input.action_press(InputActions.JUMP)
+	await _wait(10)
+	_check("jump leaves the ladder", not player.climbing and player.global_position.y < y_on_ladder - 2.0,
+		"climbing=%s y=%d (was %d)" % [player.climbing, int(player.global_position.y), int(y_on_ladder)])
+	_release_all()
+	await _wait(120)  # land before the next check
+
+	# ---- unimplemented actions are safe no-ops
+	_check("interact() exists", player.has_method("interact"))
+	_check("attack_light() exists", player.has_method("attack_light"))
+	_check("attack_heavy() exists", player.has_method("attack_heavy"))
+	var before := player.global_position
+	player.interact()
+	player.attack_light()
+	player.attack_heavy()
+	for a in ["interact", "attack_light", "attack_heavy"]:
+		Input.action_press(a)
+	await _wait(10)
+	_release_all()
+	_check("pressing interact / light / heavy does nothing yet (and doesn't crash)", player.global_position.distance_to(before) < 2.0 and player.health == Player.MAX_HEALTH)
+
+	print("ALL PASS" if ok else "SOME FAILED")
+	quit(0 if ok else 1)

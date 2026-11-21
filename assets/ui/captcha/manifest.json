@@ -1,0 +1,231 @@
+{
+ "pictures": [
+  "keyboard.png",
+  "alarm_clock.png",
+  "coin.png",
+  "sponge.png",
+  "candle.png",
+  "book.png",
+  "fire.png",
+  "needle.png",
+  "umbrella.png",
+  "telephone.png",
+  "mushroom.png",
+  "banana.png",
+  "shoe.png",
+  "egg.png",
+  "corn.png",
+  "footprints.png",
+  "light_bulb.png",
+  "chair.png",
+  "tree.png",
+  "snail.png",
+  "newspaper.png",
+  "key.png",
+  "mirror.png",
+  "balloon.png",
+  "anchor.png",
+  "magnet.png",
+  "ice_cube.png",
+  "rocket.png",
+  "guitar.png",
+  "violin.png",
+  "drum.png",
+  "trumpet.png",
+  "saxophone.png",
+  "palette.png",
+  "scarf.png",
+  "socks.png",
+  "pencil.png",
+  "scissors.png",
+  "factory.png",
+  "satellite.png",
+  "framed_picture.png",
+  "laptop.png",
+  "printer.png",
+  "joystick.png",
+  "paintbrush.png",
+  "crayon.png",
+  "pinata.png",
+  "scroll.png"
+ ],
+ "riddles": [
+  {
+   "text": "I have 88 keys but cannot open a single door. What am I?",
+   "answer": "keyboard.png",
+   "exclude": [
+    "key.png",
+    "saxophone.png",
+    "laptop.png",
+    "printer.png",
+    "joystick.png"
+   ]
+  },
+  {
+   "text": "I have two hands but I have never clapped, and I scream every morning. What am I?",
+   "answer": "alarm_clock.png",
+   "exclude": []
+  },
+  {
+   "text": "I have a head and a tail but no body. What am I?",
+   "answer": "coin.png",
+   "exclude": [
+    "snail.png"
+   ]
+  },
+  {
+   "text": "I am full of holes, yet I still hold water. What am I?",
+   "answer": "sponge.png",
+   "exclude": []
+  },
+  {
+   "text": "I get shorter the longer I live. What am I?",
+   "answer": "candle.png",
+   "exclude": [
+    "fire.png",
+    "pencil.png",
+    "crayon.png"
+   ]
+  },
+  {
+   "text": "I have a spine but no bones, and I am full of stories. What am I?",
+   "answer": "book.png",
+   "exclude": [
+    "newspaper.png",
+    "scroll.png"
+   ]
+  },
+  {
+   "text": "Feed me and I grow; give me a drink and I die. What am I?",
+   "answer": "fire.png",
+   "exclude": [
+    "candle.png"
+   ]
+  },
+  {
+   "text": "I have one eye but cannot see a thing. What am I?",
+   "answer": "needle.png",
+   "exclude": []
+  },
+  {
+   "text": "I go up exactly when the rain comes down. What am I?",
+   "answer": "umbrella.png",
+   "exclude": []
+  },
+  {
+   "text": "I have a ring but no finger. What am I?",
+   "answer": "telephone.png",
+   "exclude": []
+  },
+  {
+   "text": "I am a kind of room with no doors and no windows. What am I?",
+   "answer": "mushroom.png",
+   "exclude": [
+    "factory.png"
+   ]
+  },
+  {
+   "text": "I am yellow, I am curved, and I am the star of every cartoon slip. What am I?",
+   "answer": "banana.png",
+   "exclude": []
+  },
+  {
+   "text": "I have a tongue but I have never said a word. What am I?",
+   "answer": "shoe.png",
+   "exclude": []
+  },
+  {
+   "text": "I must be cracked before I can be of any use. What am I?",
+   "answer": "egg.png",
+   "exclude": [
+    "pinata.png",
+    "balloon.png"
+   ]
+  },
+  {
+   "text": "I have lots of ears but cannot hear a thing. What am I?",
+   "answer": "corn.png",
+   "exclude": []
+  },
+  {
+   "text": "The more of me you take, the more you leave behind. What am I?",
+   "answer": "footprints.png",
+   "exclude": []
+  },
+  {
+   "text": "I can fill a whole room but take up no space. What am I?",
+   "answer": "light_bulb.png",
+   "exclude": [
+    "candle.png",
+    "fire.png"
+   ]
+  },
+  {
+   "text": "I have four legs but I have never walked anywhere. What am I?",
+   "answer": "chair.png",
+   "exclude": []
+  },
+  {
+   "text": "I have plenty of bark but I have never bitten anyone. What am I?",
+   "answer": "tree.png",
+   "exclude": []
+  },
+  {
+   "text": "I carry my house on my back and I am never in a hurry. What am I?",
+   "answer": "snail.png",
+   "exclude": []
+  },
+  {
+   "text": "I am black and white and read all over. What am I?",
+   "answer": "newspaper.png",
+   "exclude": [
+    "book.png",
+    "scroll.png",
+    "framed_picture.png"
+   ]
+  },
+  {
+   "text": "I have teeth but have never bitten anyone, and I love opening doors. What am I?",
+   "answer": "key.png",
+   "exclude": [
+    "keyboard.png"
+   ]
+  },
+  {
+   "text": "I show you everything but never say a word. What am I?",
+   "answer": "mirror.png",
+   "exclude": [
+    "framed_picture.png"
+   ]
+  },
+  {
+   "text": "I am full of hot air and I go bang if you poke me. What am I?",
+   "answer": "balloon.png",
+   "exclude": [
+    "pinata.png"
+   ]
+  },
+  {
+   "text": "I am heavy, I love the sea floor, and I stop ships from drifting off. What am I?",
+   "answer": "anchor.png",
+   "exclude": []
+  },
+  {
+   "text": "I am very attractive and I stick to metal. What am I?",
+   "answer": "magnet.png",
+   "exclude": []
+  },
+  {
+   "text": "I am cold, I am clear, and I vanish in the sun. What am I?",
+   "answer": "ice_cube.png",
+   "exclude": []
+  },
+  {
+   "text": "I count down before I leave and I never need a runway. What am I?",
+   "answer": "rocket.png",
+   "exclude": [
+    "satellite.png"
+   ]
+  }
+ ]
+}

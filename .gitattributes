@@ -1,0 +1,3 @@
+* text=auto eol=lf
+*.png binary
+*.import text eol=lf

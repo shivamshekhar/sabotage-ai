@@ -1,0 +1,1634 @@
+{
+  "version": 1,
+  "doc": "Every kind of tile a level can contain. `id` is the number stored in level files and is PERMANENT: never change or reuse one. `key` is its readable name. A kind with a `char` is built into the game (that character is what the game uses for it inside); every other kind has a `behavior` (\"solid\": a block you stand on and are stopped by; \"decor\": a picture behind the player) and the sprite to draw, so a new kind is only an entry here. Ids 0-99: the game's own kinds; 100-999: solid blocks; 1000 and up: decor and anything else. No limit.",
+  "kinds": [
+    {
+      "id": 0,
+      "key": "air",
+      "char": ".",
+      "name": "Eraser (empty)",
+      "group": "Terrain"
+    },
+    {
+      "id": 1,
+      "key": "ground",
+      "char": "#",
+      "name": "Ground",
+      "group": "Terrain",
+      "sprite": {
+        "tile": "ground_single"
+      }
+    },
+    {
+      "id": 2,
+      "key": "ledge",
+      "char": "=",
+      "name": "One-way ledge",
+      "group": "Terrain",
+      "sprite": {
+        "tile": "ledge_single"
+      }
+    },
+    {
+      "id": 3,
+      "key": "ladder",
+      "char": "H",
+      "name": "Ladder",
+      "group": "Terrain",
+      "sprite": {
+        "tile": "ladder_middle"
+      }
+    },
+    {
+      "id": 4,
+      "key": "crate_metal",
+      "char": "X",
+      "name": "Metal crate",
+      "group": "Terrain",
+      "sprite": {
+        "tile": "block_metal_x"
+      }
+    },
+    {
+      "id": 5,
+      "key": "crate_orange",
+      "char": "O",
+      "name": "Orange crate",
+      "group": "Terrain",
+      "sprite": {
+        "tile": "block_metal_orange"
+      }
+    },
+    {
+      "id": 6,
+      "key": "spikes_floor",
+      "char": "^",
+      "name": "Floor spikes (hurt)",
+      "group": "Hazards",
+      "sprite": {
+        "tile": "spikes_up"
+      }
+    },
+    {
+      "id": 7,
+      "key": "spikes_ceiling",
+      "char": "v",
+      "name": "Ceiling spikes (hurt)",
+      "group": "Hazards",
+      "sprite": {
+        "tile": "spikes_down"
+      }
+    },
+    {
+      "id": 8,
+      "key": "pit_toxic",
+      "char": "A",
+      "name": "Toxic waste pit (deadly)",
+      "group": "Hazards",
+      "sprite": {
+        "pit": [
+          "toxic_waste",
+          "liquid"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "key": "pit_lava",
+      "char": "F",
+      "name": "Lava pit (deadly)",
+      "group": "Hazards",
+      "sprite": {
+        "pit": [
+          "lava",
+          "liquid"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "key": "pit_nuclear",
+      "char": "N",
+      "name": "Nuclear waste pit (deadly)",
+      "group": "Hazards",
+      "sprite": {
+        "pit": [
+          "nuclear_waste",
+          "liquid"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "key": "pit_piranha",
+      "char": "W",
+      "name": "Piranha tank pit (deadly)",
+      "group": "Hazards",
+      "sprite": {
+        "pit": [
+          "piranha_tank",
+          "liquid"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "key": "gpu_rack",
+      "char": "G",
+      "name": "GPU rack",
+      "group": "Decor machines",
+      "footprint": [
+        2,
+        3
+      ],
+      "sprite": {
+        "machine": "machine_gpu_rack"
+      }
+    },
+    {
+      "id": 13,
+      "key": "supercomputer",
+      "char": "S",
+      "name": "Supercomputer",
+      "group": "Decor machines",
+      "footprint": [
+        3,
+        3
+      ],
+      "sprite": {
+        "machine": "machine_supercomputer"
+      }
+    },
+    {
+      "id": 14,
+      "key": "monitoring_station",
+      "char": "M",
+      "name": "Monitoring station",
+      "group": "Decor machines",
+      "footprint": [
+        4,
+        3
+      ],
+      "sprite": {
+        "machine": "machine_monitoring_station"
+      }
+    },
+    {
+      "id": 15,
+      "key": "server_tower",
+      "char": "R",
+      "name": "Server tower",
+      "group": "Decor machines",
+      "footprint": [
+        1,
+        3
+      ],
+      "sprite": {
+        "machine": "machine_server_tower"
+      }
+    },
+    {
+      "id": 16,
+      "key": "lamp",
+      "char": "l",
+      "name": "Lamp",
+      "group": "Decor",
+      "sprite": {
+        "tile": "lamp_pole_green"
+      }
+    },
+    {
+      "id": 17,
+      "key": "siren",
+      "char": "i",
+      "name": "Siren",
+      "group": "Decor",
+      "sprite": {
+        "tile": "siren_orange"
+      }
+    },
+    {
+      "id": 18,
+      "key": "canister",
+      "char": "c",
+      "name": "Canister",
+      "group": "Decor",
+      "sprite": {
+        "tile": "canister_blue_vertical"
+      }
+    },
+    {
+      "id": 19,
+      "key": "panel_controls",
+      "char": "k",
+      "name": "Controls panel",
+      "group": "Decor",
+      "sprite": {
+        "tile": "panel_controls_start"
+      }
+    },
+    {
+      "id": 20,
+      "key": "panel_dark",
+      "char": "w",
+      "name": "Dark panel",
+      "group": "Decor",
+      "sprite": {
+        "tile": "panel_dark_start"
+      }
+    },
+    {
+      "id": 21,
+      "key": "rail",
+      "char": "r",
+      "name": "Ceiling rail",
+      "group": "Decor",
+      "sprite": {
+        "tile": "rail_thin_start"
+      }
+    },
+    {
+      "id": 22,
+      "key": "wall_monitor",
+      "char": "m",
+      "name": "Wall monitor",
+      "group": "Decor",
+      "sprite": {
+        "tile": "monitor_text"
+      }
+    },
+    {
+      "id": 23,
+      "key": "tv_monitor",
+      "char": "t",
+      "name": "TV monitor",
+      "group": "Decor",
+      "sprite": {
+        "tile": "monitor_tv_text"
+      }
+    },
+    {
+      "id": 24,
+      "key": "gear",
+      "char": "g",
+      "name": "Gear",
+      "group": "Decor",
+      "sprite": {
+        "tile": "gear_full"
+      }
+    },
+    {
+      "id": 25,
+      "key": "slime",
+      "char": "~",
+      "name": "Slime",
+      "group": "Decor",
+      "sprite": {
+        "tile": "slime_floor_start"
+      }
+    },
+    {
+      "id": 26,
+      "key": "player_spawn",
+      "type": "player_spawn",
+      "char": "P",
+      "name": "Player spawn",
+      "group": "Gameplay",
+      "unique": true,
+      "sprite": {
+        "character": [
+          "player",
+          "idle"
+        ]
+      },
+      "props": []
+    },
+    {
+      "id": 27,
+      "key": "exit",
+      "type": "exit",
+      "char": "E",
+      "name": "Exit door",
+      "group": "Gameplay",
+      "unique": true,
+      "sprite": {
+        "tile": "door_exit"
+      },
+      "props": []
+    },
+    {
+      "id": 28,
+      "key": "checkpoint",
+      "type": "checkpoint",
+      "char": "K",
+      "name": "Checkpoint",
+      "group": "Gameplay",
+      "sprite": {
+        "tile": "siren_green"
+      },
+      "props": []
+    },
+    {
+      "id": 29,
+      "key": "lock_terminal",
+      "type": "lock_terminal",
+      "char": "L",
+      "name": "Lock terminal",
+      "group": "Gameplay",
+      "footprint": [
+        2,
+        3
+      ],
+      "sprite": {
+        "machine": "machine_lock_terminal"
+      },
+      "props": [
+        {
+          "key": "laser",
+          "label": "Laser gate it opens",
+          "type": "choice",
+          "default": "auto",
+          "options": [
+            "auto",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9"
+          ]
+        },
+        {
+          "key": "minigame",
+          "label": "Puzzle (random, a minigame id, or a kind)",
+          "type": "string",
+          "default": "random"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "key": "laser_gate_1",
+      "type": "laser_gate",
+      "char": "1",
+      "name": "Laser gate",
+      "group": "Gameplay",
+      "props": [],
+      "auto_id": true
+    },
+    {
+      "id": 31,
+      "key": "laser_gate_2",
+      "type": "laser_gate",
+      "char": "2",
+      "name": "Laser gate 2",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 32,
+      "key": "laser_gate_3",
+      "type": "laser_gate",
+      "char": "3",
+      "name": "Laser gate 3",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 33,
+      "key": "laser_gate_4",
+      "type": "laser_gate",
+      "char": "4",
+      "name": "Laser gate 4",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 34,
+      "key": "laser_gate_5",
+      "type": "laser_gate",
+      "char": "5",
+      "name": "Laser gate 5",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 35,
+      "key": "laser_gate_6",
+      "type": "laser_gate",
+      "char": "6",
+      "name": "Laser gate 6",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 36,
+      "key": "laser_gate_7",
+      "type": "laser_gate",
+      "char": "7",
+      "name": "Laser gate 7",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 37,
+      "key": "laser_gate_8",
+      "type": "laser_gate",
+      "char": "8",
+      "name": "Laser gate 8",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 38,
+      "key": "laser_gate_9",
+      "type": "laser_gate",
+      "char": "9",
+      "name": "Laser gate 9",
+      "group": "Gameplay",
+      "props": [],
+      "hidden": true
+    },
+    {
+      "id": 39,
+      "key": "ai_bro",
+      "type": "ai_bro",
+      "char": "B",
+      "name": "AI Bro",
+      "group": "Enemies",
+      "sprite": {
+        "character": [
+          "zombie",
+          "idle"
+        ]
+      },
+      "props": [
+        {
+          "key": "health_fraction",
+          "label": "Health (fraction of the player's)",
+          "type": "float",
+          "default": 0.2,
+          "min": 0.02,
+          "max": 3.0,
+          "step": 0.02
+        },
+        {
+          "key": "contact_damage_fraction",
+          "label": "Hit damage (fraction of the player's health)",
+          "type": "float",
+          "default": 0.1,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.01
+        },
+        {
+          "key": "patrol_speed",
+          "label": "Patrol speed (px/s)",
+          "type": "float",
+          "default": 90.0,
+          "min": 0.0,
+          "max": 400.0,
+          "step": 5.0
+        },
+        {
+          "key": "chase_speed",
+          "label": "Chase speed (px/s)",
+          "type": "float",
+          "default": 170.0,
+          "min": 0.0,
+          "max": 500.0,
+          "step": 5.0
+        },
+        {
+          "key": "jump_velocity",
+          "label": "Jump velocity (negative = up)",
+          "type": "float",
+          "default": -720.0,
+          "min": -1200.0,
+          "max": 0.0,
+          "step": 10.0
+        },
+        {
+          "key": "patrol_radius",
+          "label": "Patrol radius (px)",
+          "type": "float",
+          "default": 160.0,
+          "min": 0.0,
+          "max": 600.0,
+          "step": 10.0
+        },
+        {
+          "key": "sight_range",
+          "label": "Sight range (px)",
+          "type": "float",
+          "default": 280.0,
+          "min": 0.0,
+          "max": 1200.0,
+          "step": 10.0
+        },
+        {
+          "key": "sight_height",
+          "label": "Sight height (px)",
+          "type": "float",
+          "default": 150.0,
+          "min": 0.0,
+          "max": 600.0,
+          "step": 10.0
+        },
+        {
+          "key": "lose_range",
+          "label": "Gives up at (px)",
+          "type": "float",
+          "default": 420.0,
+          "min": 0.0,
+          "max": 1600.0,
+          "step": 10.0
+        },
+        {
+          "key": "hit_range",
+          "label": "Hit range (px)",
+          "type": "float",
+          "default": 75.0,
+          "min": 10.0,
+          "max": 300.0,
+          "step": 5.0
+        },
+        {
+          "key": "hit_cooldown",
+          "label": "Seconds between hits",
+          "type": "float",
+          "default": 0.9,
+          "min": 0.1,
+          "max": 5.0,
+          "step": 0.1
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "key": "solid_ground_diagonal_bottom_left",
+      "name": "Ground diagonal bottom left (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_diagonal_bottom_left"
+      }
+    },
+    {
+      "id": 101,
+      "key": "solid_ground_diagonal_bottom_right",
+      "name": "Ground diagonal bottom right (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_diagonal_bottom_right"
+      }
+    },
+    {
+      "id": 102,
+      "key": "solid_ground_end",
+      "name": "Ground end (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_end"
+      }
+    },
+    {
+      "id": 103,
+      "key": "solid_ground_fill",
+      "name": "Ground fill (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_fill"
+      }
+    },
+    {
+      "id": 104,
+      "key": "solid_ground_fill_edge_top_left",
+      "name": "Ground fill edge top left (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_fill_edge_top_left"
+      }
+    },
+    {
+      "id": 105,
+      "key": "solid_ground_fill_edge_top_right",
+      "name": "Ground fill edge top right (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_fill_edge_top_right"
+      }
+    },
+    {
+      "id": 106,
+      "key": "solid_ground_fill_rounded",
+      "name": "Ground fill rounded (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_fill_rounded"
+      }
+    },
+    {
+      "id": 107,
+      "key": "solid_ground_middle",
+      "name": "Ground middle (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_middle"
+      }
+    },
+    {
+      "id": 108,
+      "key": "solid_ground_round_bottom_left",
+      "name": "Ground round bottom left (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_round_bottom_left"
+      }
+    },
+    {
+      "id": 109,
+      "key": "solid_ground_round_bottom_right",
+      "name": "Ground round bottom right (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_round_bottom_right"
+      }
+    },
+    {
+      "id": 110,
+      "key": "solid_ground_single",
+      "name": "Ground single (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_single"
+      }
+    },
+    {
+      "id": 111,
+      "key": "solid_ground_slope_high_left",
+      "name": "Ground slope high left (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_slope_high_left"
+      }
+    },
+    {
+      "id": 112,
+      "key": "solid_ground_slope_high_right",
+      "name": "Ground slope high right (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_slope_high_right"
+      }
+    },
+    {
+      "id": 113,
+      "key": "solid_ground_start",
+      "name": "Ground start (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ground_start"
+      }
+    },
+    {
+      "id": 114,
+      "key": "solid_ledge_end",
+      "name": "Ledge end (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ledge_end"
+      }
+    },
+    {
+      "id": 115,
+      "key": "solid_ledge_middle",
+      "name": "Ledge middle (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ledge_middle"
+      }
+    },
+    {
+      "id": 116,
+      "key": "solid_ledge_single",
+      "name": "Ledge single (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ledge_single"
+      }
+    },
+    {
+      "id": 117,
+      "key": "solid_ledge_start",
+      "name": "Ledge start (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "ledge_start"
+      }
+    },
+    {
+      "id": 118,
+      "key": "solid_slime_ceiling_bulge",
+      "name": "Slime ceiling bulge (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_ceiling_bulge"
+      }
+    },
+    {
+      "id": 119,
+      "key": "solid_slime_ceiling_drips",
+      "name": "Slime ceiling drips (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_ceiling_drips"
+      }
+    },
+    {
+      "id": 120,
+      "key": "solid_slime_ceiling_end",
+      "name": "Slime ceiling end (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_ceiling_end"
+      }
+    },
+    {
+      "id": 121,
+      "key": "solid_slime_ceiling_middle",
+      "name": "Slime ceiling middle (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_ceiling_middle"
+      }
+    },
+    {
+      "id": 122,
+      "key": "solid_slime_ceiling_start",
+      "name": "Slime ceiling start (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_ceiling_start"
+      }
+    },
+    {
+      "id": 123,
+      "key": "solid_slime_floor_bump",
+      "name": "Slime floor bump (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_floor_bump"
+      }
+    },
+    {
+      "id": 124,
+      "key": "solid_slime_floor_end",
+      "name": "Slime floor end (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_floor_end"
+      }
+    },
+    {
+      "id": 125,
+      "key": "solid_slime_floor_middle",
+      "name": "Slime floor middle (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_floor_middle"
+      }
+    },
+    {
+      "id": 126,
+      "key": "solid_slime_floor_single",
+      "name": "Slime floor single (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_floor_single"
+      }
+    },
+    {
+      "id": 127,
+      "key": "solid_slime_floor_start",
+      "name": "Slime floor start (solid block)",
+      "group": "Extra terrain",
+      "behavior": "solid",
+      "sprite": {
+        "tile": "slime_floor_start"
+      }
+    },
+    {
+      "id": 1000,
+      "key": "decor_canister_blue_horizontal",
+      "name": "Canister blue horizontal",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_blue_horizontal"
+      }
+    },
+    {
+      "id": 1001,
+      "key": "decor_canister_green_horizontal",
+      "name": "Canister green horizontal",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_green_horizontal"
+      }
+    },
+    {
+      "id": 1002,
+      "key": "decor_canister_green_vertical",
+      "name": "Canister green vertical",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_green_vertical"
+      }
+    },
+    {
+      "id": 1003,
+      "key": "decor_canister_orange_horizontal",
+      "name": "Canister orange horizontal",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_orange_horizontal"
+      }
+    },
+    {
+      "id": 1004,
+      "key": "decor_canister_orange_vertical",
+      "name": "Canister orange vertical",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_orange_vertical"
+      }
+    },
+    {
+      "id": 1005,
+      "key": "decor_canister_yellow_horizontal",
+      "name": "Canister yellow horizontal",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_yellow_horizontal"
+      }
+    },
+    {
+      "id": 1006,
+      "key": "decor_canister_yellow_vertical",
+      "name": "Canister yellow vertical",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "canister_yellow_vertical"
+      }
+    },
+    {
+      "id": 1007,
+      "key": "decor_gear_half_large",
+      "name": "Gear half large",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "gear_half_large"
+      }
+    },
+    {
+      "id": 1008,
+      "key": "decor_gear_half_small",
+      "name": "Gear half small",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "gear_half_small"
+      }
+    },
+    {
+      "id": 1009,
+      "key": "decor_monitor_blank",
+      "name": "Monitor blank",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "monitor_blank"
+      }
+    },
+    {
+      "id": 1010,
+      "key": "decor_monitor_tv_blank",
+      "name": "Monitor tv blank",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "monitor_tv_blank"
+      }
+    },
+    {
+      "id": 1011,
+      "key": "decor_panel_controls_end",
+      "name": "Panel controls end",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "panel_controls_end"
+      }
+    },
+    {
+      "id": 1012,
+      "key": "decor_panel_controls_middle",
+      "name": "Panel controls middle",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "panel_controls_middle"
+      }
+    },
+    {
+      "id": 1013,
+      "key": "decor_panel_dark_end",
+      "name": "Panel dark end",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "panel_dark_end"
+      }
+    },
+    {
+      "id": 1014,
+      "key": "decor_panel_dark_middle",
+      "name": "Panel dark middle",
+      "group": "Extra decor: equipment",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "panel_dark_middle"
+      }
+    },
+    {
+      "id": 1015,
+      "key": "decor_lamp_pole_blue",
+      "name": "Lamp pole blue",
+      "group": "Extra decor: lights",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "lamp_pole_blue"
+      }
+    },
+    {
+      "id": 1016,
+      "key": "decor_lamp_pole_orange",
+      "name": "Lamp pole orange",
+      "group": "Extra decor: lights",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "lamp_pole_orange"
+      }
+    },
+    {
+      "id": 1017,
+      "key": "decor_lamp_pole_yellow",
+      "name": "Lamp pole yellow",
+      "group": "Extra decor: lights",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "lamp_pole_yellow"
+      }
+    },
+    {
+      "id": 1018,
+      "key": "decor_siren_blue",
+      "name": "Siren blue",
+      "group": "Extra decor: lights",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "siren_blue"
+      }
+    },
+    {
+      "id": 1019,
+      "key": "decor_siren_yellow",
+      "name": "Siren yellow",
+      "group": "Extra decor: lights",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "siren_yellow"
+      }
+    },
+    {
+      "id": 1020,
+      "key": "decor_arrow_green_down",
+      "name": "Arrow green down",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "arrow_green_down"
+      }
+    },
+    {
+      "id": 1021,
+      "key": "decor_arrow_green_left",
+      "name": "Arrow green left",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "arrow_green_left"
+      }
+    },
+    {
+      "id": 1022,
+      "key": "decor_arrow_green_right",
+      "name": "Arrow green right",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "arrow_green_right"
+      }
+    },
+    {
+      "id": 1023,
+      "key": "decor_arrow_green_up",
+      "name": "Arrow green up",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "arrow_green_up"
+      }
+    },
+    {
+      "id": 1024,
+      "key": "decor_sign_diamond_green",
+      "name": "Sign diamond green",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "sign_diamond_green"
+      }
+    },
+    {
+      "id": 1025,
+      "key": "decor_sign_warning_green",
+      "name": "Sign warning green",
+      "group": "Extra decor: signage",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "sign_warning_green"
+      }
+    },
+    {
+      "id": 1026,
+      "key": "decor_block_metal_diagonal",
+      "name": "Block metal diagonal",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_diagonal"
+      }
+    },
+    {
+      "id": 1027,
+      "key": "decor_block_metal_diagonal_inset",
+      "name": "Block metal diagonal inset",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_diagonal_inset"
+      }
+    },
+    {
+      "id": 1028,
+      "key": "decor_block_metal_orange_inset",
+      "name": "Block metal orange inset",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_orange_inset"
+      }
+    },
+    {
+      "id": 1029,
+      "key": "decor_block_metal_plain",
+      "name": "Block metal plain",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_plain"
+      }
+    },
+    {
+      "id": 1030,
+      "key": "decor_block_metal_plain_inset",
+      "name": "Block metal plain inset",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_plain_inset"
+      }
+    },
+    {
+      "id": 1031,
+      "key": "decor_block_metal_x_inset",
+      "name": "Block metal x inset",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "block_metal_x_inset"
+      }
+    },
+    {
+      "id": 1032,
+      "key": "decor_glass_blue",
+      "name": "Glass blue",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_blue"
+      }
+    },
+    {
+      "id": 1033,
+      "key": "decor_glass_blue_framed",
+      "name": "Glass blue framed",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_blue_framed"
+      }
+    },
+    {
+      "id": 1034,
+      "key": "decor_glass_green",
+      "name": "Glass green",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_green"
+      }
+    },
+    {
+      "id": 1035,
+      "key": "decor_glass_green_framed",
+      "name": "Glass green framed",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_green_framed"
+      }
+    },
+    {
+      "id": 1036,
+      "key": "decor_glass_red",
+      "name": "Glass red",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_red"
+      }
+    },
+    {
+      "id": 1037,
+      "key": "decor_glass_red_framed",
+      "name": "Glass red framed",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_red_framed"
+      }
+    },
+    {
+      "id": 1038,
+      "key": "decor_glass_yellow",
+      "name": "Glass yellow",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_yellow"
+      }
+    },
+    {
+      "id": 1039,
+      "key": "decor_glass_yellow_framed",
+      "name": "Glass yellow framed",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "glass_yellow_framed"
+      }
+    },
+    {
+      "id": 1040,
+      "key": "decor_ladder_middle_narrow",
+      "name": "Ladder middle narrow",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "ladder_middle_narrow"
+      }
+    },
+    {
+      "id": 1041,
+      "key": "decor_ladder_top",
+      "name": "Ladder top",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "ladder_top"
+      }
+    },
+    {
+      "id": 1042,
+      "key": "decor_ladder_top_narrow",
+      "name": "Ladder top narrow",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "ladder_top_narrow"
+      }
+    },
+    {
+      "id": 1043,
+      "key": "decor_pipe_vertical",
+      "name": "Pipe vertical",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "pipe_vertical"
+      }
+    },
+    {
+      "id": 1044,
+      "key": "decor_pipe_vertical_bottom",
+      "name": "Pipe vertical bottom",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "pipe_vertical_bottom"
+      }
+    },
+    {
+      "id": 1045,
+      "key": "decor_pipe_vertical_liquid",
+      "name": "Pipe vertical liquid",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "pipe_vertical_liquid"
+      }
+    },
+    {
+      "id": 1046,
+      "key": "decor_pipe_vertical_top",
+      "name": "Pipe vertical top",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "pipe_vertical_top"
+      }
+    },
+    {
+      "id": 1047,
+      "key": "decor_rail_thick_end",
+      "name": "Rail thick end",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "rail_thick_end"
+      }
+    },
+    {
+      "id": 1048,
+      "key": "decor_rail_thick_middle",
+      "name": "Rail thick middle",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "rail_thick_middle"
+      }
+    },
+    {
+      "id": 1049,
+      "key": "decor_rail_thick_start",
+      "name": "Rail thick start",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "rail_thick_start"
+      }
+    },
+    {
+      "id": 1050,
+      "key": "decor_rail_thin_end",
+      "name": "Rail thin end",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "rail_thin_end"
+      }
+    },
+    {
+      "id": 1051,
+      "key": "decor_rail_thin_middle",
+      "name": "Rail thin middle",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "rail_thin_middle"
+      }
+    },
+    {
+      "id": 1052,
+      "key": "decor_scaffold_short_end",
+      "name": "Scaffold short end",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_short_end"
+      }
+    },
+    {
+      "id": 1053,
+      "key": "decor_scaffold_short_middle",
+      "name": "Scaffold short middle",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_short_middle"
+      }
+    },
+    {
+      "id": 1054,
+      "key": "decor_scaffold_short_start",
+      "name": "Scaffold short start",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_short_start"
+      }
+    },
+    {
+      "id": 1055,
+      "key": "decor_scaffold_tall_end",
+      "name": "Scaffold tall end",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_tall_end"
+      }
+    },
+    {
+      "id": 1056,
+      "key": "decor_scaffold_tall_middle",
+      "name": "Scaffold tall middle",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_tall_middle"
+      }
+    },
+    {
+      "id": 1057,
+      "key": "decor_scaffold_tall_start",
+      "name": "Scaffold tall start",
+      "group": "Extra decor: structure",
+      "behavior": "decor",
+      "sprite": {
+        "tile": "scaffold_tall_start"
+      }
+    },
+    {
+      "id": 1058,
+      "key": "decor_sign_pit_poison",
+      "name": "Warning sign: poison pit (green skull)",
+      "group": "Pit warning signs",
+      "behavior": "decor",
+      "z": -3,
+      "tint": [
+        1,
+        1,
+        1
+      ],
+      "sprite": {
+        "tile": "sign_pit_poison"
+      },
+      "glows": [
+        {
+          "at": [
+            10.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.0
+        },
+        {
+          "at": [
+            60.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.5
+        }
+      ]
+    },
+    {
+      "id": 1059,
+      "key": "decor_sign_pit_fire",
+      "name": "Warning sign: lava pit (flame)",
+      "group": "Pit warning signs",
+      "behavior": "decor",
+      "z": -3,
+      "tint": [
+        1,
+        1,
+        1
+      ],
+      "sprite": {
+        "tile": "sign_pit_fire"
+      },
+      "glows": [
+        {
+          "at": [
+            10.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.0
+        },
+        {
+          "at": [
+            60.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.5
+        }
+      ]
+    },
+    {
+      "id": 1060,
+      "key": "decor_sign_pit_nuclear",
+      "name": "Warning sign: nuclear pit (radiation)",
+      "group": "Pit warning signs",
+      "behavior": "decor",
+      "z": -3,
+      "tint": [
+        1,
+        1,
+        1
+      ],
+      "sprite": {
+        "tile": "sign_pit_nuclear"
+      },
+      "glows": [
+        {
+          "at": [
+            10.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.0
+        },
+        {
+          "at": [
+            60.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.5
+        }
+      ]
+    },
+    {
+      "id": 1061,
+      "key": "decor_sign_pit_piranha",
+      "name": "Warning sign: piranha tank (jaws)",
+      "group": "Pit warning signs",
+      "behavior": "decor",
+      "z": -3,
+      "tint": [
+        1,
+        1,
+        1
+      ],
+      "sprite": {
+        "tile": "sign_pit_piranha"
+      },
+      "glows": [
+        {
+          "at": [
+            10.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.0
+        },
+        {
+          "at": [
+            60.0,
+            2.6
+          ],
+          "color": [
+            1.0,
+            0.16,
+            0.1
+          ],
+          "size": 26.0,
+          "phase": 0.5
+        }
+      ]
+    },
+    {
+      "id": 900,
+      "key": "invisible_wall",
+      "name": "Invisible wall",
+      "group": "Boundaries",
+      "behavior": "barrier",
+      "sprite": {
+        "tile": "barrier_invisible_wall"
+      }
+    },
+    {
+      "id": 901,
+      "key": "powerup_box",
+      "name": "Power-up box",
+      "group": "Pickups",
+      "behavior": "powerup",
+      "sprite": {
+        "tile": "powerup_box"
+      }
+    }
+  ]
+}

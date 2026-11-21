@@ -1,0 +1,88 @@
+extends SceneTree
+## Calibration: the solver's jump model (tools/tests/lib/level_solver.gd) lands within a few pixels of the real Player's jump, so
+## what the solver proves about the levels (tools/tests/levels_test.gd) says something about the real game. Exits non-zero on failure.
+## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/solver_calibration_test.gd
+
+# LAND_TOLERANCE: how far in pixels the solver's landing may differ from the engine's in the calibration jump. Larger accepts a
+# rougher model of the player's physics.
+const LAND_TOLERANCE := 20.0
+
+# CAL_X / CAL_Y: where the calibration jumps start (feet position) on the test level's long ground floor. Any flat open stretch
+# of the test level will do.
+const CAL_X := 300.0
+const CAL_Y := 840.0
+
+var ok := true
+var main: Node
+var player: Player
+var frames := 0
+var t := 0
+var cal_results: Array[float] = []
+var cal_patterns := [[9999], [16]]   # how many frames "right" is held after the jump
+var cal_index := 0
+
+
+func _check(name: String, cond: bool, detail := "") -> void:
+	print(("PASS  " if cond else "FAIL  "), name, "  ", detail)
+	if not cond:
+		ok = false
+
+
+func _initialize() -> void:
+	OS.set_environment("SABOTAGE_LEVEL", "test")
+	main = load(AssetPaths.MAIN_SCENE).instantiate()
+	root.add_child(main)
+	var model := LevelSolver.new(LevelData.test_level())
+	for pat in cal_patterns:
+		var hold: int = pat[0]
+		var res := model._simulate(CAL_X, CAL_Y, 0.0, true, [1, hold, 0])
+		cal_results.append(res[0].x if not res.is_empty() else -1.0)
+
+
+func _process(_d: float) -> bool:
+	frames += 1
+	if frames == 3:
+		for n in main.get_children():
+			if n is Player:
+				player = n
+		_start_cal()
+		return false
+	if player == null or frames < 8:
+		return false
+	t += 1
+	# Press right all the way, release after the pattern's hold, jump on the first frame.
+	var hold: int = cal_patterns[cal_index][0]
+	if t == 1:
+		Input.action_press(InputActions.JUMP)
+	elif t == 2:
+		Input.action_release(InputActions.JUMP)
+	if t <= hold:
+		Input.action_press(InputActions.MOVE_RIGHT)
+	else:
+		Input.action_release(InputActions.MOVE_RIGHT)
+	if t > 3 and player.is_on_floor():
+		var got := player.global_position.x
+		var want := cal_results[cal_index]
+		_check("solver jump %d lands where the engine does" % cal_index,
+			absf(got - want) <= LAND_TOLERANCE, "engine x=%.0f solver x=%.0f" % [got, want])
+		cal_index += 1
+		Input.action_release(InputActions.MOVE_RIGHT)
+		if cal_index >= cal_patterns.size():
+			main.queue_free()
+			print("ALL PASS" if ok else "SOME FAILED")
+			quit(0 if ok else 1)
+			return true
+		_start_cal()
+	if t > 300:
+		_check("calibration jump finished", false)
+		main.queue_free()
+		quit(1)
+		return true
+	return false
+
+
+func _start_cal() -> void:
+	t = 0
+	player.global_position = Vector2(CAL_X, CAL_Y)
+	player.velocity = Vector2.ZERO
+	Input.action_release(InputActions.MOVE_RIGHT)
