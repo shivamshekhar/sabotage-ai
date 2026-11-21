@@ -31,6 +31,7 @@ godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/carr
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/door_test.gd           # the exit door: opens as you near it, takes you in (on foot and in the mech), finishes the level once
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/settings_test.gd       # volumes and audio buses, key bindings (change, clash, reserved, file), the block meter, the settings window
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/pause_menu_test.gd    # the in-game menu button and pause menu: resume, settings, quit to title
+godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/sfx_test.gd             # every sound in Sfx loads, the throw sounds, the looping booster, a SfxLoop fades out
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/title_test.gd          # the title screen: menu, prompt, backdrop, starting with Enter or a tap, the white flash
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/editor_sync_test.gd    # the level editor offers everything the game has
 godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/solver_calibration_test.gd # the solver's jump matches the engine's

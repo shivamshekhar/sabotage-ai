@@ -26,7 +26,7 @@ These keep the licence of their authors; none of it is made by this project:
 | `assets/levels/common/tiles/kenney_industrial/` | tile art by [Kenney](https://kenney.nl) | CC0 |
 | `assets/ui/captcha/` | Google Noto Emoji | Apache License 2.0 |
 | `assets/audio/music/` | music from Pixabay | Pixabay Content Licence |
-| `assets/audio/sfx/` (the files in [assets/audio/CREDITS.md](assets/audio/CREDITS.md)) | sound effects by [Kenney](https://kenney.nl) and others | CC0 |
+| `assets/audio/sfx/` except `ui/` (listed in [assets/audio/CREDITS.md](assets/audio/CREDITS.md)) | sound effects by [Kenney](https://kenney.nl) and others | CC0 |
 
 The thrown paintings are pixel-art reductions (made by the project) of public-domain works; the originals are in the public domain, the reductions are
 covered above. The title logo is drawn with Black Ops One and Orbitron (SIL Open Font License 1.1), which are downloaded by the generator and not shipped.

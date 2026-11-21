@@ -1,7 +1,7 @@
-"""Makes the game's short sound effects (assets/audio/sfx/*.wav, mono, 16 bit), synthesised from sine waves and noise, so they are the game's own (see Sfx):
+"""Makes the game's short sound effects (assets/audio/sfx/ui/*.wav, mono, 16 bit), synthesised from sine waves and noise, so they are the game's own (see Sfx):
 
-    ui_click.wav      a button is pressed: a short, soft tick
-    ui_confirm.wav    the game starts: two rising notes
+    click.wav         a button is pressed: a short, soft tick
+    confirm.wav       the game starts: two rising notes
 
 Usage (from the repo root; needs numpy):
     python tools/art/generate_sfx.py
@@ -13,7 +13,7 @@ import numpy as np
 
 import art_lib
 
-OUT = os.path.join(art_lib.ROOT, "assets", "audio", "sfx")
+OUT = os.path.join(art_lib.ROOT, "assets", "audio", "sfx", "ui")
 RATE = 44100                    # samples per second
 
 
@@ -64,8 +64,8 @@ def save(name, samples):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    save("ui_click", click())
-    save("ui_confirm", confirm())
+    save("click", click())
+    save("confirm", confirm())
     print("done")
 
 

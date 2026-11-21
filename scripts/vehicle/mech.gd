@@ -110,6 +110,7 @@ var _step_top := 0.0               # the height (y) of the step the body is clim
 var _step_hold := 0.0              # seconds left to hold the body at that height while it moves over the step
 var _laser_hit_timer := 0.0
 var _beam: LaserBeam            # the beam on screen while the laser is on
+var _booster_sound: SfxLoop     # the roar of the booster while it burns
 var _dead := false
 
 
@@ -128,6 +129,7 @@ func setup(the_player: Player) -> void:
 	_energy_bar.back_color = Player.ENERGY_BAR_BACK
 	_energy_bar.position = Vector2(0, -(Player.BODY_SIZE.y * SIZE_IN_PLAYERS) - 22.0)
 	add_child(_energy_bar)
+	_booster_sound = SfxLoop.attach(self, Sfx.MECH_BOOSTER)
 
 
 ## The body's solid parts, added to the player (a collision shape must be a child of the body it belongs to).
@@ -186,6 +188,7 @@ func before_move(dir: float, delta: float) -> void:
 ## The booster and the laser use the energy while their buttons are held; it refills while neither is on.
 func _work_booster(delta: float) -> void:
 	thrusting = _jump_held() and energy.drain(delta / BURN_TIME)
+	_booster_sound.set_on(thrusting)
 	if thrusting:
 		# lift towards RISE_SPEED (a faster launch than that settles down to it)
 		player.velocity.y = move_toward(player.velocity.y, -RISE_SPEED, THRUST * delta)
@@ -298,6 +301,7 @@ func fire_missile() -> void:
 	var from := visual.missile_muzzle()
 	var dir := visual.missile_direction()
 	MechMissile.launch(player.get_parent(), from, dir, self)
+	Sfx.play(get_tree(), Sfx.MISSILE_LAUNCH)
 	Explosion.spawn(player.get_parent(), from, MUZZLE_PUFF)    # a puff of fire and smoke at the muzzle
 	visual.recoil(&"missile")
 
@@ -375,6 +379,7 @@ func blast(at: Vector2) -> void:
 ## The mech blows up (the last hit) or the player leaves it: the player is back on foot. `explode` makes the blast, and the parts fly.
 func release(explode: bool) -> void:
 	_stop_laser()
+	_booster_sound.set_on(false)
 	if explode:
 		visual.shatter()
 		Explosion.spawn(player.get_parent(), player.global_position + EXPLOSION_OFFSET)

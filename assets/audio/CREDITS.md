@@ -4,5 +4,7 @@
   music downloaded by the project owner (Pixabay content licence: free to use, no attribution required).
 - `music/ihatetuesdays_boss_fight.mp3`: "Video Game Boss Fight" by ihatetuesdays (file `ihatetuesdays-video-game-boss-fiight-259885.mp3`), music for
   the boss stage, downloaded from Pixabay by the project owner (Pixabay content licence: free to use, no attribution required).
-- `sfx/door_open.ogg`, `sfx/door_close.ogg`: `doorOpen_000.ogg` and `doorClose_000.ogg` from "Sci-Fi Sounds" by Kenney (www.kenney.nl), CC0
-  (https://opengameart.org/content/sci-fi-sounds). The other sound effects (`ui_click.wav`, `ui_confirm.wav`) are made by `tools/art/generate_sfx.py`.
+The sound effects (`sfx/<feature>/`) are CC0 recordings picked by the project owner, except `sfx/ui/` (made by `tools/art/generate_sfx.py`):
+
+- `sfx/door/open.ogg`, `sfx/door/close.ogg`, `sfx/weapons/missile_launch.ogg` (`explosionCrunch_004`): "Sci-Fi Sounds" by Kenney (www.kenney.nl), CC0 (https://opengameart.org/content/sci-fi-sounds).
+- `sfx/mech/booster.wav`: "Rocket Engine" (`rocket_engine.001.wav`) by theMinesAreShakin on OpenGameArt, CC0 (https://opengameart.org/content/rocket-engine).
