@@ -14,12 +14,11 @@ const BOSS_SALTMAN := ASSETS + "bosses/saltman/"        # the boss's layers
 const BOSS_SPRAY := BOSS_SALTMAN + "spray/"             # what the boss shoots: RAM stick, CPU, chipset
 const UI_ICONS := ASSETS + "ui/icons/"                  # icons of the puzzle window
 const CAPTCHA := ASSETS + "ui/captcha/"                 # the captcha minigame's pictures, riddles and credits
-const CHARACTERS := ASSETS + "characters/kenney_platformer/"
+const CHARACTERS := ASSETS + "characters/"                # one folder per art style (see SpriteLibrary.CHARACTER_STYLES), then one per character
 const PROJECTILES := ASSETS + "projectiles/pixel_art/"
 const MUSIC := ASSETS + "audio/music/"
 const SFX := ASSETS + "audio/sfx/"                      # the short sound effects (see Sfx)
 const TITLE_LOGO := ASSETS + "ui/title/logo.png"        # the title screen's logo
-const EMP_GUN := ASSETS + "weapons/emp_gun/emp_gun.png"    # the player's EMP gun (see EmpGun, PlayerSprite)
 
 # Level art, shared by all levels (assets/levels/common/) and one background per level (assets/levels/<id>/background/).
 const LEVEL_ART := ASSETS + "levels/"

@@ -4,10 +4,6 @@ extends SceneTree
 ## Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/assets_test.gd
 
-# POSES_USED: the character poses PlayerSprite asks for (idle, walk1, ...). Every character must have
-# all of them, so changing PlayerSprite.CHARACTER to any character works.
-const POSES_USED := ["idle", "walk1", "walk2", "jump", "fall", "climb1", "climb2", "hurt", "action1", "action2"]
-
 # BACKGROUND_LAYERS: the image names LevelBackground loads from its folder.
 const BACKGROUND_LAYERS := ["far", "mid_base", "mid_leds_a", "mid_leds_b", "cables"]
 
@@ -139,16 +135,24 @@ func _check_pits() -> void:
 
 
 func _check_characters() -> void:
-	var dir := SpriteLibrary.CHARACTER_DIR
-	var characters := DirAccess.get_directories_at(dir)
-	_check("characters: at least one character folder", characters.size() > 0, str(characters))
+	var characters: Array = SpriteLibrary.CHARACTER_STYLES.keys()
 	var missing := []
 	for character in characters:
-		for pose in POSES_USED:
+		for pose in CharacterPoses.all_poses(character):
 			if SpriteLibrary.character_pose(character, pose) == null:
 				missing.append("%s/%s" % [character, pose])
-	_check("characters: every character has every pose the player uses", missing.is_empty(), str(missing))
+	_check("characters: every character has every picture CharacterPoses shows", missing.is_empty(), str(missing))
 	_check("characters: the configured hero exists", characters.has(PlayerSprite.CHARACTER), PlayerSprite.CHARACTER)
+	var folders := []
+	for style in DirAccess.get_directories_at(AssetPaths.CHARACTERS):
+		for character in DirAccess.get_directories_at(AssetPaths.CHARACTERS + style):
+			folders.append(character)
+	_check("characters: every character folder is a character the game knows (nothing left over)", folders.size() == characters.size() and folders.all(func(f): return characters.has(f)), str(folders))
+	var states_ok := true
+	for character in characters:
+		for state in [&"idle", &"walk", &"jump", &"fall", &"climb", &"climb_idle", &"hurt", &"throw_windup", &"throw_release", &"shoot"]:
+			states_ok = states_ok and CharacterPoses.table(character).has(state)
+	_check("characters: every character has a picture for every state", states_ok)
 
 
 func _check_backgrounds() -> void:

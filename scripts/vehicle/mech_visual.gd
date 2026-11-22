@@ -212,7 +212,7 @@ func _ready() -> void:
 	add_child(_body)
 	# the pilot: the player, sitting in the cockpit behind the glass
 	_pilot = Sprite2D.new()
-	_pilot.texture = SpriteLibrary.character_pose(PlayerSprite.CHARACTER, "idle")
+	_pilot.texture = SpriteLibrary.character_pose(PlayerSprite.CHARACTER, CharacterPoses.standing(PlayerSprite.CHARACTER))
 	var ps := PILOT_HEIGHT / float(_pilot.texture.get_height())
 	_pilot.scale = Vector2(ps, ps)
 	_pilot.position = PILOT_AT
@@ -470,7 +470,7 @@ func _physics_process(delta: float) -> void:
 	_body.scale.x = float(mech.facing())
 	_body.position = BODY_MIDDLE + Vector2(0.0, _body_offset())
 	_body.modulate = Color(1.0, 1.0 - _hurt * 2.5, 1.0 - _hurt * 2.5) if _hurt > 0.0 else Color.WHITE
-	_pilot.texture = SpriteLibrary.character_pose(PlayerSprite.CHARACTER, "hurt" if _hurt > 0.0 else "idle")
+	_pilot.texture = SpriteLibrary.character_pose(PlayerSprite.CHARACTER, CharacterPoses.HURT_POSE if _hurt > 0.0 else CharacterPoses.standing(PlayerSprite.CHARACTER))
 	_animate_turrets(delta)
 	_step_legs(delta, grounded)
 	_animate_flame()

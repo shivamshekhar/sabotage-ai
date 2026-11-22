@@ -890,9 +890,9 @@ func _draw_actors(rows: Array, c0: int, c1: int, r0: int, r1: int) -> void:
 		for c in range(c0, c1 + 1):
 			var ch := row[c]
 			if ch == "P":
-				_draw_feet_sprite(_char_tex("player", "idle"), c, r, Color.WHITE)
+				_draw_feet_sprite(_char_tex("player", CharacterPoses.standing("player")), c, r, Color.WHITE)
 			elif ch == "B":
-				_draw_feet_sprite(_char_tex("zombie", "idle"), c, r, Color.WHITE)
+				_draw_feet_sprite(_char_tex("zombie", CharacterPoses.standing("zombie")), c, r, Color.WHITE)
 				if typed.is_empty():
 					typed = doc.tile_rows()
 				var span := LevelData.bro_flat_span(typed, c, r)

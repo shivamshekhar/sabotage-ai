@@ -35,9 +35,10 @@ const TILE_CATEGORIES := {
 	"arrow": "signage", "sign": "signage",
 }
 
-# CHARACTER_DIR: folder of the character poses (one style here), with one subfolder per
-# character. character_pose() builds <CHARACTER_DIR>/<character>/<character>_<pose>.png.
-const CHARACTER_DIR := AssetPaths.CHARACTERS
+# CHARACTER_STYLES: the art style (the folder inside AssetPaths.CHARACTERS) of every character. character_pose() builds
+# <CHARACTERS>/<style>/<character>/<character>_<pose>.png. "saboteur" is our own art (tools/art/generate_player.py, made from the Kenney hero),
+# "kenney_platformer" is the Kenney pack as it is (the zombie, which the AI Bro uses).
+const CHARACTER_STYLES := {"player": "saboteur", "zombie": "kenney_platformer"}
 
 # MACHINE_DIR: folder of the generated machine sprites. Each machine has its own subfolder
 # holding its image plus its LED and shadow images; see machine_folder() for the naming rule.
@@ -143,9 +144,9 @@ static func tile_category(sprite_name: String) -> String:
 	return TILE_CATEGORIES[first_word]
 
 
-## Character pose, e.g. character_pose("player", "walk1").
+## Character pose, e.g. character_pose("player", "walk1") (the poses of every state: CharacterPoses).
 static func character_pose(character: String, pose: String) -> Texture2D:
-	return _load("%s%s/%s_%s.png" % [CHARACTER_DIR, character, character, pose])
+	return _load("%s%s/%s/%s_%s.png" % [AssetPaths.CHARACTERS, CHARACTER_STYLES[character], character, character, pose])
 
 
 static func _load(path: String) -> Texture2D:

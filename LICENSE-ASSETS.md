@@ -9,7 +9,9 @@ The source code of sabotage.ai is free software under the GNU General Public Lic
 Everything the project made itself, in `assets/` and the files that make it:
 
 - the pictures drawn by the generators in `tools/art/` (the mech, the bosses, the exit door, the power-up box, the machines and the data-centre tiles, the
-  effects, the interface icons, the thrown objects, the backgrounds, the title logo) and the sounds made by `tools/art/generate_sfx.py`;
+  effects, the interface icons, the thrown objects, the backgrounds, the title logo), the hero's sprites in `assets/characters/saboteur/` (drawn by
+  `tools/art/generate_player.py` on top of a CC0 character by Kenney, see below: our additions and our new poses are covered, the Kenney base stays CC0)
+  and the sounds made by `tools/art/generate_sfx.py`;
 - the name "sabotage.ai", its logo, the characters, the story and the level designs (`levels/`).
 
 You may not copy, redistribute, sell or use them in another work, with or without changes, without written permission. The generator **scripts** are code,
@@ -22,7 +24,8 @@ These keep the licence of their authors; none of it is made by this project:
 
 | Where | What | Licence |
 |-------|------|---------|
-| `assets/characters/kenney_platformer/` | character art by [Kenney](https://kenney.nl) | CC0 |
+| `assets/characters/kenney_platformer/` | character art by [Kenney](https://kenney.nl) (the zombie) | CC0 |
+| `tools/art/sources/kenney_platformer_player/` | the original hero by [Kenney](https://kenney.nl), the base of `assets/characters/saboteur/` | CC0 |
 | `assets/levels/common/tiles/kenney_industrial/` | tile art by [Kenney](https://kenney.nl) | CC0 |
 | `assets/ui/captcha/` | Google Noto Emoji | Apache License 2.0 |
 | `assets/audio/music/` | music from Pixabay | Pixabay Content Licence |

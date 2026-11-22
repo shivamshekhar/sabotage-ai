@@ -111,7 +111,7 @@ asked for by name. To add a puzzle, subclass `Minigame` (or `QuizGame` for multi
 hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`) and in `tools/level_editor/catalog.json`;
 `tools/tests/minigame_test.gd` then checks it. Always put a computer where the player can reach it before its laser.
 
-The hero is the Kenney `player` character and the AI Bro the `zombie`; only the ten poses the game shows are kept in `assets/characters/` (`tools/audit_rules.json` lists them). To use another character, add its poses there and point `PlayerSprite.CHARACTER` at it.
+The hero is the `player` character (our own art in `assets/characters/saboteur/`, made by `tools/art/generate_player.py` from the Kenney hero) and the AI Bro the Kenney `zombie`; only the poses the game shows are kept (`tools/audit_rules.json` lists them, `CharacterPoses` says which show which state). To use another character, add its poses, give it an art style in `SpriteLibrary.CHARACTER_STYLES` and point `PlayerSprite.CHARACTER` at it.
 
 ## Laser gates and power-up boxes
 

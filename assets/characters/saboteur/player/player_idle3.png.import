@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dx824r8pcapek"
-path="res://.godot/imported/player_climb1.png-d9f8b7342e2debf459e5540e76da0081.ctex"
+uid="uid://dfe2erkdqfqho"
+path="res://.godot/imported/player_idle3.png-f1c15b4d224e8e32a388522f0cdb944d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/kenney_platformer/player/player_climb1.png"
-dest_files=["res://.godot/imported/player_climb1.png-d9f8b7342e2debf459e5540e76da0081.ctex"]
+source_file="res://assets/characters/saboteur/player/player_idle3.png"
+dest_files=["res://.godot/imported/player_idle3.png-f1c15b4d224e8e32a388522f0cdb944d.ctex"]
 
 [params]
 

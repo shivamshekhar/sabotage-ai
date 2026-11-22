@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ba767injitn3y"
-path="res://.godot/imported/player_idle.png-8d2e3ea87073c508e629726bee8c2dc4.ctex"
+uid="uid://ba667enpudlta"
+path="res://.godot/imported/player_action2.png-a836acf9f891002fc98055f7e74b417f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/kenney_platformer/player/player_idle.png"
-dest_files=["res://.godot/imported/player_idle.png-8d2e3ea87073c508e629726bee8c2dc4.ctex"]
+source_file="res://assets/characters/saboteur/player/player_action2.png"
+dest_files=["res://.godot/imported/player_action2.png-a836acf9f891002fc98055f7e74b417f.ctex"]
 
 [params]
 

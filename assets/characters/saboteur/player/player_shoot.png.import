@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0fb5k81qb7qi"
-path="res://.godot/imported/emp_gun.png-f0584f14791a2591dd9a47468f9f3350.ctex"
+uid="uid://c0mj2hrurq2t"
+path="res://.godot/imported/player_shoot.png-ca35bcccb48b7b3263e27aac30364713.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/weapons/emp_gun/emp_gun.png"
-dest_files=["res://.godot/imported/emp_gun.png-f0584f14791a2591dd9a47468f9f3350.ctex"]
+source_file="res://assets/characters/saboteur/player/player_shoot.png"
+dest_files=["res://.godot/imported/player_shoot.png-ca35bcccb48b7b3263e27aac30364713.ctex"]
 
 [params]
 

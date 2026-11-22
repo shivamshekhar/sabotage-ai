@@ -10,7 +10,7 @@
 | Heavy attack: the EMP gun on foot, the missile in the mech | **S** | **D** button |
 | Start the game (title screen) | **Enter** | tap anywhere |
 
-The PC keys can be changed in the settings (title screen, SETTINGS: click a key, press the new one); on a phone the settings list what the buttons A to D do. Heavy attack on foot fires the **EMP gun**: the player takes the gun out (the picture `assets/weapons/emp_gun/emp_gun.png`, made by `tools/art/generate_emp_gun.py`, shown in the hand by `PlayerSprite`) and [`EmpGun`](../scripts/player/emp_gun.gd) keeps firing a stream of electricity
+The PC keys can be changed in the settings (title screen, SETTINGS: click a key, press the new one); on a phone the settings list what the buttons A to D do. Heavy attack on foot fires the **EMP gun**: the player takes the gun out (the `shoot` picture of the hero, with the gun drawn in the fist, made by `tools/art/generate_player.py` and shown by `PlayerSprite`, which also makes the figure vibrate a little with the recoil) and [`EmpGun`](../scripts/player/emp_gun.gd) keeps firing a stream of electricity
 ([`ElectricArc`](../scripts/common/effects/electric_arc.gd): a smooth, flowing bolt of lightning with forks, a soft glow that lights the level round it and sparks where it hits) straight ahead **for as long as the button is held**, like the mech's laser: **560 px** reach, stopped by a wall,
 **40 damage** to the first enemy it rests on every 0.6 s, and it uses the energy bar up very fast (**1.5 s** of firing for a full bar; no throwing meanwhile, and the bar refills only after you let go). In the mech the heavy attack is the missile instead.
 

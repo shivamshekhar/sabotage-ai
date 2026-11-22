@@ -298,7 +298,7 @@
       "sprite": {
         "character": [
           "player",
-          "idle"
+          "idle1"
         ]
       },
       "props": []

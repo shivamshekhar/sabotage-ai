@@ -845,7 +845,7 @@ func _pose_state(vdir: float) -> StringName:
 	if _hurt_timer > 0.0:
 		return &"hurt"
 	if _emp_pose_timer > 0.0 and not climbing:
-		return &"throw_release"
+		return &"shoot"
 	if _throw_pose_timer > 0.0 and not climbing:
 		return &"throw_windup" if _windup >= 0.0 else &"throw_release"
 	if climbing:

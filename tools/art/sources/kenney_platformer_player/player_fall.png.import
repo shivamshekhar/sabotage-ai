@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cgau4pmhbdd0r"
-path="res://.godot/imported/player_walk2.png-2be6ab1e4a121f85c5788e996c0535b6.ctex"
+uid="uid://chdi67vgpuj56"
+path="res://.godot/imported/player_fall.png-e52d8eca7b2ceadb199b21c012659a5f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/kenney_platformer/player/player_walk2.png"
-dest_files=["res://.godot/imported/player_walk2.png-2be6ab1e4a121f85c5788e996c0535b6.ctex"]
+source_file="res://tools/art/sources/kenney_platformer_player/player_fall.png"
+dest_files=["res://.godot/imported/player_fall.png-e52d8eca7b2ceadb199b21c012659a5f.ctex"]
 
 [params]
 

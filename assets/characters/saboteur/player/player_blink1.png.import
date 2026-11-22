@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dhai03vfv8v01"
-path="res://.godot/imported/player_walk1.png-11302fb0a05e831227014a6611f9eb6d.ctex"
+uid="uid://dj4x4eislf5ix"
+path="res://.godot/imported/player_blink1.png-ab63db7d27f6bf2793f9120a44949a03.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/kenney_platformer/player/player_walk1.png"
-dest_files=["res://.godot/imported/player_walk1.png-11302fb0a05e831227014a6611f9eb6d.ctex"]
+source_file="res://assets/characters/saboteur/player/player_blink1.png"
+dest_files=["res://.godot/imported/player_blink1.png-ab63db7d27f6bf2793f9120a44949a03.ctex"]
 
 [params]
 
