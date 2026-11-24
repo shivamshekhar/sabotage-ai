@@ -1,7 +1,8 @@
 class_name EmpGun
 extends RefCounted
 ## The player's EMP gun (the heavy attack on foot; in the mech the heavy attack is the missile): while the button is held it keeps firing a stream of electricity straight ahead
-## from the gun's muzzle, and it uses the energy bar up very fast. The stream reaches RANGE pixels, stops at a wall, and hurts the first enemy it rests on for DAMAGE hit points
+## from the gun's muzzle (a bolt of lightning, ElectricArc; in the martial-arts outfit, which has no gun, a wide wave of energy from the cupped hands, EnergyBeam), and it uses the
+## energy bar up very fast. The stream reaches RANGE pixels, stops at a wall, and hurts the first enemy it rests on for DAMAGE hit points
 ## every HIT_INTERVAL seconds. The player owns one and calls work() every physics step.
 ##
 ##   var _emp := EmpGun.new()
@@ -20,13 +21,17 @@ const DAMAGE := 40
 # RANGE: how far the stream reaches, in pixels. A wall in the way shortens it. Higher: it hits enemies further off.
 const RANGE := 560.0
 
-# HIT_MARGIN: how far round an enemy's hit box the stream still hits, in pixels (the stream is a thin line; this makes it forgiving).
+# HIT_MARGIN: how far round an enemy's hit box the stream still hits, in pixels (the stream is a thin line; this makes it forgiving). The energy wave is as wide as it looks
+# (EnergyBeam.HALF_WIDTH).
 const HIT_MARGIN := 8.0
+
+# WAVE_BACK: how far (pixels) behind the muzzle the energy wave starts: the middle of the ball of energy in the cupped hands (the muzzle is the front of the ball).
+const WAVE_BACK := 10.0
 
 # POSE_TIME: seconds the gun stays in the player's hand and the arm stays out after the last moment of firing.
 const POSE_TIME := 0.25
 
-var _beam: ElectricArc          # the stream on screen while the gun fires
+var _beam: HeldEffect            # the stream on screen while the gun fires (lightning, or the energy wave)
 var _hit_wait := 0.0            # seconds until the next hit may land
 
 
@@ -37,6 +42,7 @@ func work(shooter: Player, wanted: bool, delta: float) -> bool:
 		_stop()
 		return false
 	var visuals := shooter.visuals()
+	var wave := Wardrobe.outfit().style(&"torso") == WardrobeCatalog.WAVE_TORSO
 	visuals.set_gun(true, shooter.facing())
 	var muzzle := visuals.gun_muzzle()
 	var end := muzzle + Vector2(float(shooter.facing()) * RANGE, 0.0)
@@ -49,7 +55,7 @@ func work(shooter: Player, wanted: bool, delta: float) -> bool:
 		var box: Rect2 = enemy.hurtbox()
 		if box.size == Vector2.ZERO:
 			continue      # (a boss that cannot be hurt right now)
-		var entry := Geom.segment_entry(muzzle, end, box.grow(HIT_MARGIN))
+		var entry := Geom.segment_entry(muzzle, end, box.grow(EnergyBeam.HALF_WIDTH if wave else HIT_MARGIN))
 		if entry >= 0.0 and entry < nearest:
 			nearest = entry
 			target = enemy
@@ -58,9 +64,10 @@ func work(shooter: Player, wanted: bool, delta: float) -> bool:
 		if _hit_wait <= 0.0:
 			_hit_wait = HIT_INTERVAL
 			target.take_hit(DAMAGE, muzzle.x)
+	var start := muzzle - Vector2(float(shooter.facing()) * WAVE_BACK, 0.0) if wave else muzzle      # (the wave grows out of the middle of the ball of energy)
 	if _beam == null or not is_instance_valid(_beam):
-		_beam = ElectricArc.hold(shooter.get_parent(), muzzle, end, target != null)
-	_beam.aim(muzzle, end, target != null)
+		_beam = EnergyBeam.hold(shooter.get_parent(), start, end, target != null) if wave else ElectricArc.hold(shooter.get_parent(), start, end, target != null)
+	_beam.aim(start, end, target != null)
 	return true
 
 

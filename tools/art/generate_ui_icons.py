@@ -7,7 +7,8 @@
 Usage (from the repo root; needs Pillow, numpy, opencv):
     python tools/art/generate_ui_icons.py       writes assets/ui/icons/icon_*.png (128x128) and tmp/art_previews/ui_icons.png (all of them, for looking at only)
 
-and the five icons of the title screen's menu: icon_levels (a server stack), icon_upgrades (an arrow up), icon_vehicles (the mech), icon_gadgets (a chip), icon_settings (a cog).
+and the six icons of the title screen's menu: icon_levels (a server stack), icon_upgrades (an arrow up), icon_vehicles (the mech), icon_gadgets (a chip), icon_wardrobe (a shirt),
+icon_settings (a cog).
 """
 import os
 
@@ -247,6 +248,22 @@ def icon_gadgets():
     return img
 
 
+def icon_wardrobe():
+    """A shirt (a collar and short sleeves) with a hazard-yellow strap across it and a glowing cyan button: the wardrobe."""
+    img = new_layer()
+    body = add(poly([(46, 14), (82, 14), (116, 38), (104, 60), (92, 50), (92, 112), (36, 112), (36, 50), (24, 60), (12, 38)]), new_mask())
+    shirt = smooth(sub(body, disc(64, 10, 15)), 1.4)
+    steel(img, shirt, 14, 112)
+    paste(img, outline(disc(64, 10, 15), 1.4, EDGE))
+    strap = ImageChops.multiply(poly([(38, 46), (54, 46), (100, 104), (86, 112)]), shirt)
+    paste(img, lit(strap, gradient_y(46, 112, [(0, HAZARD_TOP), (1, HAZARD_BOT)]), radius=1.4, bump=1.8, spec=0.5, ambient=0.85))
+    paste(img, outline(strap, 1.1, EDGE))
+    button = disc(54, 86, 6)
+    glow(img, button, CYAN, radii=(2, 5), strengths=(0.7, 0.4))
+    paste(img, solid(button, (120, 220, 255)))
+    return img
+
+
 def icon_settings():
     """A cog."""
     import math
@@ -275,7 +292,7 @@ def icon_settings():
 def main():
     os.makedirs(OUT, exist_ok=True)
     icons = {"icon_firewall": icon_firewall(), "icon_lock": _padlock(HAZARD_TOP, HAZARD_BOT, False), "icon_unlocked": _padlock(GREEN_TOP, GREEN_BOT, True),
-             "icon_levels": icon_levels(), "icon_upgrades": icon_upgrades(), "icon_vehicles": icon_vehicles(), "icon_gadgets": icon_gadgets(), "icon_settings": icon_settings()}
+             "icon_levels": icon_levels(), "icon_upgrades": icon_upgrades(), "icon_vehicles": icon_vehicles(), "icon_gadgets": icon_gadgets(), "icon_wardrobe": icon_wardrobe(), "icon_settings": icon_settings()}
     sheet = Image.new("RGBA", (N * len(icons) + 10 * (len(icons) + 1), N + 20), (24, 30, 46, 255))
     for i, (name, layer) in enumerate(icons.items()):
         small = layer.resize((N, N), Image.LANCZOS)

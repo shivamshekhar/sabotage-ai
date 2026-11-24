@@ -10,7 +10,7 @@ scripts/
   common/                   Reusable pieces any feature can use
     constants/              Groups, InputActions, PhysicsLayers, AssetPaths: the names, layers and paths (no other script writes them as strings)
     audio/                  AudioBuses (the Music and SFX buses), Sfx (one-shot sound effects)
-    effects/                Explosion, Debris, ElectricArc, ParticlePreset, GlowPulse, WhiteFlash, GroundShadow: anything that makes a visual effect
+    effects/                Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset, GlowPulse, WhiteFlash, GroundShadow: anything that makes a visual effect
     ui/                     HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines, SegmentedMeter, ScreenFlash: generic interface pieces
     util/                   Sprites, Blend, Geom, Energy: small helpers (sprite settings, blend materials, segment/rectangle geometry, an energy tank)
   core/
@@ -22,7 +22,11 @@ scripts/
   player/
     player.gd               Movement, ladders, health/damage, respawn, vehicle hooks
     damage_over_time.gd     One poison or burn (ticks of damage); the player has one of each
-    player_sprite.gd        Picks the character pose; flinch and blink animations
+    player_sprite.gd        Picks the character pose; flinch, blink and idle animations
+    character_poses.gd      Which pictures show which state of a character (the hero's parts and their order)
+    wardrobe_catalog.gd     What the hero can wear: the slots, their styles and colours, how a picture is recoloured
+    outfit.gd, wardrobe.gd  What the hero wears (an Outfit), and the one being worn, kept in user://outfit.cfg
+    outfit_composer.gd      Puts the parts of a pose together for an outfit (recoloured, kept)
     player_shadow.gd        Halo behind the body + a GroundShadow on the floor (it stays on the floor when the player jumps, smaller and fainter the higher they are)
     projectile.gd           The everyday objects the player throws
   enemy/                    AI Bro, pit creatures
@@ -47,6 +51,7 @@ scripts/
     hack_popup.gd, hack_style.gd, minigames/   The unlock puzzle window (its look: HackStyle) and the puzzles
     pause_button.gd, pause_menu.gd   The menu button in the game's top-right corner and the pause menu it opens (resume, settings, quit to title)
     settings_panel.gd       The settings window: volumes, and the keys (PC) or the touch buttons (phone)
+    wardrobe_panel.gd       The wardrobe window: the hero as dressed, a row per slot (style arrows, colour swatches)
     title/                  The title screen: TitleScreen (the scene), TitleBackdrop (the distant out-of-focus view, defocus.gdshader), TitleMenu, TitleBro
 levels/                     Level data only: one folder per level (level.sablevel.json) and common/ (the tile registry)
 assets/                     ALL pictures and sounds, as <category>/<feature>/: levels/ (tiles, machines, pit hazards, backgrounds), vehicles/mech/, powerups/box/,

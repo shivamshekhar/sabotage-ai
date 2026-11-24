@@ -1,4 +1,4 @@
-# Gameplay and controls
+﻿# Gameplay and controls
 
 | Action | Keyboard (PC, the defaults) | Phone |
 |---|---|---|
@@ -11,7 +11,7 @@
 | Start the game (title screen) | **Enter** | tap anywhere |
 
 The PC keys can be changed in the settings (title screen, SETTINGS: click a key, press the new one); on a phone the settings list what the buttons A to D do. Heavy attack on foot fires the **EMP gun**: the player takes the gun out (the `shoot` picture of the hero, with the gun drawn in the fist, made by `tools/art/generate_player.py` and shown by `PlayerSprite`, which also makes the figure vibrate a little with the recoil) and [`EmpGun`](../scripts/player/emp_gun.gd) keeps firing a stream of electricity
-([`ElectricArc`](../scripts/common/effects/electric_arc.gd): a smooth, flowing bolt of lightning with forks, a soft glow that lights the level round it and sparks where it hits) straight ahead **for as long as the button is held**, like the mech's laser: **560 px** reach, stopped by a wall,
+([`ElectricArc`](../scripts/common/effects/electric_arc.gd): a bolt of lightning made of straight, jagged pieces that strikes a new path every 0.05 s, with hard forks, a soft glow that lights the level round it and sparks where it hits; in the martial-arts outfit, which has no gun (its `wave` pose has both hands held round a ball of energy), the stream is a wide wave of energy, [`EnergyBeam`](../scripts/common/effects/energy_beam.gd), that hits what it covers) straight ahead **for as long as the button is held**, like the mech's laser: **560 px** reach, stopped by a wall,
 **40 damage** to the first enemy it rests on every 0.6 s, and it uses the energy bar up very fast (**1.5 s** of firing for a full bar; no throwing meanwhile, and the bar refills only after you let go). In the mech the heavy attack is the missile instead.
 
 ## The title screen and the settings
@@ -22,6 +22,18 @@ with their creatures and pacing bros: `TitleBackdrop`, put out of focus by `defo
 walk to the door by himself and go in; the screen flashes white and level 1 clears away from the white. The menu (`TitleMenu`) has LEVELS, UPGRADES, VEHICLES and GADGETS as places for later (a tap says
 "coming soon") and a working SETTINGS (`SettingsPanel`): the music and sound-effect volumes (block meters: tap or drag), and the controls (see above). Settings are kept in `user://settings.cfg`
 (`Settings`, `KeyBindings`); music and effects play on the `Music` and `SFX` audio buses (`AudioBuses`, `Sfx`). Running with a level chosen (`SABOTAGE_LEVEL`, `-- --level-file=`) or `SABOTAGE_NO_TITLE=1` skips the title.
+
+## The wardrobe
+
+The title menu's WARDROBE (`WardrobePanel`) changes how the hero looks. The hero is made of **parts**, each a picture of its own per pose (`assets/characters/saboteur/player/<part>/<style>/player_<pose>_<part>.png`,
+see `tools/art/generate_player.py`): boots, pants, arms (bare, the hands too), torso, gloves, head (face and neck), hair and goggles (and the gun in the shooting pose). Six of them can be changed (the slots of
+[`WardrobeCatalog`](../scripts/player/wardrobe_catalog.gd)): **hair** (quiff, crop, spiky, bald), **goggles** (on the chest, glasses, visor, none), **torso** (t-shirt, long sleeves, martial-arts top, sleeveless), **gloves**
+(fingerless, wristbands, bare hands), **pants** (cargo, martial-arts, plain) and **boots** (sneakers, martial-arts, plain), each in one of 6 to 9 colours. A style is a folder of the part (`hair/crop/`): **the wardrobe lists the folders, so a new style is a new folder** with the part's pictures for the poses (named like the other styles' pictures) and nothing else to register; the folder's name is what the screen says (`long_sleeves` is LONG SLEEVES). A colour is not a style; a colour is made
+when the picture is drawn: the tones that are the part's colour (the hair, the shirt, ...) are shifted to the new colour with their shading kept, and the outlines, lights and trim (the yellow stripe, the cyan
+wristbands, the laces) stay. The martial-arts pieces (top, pants, boots, wristbands) are orange with a blue sash, boots and wristbands, and have no colours to choose; the hair can still be dyed. The window shows the hero dressed as chosen, standing, walking, jumping or firing the EMP gun, and has RANDOM and ORIGINAL buttons. What is worn (an [`Outfit`](../scripts/player/outfit.gd))
+is kept in `user://outfit.cfg` by `Wardrobe`; `OutfitComposer` puts the parts of a pose together the first time the pose is drawn (a few milliseconds a pose) and keeps the result, and
+`SpriteLibrary.character_pose()` gives that picture to everything that draws the hero (the game, the title screen, the mech's pilot). To add a style, put its folder (all its poses, drawn in the generator or by hand) in the part's folder and run
+`tools/tests/wardrobe_test.gd`, which checks that every style the folders hold has its standing picture; to add a colour, add it to the slot's palette in the catalog.
 
 ## The pause menu
 

@@ -8,7 +8,8 @@ A file counts as used when
   * its name (without the extension) appears as a whole word in the code (*.gd, comments left out), scenes (*.tscn), project/export settings or
     data (*.json, *.cfg, *.godot) that are not docs; or
   * a part of its name up to an underscore appears in the code as the start of a built name (`"face_" + expression`, `"explosion_%d"`), or
-  * for the Kenney character poses (`<skin>_<pose>.png`): the skin is named in the code and the pose is one the game shows (tools/audit_rules.json).
+  * for the Kenney character poses (`<skin>_<pose>.png`): the skin is named in the code and the pose is one the game shows (tools/audit_rules.json);
+  * for the hero's parts (`<skin>_<pose>_<part>[_<style>].png`): the same, and the part and the style are ones the wardrobe knows (tools/audit_rules.json).
 Pictures made only for people to look at (sprite sheets, previews) are reported separately: art tools must write those into tmp/, not the repo.
 Pictures and sounds outside assets/ (in levels/, scripts/ or scenes/) are reported too.
 
@@ -68,6 +69,9 @@ def is_used(f, stem, words, text):
     m = re.match(RULES["character_pose_pattern"], f)
     if m:
         return '"%s"' % m.group("skin") in text and m.group("pose") in RULES["character_poses"]
+    m = re.match(RULES["character_part_pattern"], f)
+    if m:
+        return ('"%s"' % m.group("skin") in text and m.group("pose") in RULES["character_poses"] and m.group("part") in RULES["character_parts"])
     return built_prefix_used(stem, text)
 
 

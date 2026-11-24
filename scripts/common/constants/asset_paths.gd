@@ -15,6 +15,7 @@ const BOSS_SPRAY := BOSS_SALTMAN + "spray/"             # what the boss shoots: 
 const UI_ICONS := ASSETS + "ui/icons/"                  # icons of the puzzle window
 const CAPTCHA := ASSETS + "ui/captcha/"                 # the captcha minigame's pictures, riddles and credits
 const CHARACTERS := ASSETS + "characters/"                # one folder per art style (see SpriteLibrary.CHARACTER_STYLES), then one per character
+const HERO_LAYERS := CHARACTERS + "saboteur/player/"        # the hero's parts, a folder per part (head/, torso/, ...) holding one picture per pose (see OutfitComposer)
 const PROJECTILES := ASSETS + "projectiles/pixel_art/"
 const MUSIC := ASSETS + "audio/music/"
 const SFX := ASSETS + "audio/sfx/"                      # the short sound effects (see Sfx)

@@ -144,8 +144,10 @@ static func tile_category(sprite_name: String) -> String:
 	return TILE_CATEGORIES[first_word]
 
 
-## Character pose, e.g. character_pose("player", "walk1") (the poses of every state: CharacterPoses).
+## Character pose, e.g. character_pose("player", "walk1") (the poses of every state: CharacterPoses). The hero's is made of its parts for the outfit it wears (see Wardrobe).
 static func character_pose(character: String, pose: String) -> Texture2D:
+	if character == CharacterPoses.CHARACTER_HERO:
+		return OutfitComposer.texture(Wardrobe.outfit(), pose)
 	return _load("%s%s/%s/%s_%s.png" % [AssetPaths.CHARACTERS, CHARACTER_STYLES[character], character, character, pose])
 
 

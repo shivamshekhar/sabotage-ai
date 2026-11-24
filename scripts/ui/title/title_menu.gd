@@ -14,6 +14,7 @@ const ENTRIES := [
 	{"id": &"upgrades", "label": "UPGRADES", "icon": "icon_upgrades", "ready": false},
 	{"id": &"vehicles", "label": "VEHICLES", "icon": "icon_vehicles", "ready": false},
 	{"id": &"gadgets", "label": "GADGETS", "icon": "icon_gadgets", "ready": false},
+	{"id": &"wardrobe", "label": "WARDROBE", "icon": "icon_wardrobe", "ready": true},
 	{"id": &"settings", "label": "SETTINGS", "icon": "icon_settings", "ready": true},
 ]
 

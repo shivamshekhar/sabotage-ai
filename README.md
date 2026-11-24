@@ -1,4 +1,4 @@
-# sabotage.ai
+﻿# sabotage.ai
 
 A 2D side-scrolling platformer built with Godot 4 (GDScript), for Android, the web and desktop. You sabotage data centers to stop
 capitalists replacing humans with AI.
@@ -28,6 +28,7 @@ Keyboard (change it in SETTINGS): arrows move, Space jumps, E uses computers, Q 
 | [Android](docs/android.md) | debug APK and Google Play release builds |
 | [Web](docs/web.md) | the browser build and GitHub Pages |
 | [Art](docs/art.md) | regenerating the art, asset layout |
+| [Player sprites](docs/player-sprites.md) | the hero's part folders, style folders and file names |
 | [Tests](docs/testing.md) | `tools/run_tests.sh` and the headless tests |
 | [Project layout](docs/project-layout.md) | what lives where |
 | [Troubleshooting](docs/troubleshooting.md) | common problems and fixes |

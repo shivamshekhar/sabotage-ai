@@ -41,6 +41,14 @@ func _arcs(main: Node) -> int:
 	return count
 
 
+func _waves(main: Node) -> int:
+	var count := 0
+	for n in main.get_children():
+		if n is EnergyBeam:
+			count += 1
+	return count
+
+
 func _main() -> void:
 	InputSetup.register()
 	await _wait(2)
@@ -98,6 +106,22 @@ func _main() -> void:
 	Input.action_release(InputActions.ATTACK_HEAVY)
 	_check("an enemy beyond its reach is not hurt", far.health == far_health)
 	await _wait(int((ElectricArc.FADE_TIME + ElectricArc.TAIL) * 60.0) + 20)
+
+	# in the martial-arts outfit (no gun) the same attack is a wave of energy
+	Wardrobe.change(&"torso", &"martial_gi")
+	player.energy.fill()
+	var wave_target := _target(main, player.global_position.x + 400.0)
+	await _wait(10)
+	var wave_health := wave_target.health
+	Input.action_press(InputActions.ATTACK_HEAVY)
+	await _wait(6)
+	_check("in the martial-arts outfit the attack is an energy wave, one of them and no lightning", _waves(main) == 1 and _arcs(main) == 0, "%d waves, %d bolts" % [_waves(main), _arcs(main)])
+	_check("the wave hits as hard as the bolt: 40 damage", wave_target.health == wave_health - EmpGun.DAMAGE, "%d -> %d" % [wave_health, wave_target.health])
+	Input.action_release(InputActions.ATTACK_HEAVY)
+	await _wait(int((EnergyBeam.FADE_TIME + EnergyBeam.TAIL) * 60.0) + 20)
+	_check("letting go ends the wave", _waves(main) == 0, str(_waves(main)))
+	Wardrobe.reset()
+	await _wait(int(EmpGun.POSE_TIME * 60.0) + 10)
 
 	# in the mech the heavy attack is the missile: no EMP fire, the player's own energy is untouched
 	player.energy.fill()

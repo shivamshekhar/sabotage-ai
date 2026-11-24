@@ -1,9 +1,9 @@
 class_name ElectricArc
-extends Node2D
+extends HeldEffect
 ## A bolt of lightning from one point to another with a few forked branches, for as long as something holds it on. It shoots out from the start in a moment, then stays at full
-## strength while its owner keeps aiming it, and fades out smoothly once it is let go. Its shape flows instead of jumping (every point of it sways on its own slow waves with a small
-## fast shiver on top, and the corners are rounded off), light ripples along it, and it lights the air round it with soft additive glows, so it sits in the scene instead of lying
-## on top of it. There is a flare where it starts, and sparks fly where it ends. The node removes itself when everything is gone. Anything can use it (the player's EMP gun, an
+## strength while its owner keeps aiming it, and fades out smoothly once it is let go. Like real lightning it is made of straight, jagged pieces (every piece is a kink in the line, with
+## smaller kinks inside it), and it does not flow: every REFRESH seconds it strikes a new path at once, forks and all, so it crackles and flickers. It lights the air round it with
+## soft additive glows. There is a flare where it starts, and sparks fly where it ends. The node removes itself when everything is gone. Anything can use it (the player's EMP gun, an
 ## electric trap).
 ##
 ##   var arc := ElectricArc.hold(get_parent(), muzzle_position, end_position, false)
@@ -20,38 +20,31 @@ const TAIL := 0.6
 # HELD_TIMEOUT: seconds without aim() after which a held bolt lets go by itself (so a bolt whose owner stopped working it, in a pause or a cutscene, does not stay forever).
 const HELD_TIMEOUT := 0.15
 
-# The shape. STEP: pixels between the control points of the bolt. JITTER: the most (pixels) a point sways to either side of the straight line; it tapers to nothing at both ends,
-# so the bolt meets its two points. SWAY_SPEEDS: the speeds (radians per second) of the two slow waves every point sways on (smaller: a calmer bolt). SHIVER: the size (pixels)
-# and SHIVER_SPEED the speed of the small fast shake on top. SMOOTHING: how many times the corners are rounded off (each makes the line smoother and its points twice as many).
-const STEP := 30.0
-const JITTER := 17.0
-const SWAY_SPEEDS := Vector2(4.5, 9.5)
-const SHIVER := 2.6
-const SHIVER_SPEED := 41.0
-const SMOOTHING := 2
+# The shape. REFRESH: seconds a path lasts before the bolt strikes a new one (shorter: a more nervous bolt; about 0.05 is a crackle). DEPTH: how many times every piece is split in two
+# with a kink in the middle (the bolt has 2 to the power DEPTH pieces: more: finer kinks). JAG: how far (a fraction of a piece's length) a kink strays to either side (larger: wilder).
+const REFRESH := 0.05
+const DEPTH := 5
+const JAG := 0.28
 
-# The forks: how many branches come off the bolt, how many STEP-long pieces each has, how far (degrees) it leaves the bolt's direction, how late each starts (seconds: they
-# sprout one after the other) and how much sooner than the bolt it fades (1 = together).
+# The forks: how many branches come off the bolt, how long each is (pixels) and how many times its pieces are split (DEPTH for a fork), how far (degrees) it leaves the bolt's direction,
+# how late each starts (seconds: they sprout one after the other) and how much sooner than the bolt it fades (1 = together). Every new path has new forks.
 const BRANCHES := 3
-const BRANCH_PIECES := 4
+const BRANCH_LENGTH := 130.0
+const BRANCH_DEPTH := 3
 const BRANCH_ANGLE := 50.0
 const BRANCH_DELAY := 0.05
 const BRANCH_FADE := 0.75
 
 # The glow round the bolt, widest first: [width in pixels, strength]; the layers add up to a soft falloff, a hot core (CORE_WIDTH) and a white line inside it (WHITE_WIDTH).
 # A fork is thinner by BRANCH_THIN.
-const GLOW_LAYERS := [[40.0, 0.04], [28.0, 0.06], [19.0, 0.09], [12.0, 0.14], [7.0, 0.22]]
-const CORE_WIDTH := 3.4
-const WHITE_WIDTH := 1.5
+const GLOW_LAYERS := [[30.0, 0.04], [20.0, 0.07], [12.0, 0.12], [7.0, 0.22]]
+const CORE_WIDTH := 3.2
+const WHITE_WIDTH := 1.4
 const BRANCH_THIN := 0.55
 
-# The ripple of light that runs along the bolt (its strength swings between 1 - RIPPLE and 1): RIPPLE_WAVES waves along it, running at RIPPLE_SPEED radians per second. The whole
-# bolt also flickers a little, by FLICKER, at FLICKER_SPEED.
-const RIPPLE := 0.3
-const RIPPLE_WAVES := 3.0
-const RIPPLE_SPEED := 24.0
-const FLICKER := 0.12
-const FLICKER_SPEED := 53.0
+# The flicker of the whole bolt: its strength swings between 1 - FLICKER and 1, at FLICKER_SPEED radians per second.
+const FLICKER := 0.2
+const FLICKER_SPEED := 61.0
 
 # The light the bolt gives the air round it: AMBIENT_COUNT soft round glows (a 64 px picture, PitHazard.glow_texture()) along it, each AMBIENT_SCALE times its size, at AMBIENT_ALPHA of
 # full strength.
@@ -80,10 +73,12 @@ var _hit := false
 var _held := true
 var _age := 0.0                                # seconds since it started; it stops at HOLD while the bolt is held
 var _fade_age := 0.0                           # seconds since it was let go
-var _clock := 0.0                              # always runs: the sway, the shiver, the ripple and the flicker
+var _clock := 0.0                              # always runs: the flicker
 var _since_aim := 0.0
-var _phases := PackedFloat32Array()            # three numbers per control point of the bolt: its two sway phases and its shiver phase
-var _forks: Array[Dictionary] = []             # each: {at: the control point it starts from, heading: radians, phases: PackedFloat32Array}
+var _since_strike := 0.0                       # seconds since the current path was struck
+var _path := PackedVector2Array()              # the bolt's path: x = how far along it (0 to 1), y = how far (pixels) to the side of the straight line
+var _forks: Array[Dictionary] = []             # each: {at: how far along the bolt it starts (0 to 1), side: 1 or -1, angle: radians off the bolt's direction, path: PackedVector2Array
+                                               # of (pixels along the fork, pixels to the side)}
 var _flare: Sprite2D
 var _end_glow: Sprite2D
 var _ambient: Array[Sprite2D] = []
@@ -126,15 +121,7 @@ func release() -> void:
 
 
 func _build() -> void:
-	var count := _control_count(to_local(_from), to_local(_to))
-	for i in count * 3:
-		_phases.append(randf() * TAU)
-	var heading := (to_local(_to) - to_local(_from)).angle()
-	for i in BRANCHES:
-		var phases := PackedFloat32Array()
-		for k in BRANCH_PIECES * 3 + 3:
-			phases.append(randf() * TAU)
-		_forks.append({"at": randi_range(maxi(1, count / 5), maxi(2, count * 4 / 5)), "heading": heading + deg_to_rad(BRANCH_ANGLE) * (1.0 if i % 2 == 0 else -1.0) * randf_range(0.6, 1.0), "phases": phases})
+	_strike()
 	_flare = Sprites.glow(AssetPaths.effect("laser_orb"), FLARE_SCALE.x)
 	add_child(_flare)
 	_end_glow = Sprites.glow(PitHazard.glow_texture(), END_GLOW.x)
@@ -165,12 +152,40 @@ func _build() -> void:
 	aim(_from, _to, _hit)
 
 
-func _control_count(a: Vector2, b: Vector2) -> int:
-	return maxi(2, int(a.distance_to(b) / STEP) + 1)
+## Strike a new path: a new jagged line and new forks, all at once.
+func _strike() -> void:
+	_since_strike = 0.0
+	_path = _jagged(Vector2(0.0, 0.0), Vector2(1.0, 0.0), maxf(_from.distance_to(_to), 1.0), DEPTH)
+	_forks.clear()
+	for k in BRANCHES:
+		var angle := deg_to_rad(BRANCH_ANGLE) * (1.0 if k % 2 == 0 else -1.0) * randf_range(0.6, 1.0)
+		var length := BRANCH_LENGTH * randf_range(0.7, 1.0)
+		_forks.append({"at": randf_range(0.2, 0.8), "angle": angle, "path": _jagged(Vector2.ZERO, Vector2(length, 0.0), 1.0, BRANCH_DEPTH)})
+
+
+## A jagged line from `a` to `b` made by splitting every piece in two `depth` times and moving the middle to the side by a random part (JAG) of the piece's length. `scale` is how many
+## pixels one unit along x is (1 for a line already in pixels), so the kinks are in pixels whatever the units.
+func _jagged(a: Vector2, b: Vector2, scale: float, depth: int) -> PackedVector2Array:
+	var line := PackedVector2Array([a, b])
+	for pass_number in depth:
+		var next := PackedVector2Array([line[0]])
+		for i in line.size() - 1:
+			var p := line[i]
+			var q := line[i + 1]
+			var piece := Vector2((q.x - p.x) * scale, q.y - p.y)
+			var middle := p.lerp(q, 0.5)
+			middle.y += randf_range(-1.0, 1.0) * piece.length() * JAG
+			next.append(middle)
+			next.append(q)
+		line = next
+	return line
 
 
 func _process(delta: float) -> void:
 	_clock += delta
+	_since_strike += delta
+	if _since_strike >= REFRESH:
+		_strike()
 	if _held:
 		_age = minf(_age + delta, HOLD)
 		_since_aim += delta
@@ -193,36 +208,10 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## How strong the bolt is: full while it is held (with a slight flicker), then a smooth fade to nothing over FADE_TIME once it is let go.
+## How strong the bolt is: full while it is held (with a flicker), then a smooth fade to nothing over FADE_TIME once it is let go.
 func _strength() -> float:
 	var fade := 1.0 - smoothstep(0.0, FADE_TIME, _fade_age)
 	return clampf(fade * (1.0 - FLICKER + FLICKER * sin(_clock * FLICKER_SPEED)), 0.0, 1.0)
-
-
-## The control points of a line from `a` to `b` swaying on their own waves; `phases` has three numbers per point, `amount` scales how far they sway.
-func _swaying(a: Vector2, b: Vector2, count: int, phases: PackedFloat32Array, amount: float) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	var normal := (b - a).orthogonal().normalized()
-	for i in count:
-		var u := float(i) / float(count - 1)
-		var taper := sin(u * PI)
-		var sway := 0.6 * sin(phases[i * 3] + _clock * SWAY_SPEEDS.x) + 0.4 * sin(phases[i * 3 + 1] + _clock * SWAY_SPEEDS.y)
-		var shiver := SHIVER * sin(phases[i * 3 + 2] + _clock * SHIVER_SPEED)
-		points.append(a.lerp(b, u) + normal * (JITTER * amount * sway + shiver) * taper)
-	return points
-
-
-## Round off the corners of a line (Chaikin's way: every corner is cut at a quarter and three quarters) `SMOOTHING` times; the ends stay where they are.
-func _rounded(points: PackedVector2Array) -> PackedVector2Array:
-	var line := points
-	for pass_number in SMOOTHING:
-		var next := PackedVector2Array([line[0]])
-		for i in line.size() - 1:
-			next.append(line[i].lerp(line[i + 1], 0.25))
-			next.append(line[i].lerp(line[i + 1], 0.75))
-		next.append(line[line.size() - 1])
-		line = next
-	return line
 
 
 ## The first `fraction` of a line, by its length (the bolt shooting out).
@@ -250,41 +239,42 @@ func _draw() -> void:
 		return
 	var a := to_local(_from)
 	var b := to_local(_to)
-	var count := _control_count(a, b)
-	if _phases.size() < count * 3:
-		for i in count * 3 - _phases.size():
-			_phases.append(randf() * TAU)       # (the bolt got longer than it began: its new points get waves of their own)
-	var control := _swaying(a, b, count, _phases, 1.0)
-	_draw_bolt(_prefix(_rounded(control), clampf(_age / GROW_TIME, 0.0, 1.0)), strength, 1.0)
+	var along := b - a
+	var forward := along.normalized() if along.length() > 0.001 else Vector2.RIGHT
+	var side := forward.orthogonal()
+	var line := PackedVector2Array()
+	for point in _path:
+		line.append(a + along * point.x + side * point.y)
+	var grown := clampf(_age / GROW_TIME, 0.0, 1.0)
+	_draw_bolt(_prefix(line, grown), strength, 1.0)
 	for k in _forks.size():
 		var started := _age - BRANCH_DELAY * float(k + 1)
 		if started <= 0.0:
 			continue
 		var fork: Dictionary = _forks[k]
-		var origin: Vector2 = control[mini(int(fork["at"]), control.size() - 1)]
-		var tip := origin + Vector2.from_angle(float(fork["heading"])) * STEP * BRANCH_PIECES
-		var pieces := _swaying(origin, tip, BRANCH_PIECES + 1, fork["phases"], 0.7)
+		var origin := a + along * float(fork["at"]) + side * _path_side(float(fork["at"]))
+		var heading := forward.rotated(float(fork["angle"]))
+		var piece := PackedVector2Array()
+		for point: Vector2 in fork["path"]:
+			piece.append(origin + heading * point.x + heading.orthogonal() * point.y)
 		var fork_strength := (1.0 - smoothstep(0.0, FADE_TIME * BRANCH_FADE, _fade_age)) * clampf(started / GROW_TIME, 0.0, 1.0) * strength
-		_draw_bolt(_prefix(_rounded(pieces), clampf(started / GROW_TIME, 0.0, 1.0)), fork_strength, BRANCH_THIN)
+		_draw_bolt(_prefix(piece, clampf(started / GROW_TIME, 0.0, 1.0)), fork_strength, BRANCH_THIN)
 
 
-## Draw one bolt: the soft glow layers, then the hot core and the white line, with the ripple of light running along them.
+## How far to the side of the straight line the bolt's path is at `t` (0 to 1) along it (so a fork starts on the bolt).
+func _path_side(t: float) -> float:
+	for i in _path.size() - 1:
+		if _path[i + 1].x >= t:
+			var span := maxf(_path[i + 1].x - _path[i].x, 0.00001)
+			return lerpf(_path[i].y, _path[i + 1].y, (t - _path[i].x) / span)
+	return 0.0
+
+
+## Draw one bolt: the soft glow layers, then the hot core and the white line, all with sharp corners (it is straight pieces, not a curve).
 func _draw_bolt(points: PackedVector2Array, strength: float, thin: float) -> void:
 	if points.size() < 2 or strength <= 0.0:
 		return
 	for layer in GLOW_LAYERS:
 		draw_polyline(points, Color(COLOR, float(layer[1]) * strength), float(layer[0]) * thin, true)
-	var total := 0.0
-	for i in points.size() - 1:
-		total += points[i].distance_to(points[i + 1])
-	var core_colors := PackedColorArray()
-	var white_colors := PackedColorArray()
-	var along := 0.0
-	for i in points.size():
-		if i > 0:
-			along += points[i - 1].distance_to(points[i])
-		var ripple := 1.0 - RIPPLE + RIPPLE * (0.5 + 0.5 * sin(along / maxf(total, 1.0) * RIPPLE_WAVES * TAU - _clock * RIPPLE_SPEED))
-		core_colors.append(Color(COLOR_LIGHT, 0.95 * strength * ripple))
-		white_colors.append(Color(1, 1, 1, strength * ripple))
-	draw_polyline_colors(points, core_colors, CORE_WIDTH * thin, true)
-	draw_polyline_colors(points, white_colors, WHITE_WIDTH * thin, true)
+	draw_polyline(points, Color(COLOR_LIGHT, 0.95 * strength), CORE_WIDTH * thin, true)
+	draw_polyline(points, Color(1, 1, 1, strength), WHITE_WIDTH * thin, true)

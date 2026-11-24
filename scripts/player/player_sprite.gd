@@ -72,6 +72,7 @@ var character := CHARACTER
 var _base_scale := SCALE   # the scale at rest for the current art (see base_scale())
 var _pose_name := ""   # the pose currently shown, so an unchanged pose costs nothing
 var _clock := 0.0
+var _outfit_version := -1  # the Wardrobe version the hero's picture was made for (a new outfit makes it be made again)
 var _rest_y := 0.0         # the height of the sprite at rest (so the feet are on the ground), which the walk's bounce is measured from
 var _gun_on := false       # the EMP gun is out (see set_gun())
 var _gun_facing := 1       # the way it points (1 right, -1 left)
@@ -102,6 +103,9 @@ static func base_scale(tex: Texture2D) -> float:
 func update_pose(state: StringName, facing: int, delta: float) -> void:
 	_clock += delta
 	flip_h = facing < 0
+	if character == CharacterPoses.CHARACTER_HERO and _outfit_version != Wardrobe.version:      # (the player has put on something else)
+		_outfit_version = Wardrobe.version
+		_pose_name = ""
 	var table := CharacterPoses.table(character)
 	var entry: Dictionary = table.get(state, table[&"idle"])
 	var frames: Array = entry["frames"]

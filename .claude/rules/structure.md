@@ -5,7 +5,7 @@ scripts/
   common/                 reusable, feature-independent pieces
     constants/            Groups, InputActions, PhysicsLayers, AssetPaths
     audio/                AudioBuses, Sfx (the sound groups and one-shot effects)
-    effects/              Explosion, Debris, ElectricArc, ParticlePreset (anything that makes a visual effect)
+    effects/              Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset (anything that makes a visual effect)
     ui/                   HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines, SegmentedMeter, ScreenFlash (generic UI)
     util/                 Sprites, Blend, Geom (small helpers)
   core/                   startup, input, settings and key bindings, music, running totals (GameStats)

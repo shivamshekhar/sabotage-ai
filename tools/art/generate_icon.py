@@ -12,8 +12,11 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "icon.png"
-HERO = "assets/characters/saboteur/player/player_idle1.png"
-HERO_CROP = (24, 0, 104, 110)     # the figure inside its frame (the frame has room at the sides for the gun)
+HERO_DIR = "assets/characters/saboteur/player/"
+HERO_PARTS = ("boots", "pants", "arms", "torso", "gloves", "head", "hair", "goggles")      # the hero's standing pose is these pictures, bottom to top
+HERO_FOLDERS = {"boots": "boots/sneakers", "pants": "pants/cargo", "arms": "arms", "torso": "torso/t_shirt", "gloves": "gloves/fingerless",
+                "head": "head", "hair": "hair/quiff", "goggles": "goggles/on_chest"}      # where each of those pictures is
+HERO_CROP =(24, 0, 104, 110)     # the figure inside its frame (the frame has room at the sides for the gun)
 S = 512
 
 
@@ -46,7 +49,10 @@ bg = Image.alpha_composite(bg, glow.filter(ImageFilter.GaussianBlur(10)))
 bg = Image.alpha_composite(bg, glow)
 
 # Hero, scaled up, with a soft shadow
-hero = Image.open(HERO).convert("RGBA").crop(HERO_CROP)
+hero = Image.new("RGBA", (128, 110), (0, 0, 0, 0))
+for part in HERO_PARTS:
+    hero.alpha_composite(Image.open(HERO_DIR + "%s/player_idle1_%s.png" % (HERO_FOLDERS[part], part)).convert("RGBA"))
+hero = hero.crop(HERO_CROP)
 scale = 4.1
 hero = hero.resize((int(hero.width * scale), int(hero.height * scale)), Image.LANCZOS)
 shadow = Image.new("RGBA", hero.size, (0, 0, 0, 255))

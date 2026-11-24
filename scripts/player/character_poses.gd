@@ -44,6 +44,16 @@ const PLAIN := {
 	&"shoot": {"frames": ["action2"], "time": 1.0},
 }
 
+# PARTS: the parts of the hero's figure, bottom to top: the order OutfitComposer draws them in. A pose's picture of a part is player_<pose>_<part>.png. head and arms
+# are the body that never changes and gun is only in the shooting pose; the others are the WardrobeCatalog slots.
+const PARTS: Array[StringName] = [&"boots", &"pants", &"arms", &"torso", &"gun", &"gloves", &"head", &"hair", &"goggles"]
+
+# HERO_FRAME: the size of every picture of the hero (px).
+const HERO_FRAME := Vector2i(128, 110)
+
+# SHARED_PARTS: poses that have only a head of their own (the eyes shut, a glance) and wear the other parts of this pose.
+const SHARED_PARTS := {"blink1": "idle1", "blink2": "idle2", "blink3": "idle3", "look": "idle2"}
+
 # HURT_POSE: the pose of a hit character (every character has it).
 const HURT_POSE := "hurt"
 
@@ -54,6 +64,11 @@ const CHARACTER_HERO := "player"
 ## The state table of a character (see HERO and PLAIN).
 static func table(character: String) -> Dictionary:
 	return HERO if character == CHARACTER_HERO else PLAIN
+
+
+## The pose whose picture of `part` is the one to use for `pose`: the pose itself, except that a pose with only a head of its own (SHARED_PARTS) wears another pose's other parts.
+static func part_pose(pose: String, part: StringName) -> String:
+	return pose if part == &"head" else String(SHARED_PARTS.get(pose, pose))
 
 
 ## The pose shown when the character just stands (its first idle picture): used for its portrait in the mech and in the level editor.

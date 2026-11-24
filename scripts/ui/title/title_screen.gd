@@ -80,6 +80,7 @@ var _menu: TitleMenu
 var _soon: Label
 var _soon_tween: Tween
 var _settings: SettingsPanel
+var _wardrobe: WardrobePanel
 var _started := false
 var _walking := false
 var _clock := 0.0
@@ -133,7 +134,7 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _started or _settings != null:
+	if _started or _settings != null or _wardrobe != null:
 		return
 	var key_start: bool = event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER)
 	var tap_start: bool = _touch and ((event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT))
@@ -240,6 +241,10 @@ func _on_menu(id: StringName) -> void:
 	if id == &"settings":
 		_settings = SettingsPanel.open(self, _touch)
 		_settings.closed.connect(func() -> void: _settings = null)
+		return
+	if id == &"wardrobe":
+		_wardrobe = WardrobePanel.open(self)
+		_wardrobe.closed.connect(func() -> void: _wardrobe = null)
 		return
 	_show_soon()
 
