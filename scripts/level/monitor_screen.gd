@@ -7,13 +7,14 @@ extends Control
 ##             finishes, the same slot shows "Generated AI slop poster!" and then its costs, one at
 ##             a time, and the job starts over.
 ##   SCOPE     a made-up tokens-per-second number and an orange wave that drifts and changes shape
+##   BARS      a row of bars (an equaliser) that rise and fall at random, on the supercomputer's status display
 ##   LOCK      the screen of a gate computer: a red padlock and "ACCESS RESTRICTED" while its laser gate
 ##             is on, a green open padlock and "ACCESS GRANTED" once it is off (see set_locked)
 ## Nothing here is a real measurement: it is all random, on purpose. The screens are tiny, so they are
 ## kept minimal and large: everything sits inside a margin, nothing overlaps, and any text that would
 ## not fit is shrunk until it does (see fitted_font_size).
 
-enum Kind { GRAPH, TERMINAL, SCOPE, LOCK }
+enum Kind { GRAPH, TERMINAL, SCOPE, LOCK, BARS }
 enum Job { LOADING, STALLED, DONE }
 
 # ---------------------------------------------------------------------------------------------
@@ -48,8 +49,8 @@ const DIM := Color(0.4, 0.5, 0.65)
 # captions and the percentage. Bigger is easier to read from across the room, but the strings must be
 # short enough to fit (the tests check this). Text that still does not fit its area at these sizes is
 # made smaller automatically, but not below MIN_FONT_SIZE.
-const FONT_BODY := 11
-const FONT_SMALL := 9
+const FONT_BODY := 8
+const FONT_SMALL := 8
 
 # MIN_FONT_SIZE: the smallest text height the fitting is allowed to shrink to. Below this it would be
 # unreadable, so instead shorten the string.
@@ -57,7 +58,10 @@ const MIN_FONT_SIZE := 8
 
 # PADDING: empty margin in pixels between the edge of every screen and its content, so nothing
 # touches the bezel. Higher: more breathing room, less space for content.
-const PADDING := 5.0
+const PADDING := 3.0
+
+# LINE_GAP: extra pixels between two lines of text (the pixel font is drawn on its own 8 px grid, so lines need air to stay apart). Higher: looser lines.
+const LINE_GAP := 2.0
 
 # BLOCK_GAP: vertical space in pixels left between stacked pieces (caption and plot).
 const BLOCK_GAP := 2.0
@@ -81,11 +85,37 @@ const GRAPH_SPIKE_CHANCE := 0.06
 # GRAPH_CAPTIONS: the little captions shown above the graph, one at a time. Each must fit on one
 # line of the screen (a short caption is fine; a long one is shrunk).
 const GRAPH_CAPTIONS: Array[String] = [
-	"GPU 100%", "TEMP 9001C", "VRAM: yes", "FANS: sure", "LOAD: ALL", "NaN NaN",
+	"GPU 100%", "TEMP 9001", "VRAM yes", "FANS ok", "LOAD ALL", "NaN NaN",
 ]
 
 # CAPTION_TIME: seconds each graph caption stays before the next one.
 const CAPTION_TIME := 2.6
+
+# ---------------------------------------------------------------------------------------------
+# BARS SCREEN
+# ---------------------------------------------------------------------------------------------
+
+# BAR_PITCH / BAR_WIDTH: the distance (px) from one bar to the next and the width of a bar. BAR_MARGIN: free space (px) at the left of the first bar and above the tallest.
+# BAR_FLOOR: the space (px) between the bars' base and the screen's bottom edge. More bars fit when the pitch is smaller.
+const BAR_PITCH := 6.8
+const BAR_WIDTH := 4.6
+const BAR_MARGIN := 3.5
+const BAR_FLOOR := 2.5
+
+# BAR_MIN_LEVEL: the lowest a bar falls (0 to 1 of the full height); no bar disappears. BAR_PEAK: above this level a bar gets an orange cap of BAR_CAP px.
+const BAR_MIN_LEVEL := 0.15
+const BAR_PEAK := 0.82
+const BAR_CAP := 2.4
+
+# BAR_SMOOTHING: how fast a bar moves to its new level (per second; higher: snappier). BAR_RETARGET_MIN / BAR_RETARGET_MAX: the seconds a bar keeps its target before picking
+# another at random (each bar has its own timing, so the row never moves in step).
+const BAR_SMOOTHING := 9.0
+const BAR_RETARGET_MIN := 0.12
+const BAR_RETARGET_MAX := 0.6
+
+# BAR_LOW / BAR_HIGH: the colours of a short and of a tall bar (a bar's colour is between them by its height).
+const BAR_LOW := Color(0.094, 0.43, 0.59)
+const BAR_HIGH := Color(0.23, 0.82, 1.0)
 
 # ---------------------------------------------------------------------------------------------
 # OSCILLOSCOPE SCREEN
@@ -136,7 +166,7 @@ const RESULT_PAGE_TIME := 1.9
 # so a larger value takes room from the free space between them. Each message must fit in this many lines.
 const STATUS_LINES := 3
 
-# BAR_H: height of the progress bar in pixels. The percentage is drawn centred inside it.
+# BAR_H: height of the progress bar in pixels. The percentage is drawn right aligned just above it.
 const BAR_H := 14.0
 
 # DONE_TEXT: the headline shown first when the job is finished. A newline starts a new line; each line must
@@ -144,7 +174,7 @@ const BAR_H := 14.0
 const DONE_TEXT := "Generated\nAI slop\nposter!"
 
 # STALL_TEXT: the message while the bar is stuck at JOB_STALL_AT.
-const STALL_TEXT := "Still 99%..."
+const STALL_TEXT := "Still\n99%..."
 
 # QUIPS: funny status messages shown while loading, one at a time and at random. The first is always
 # shown first. Keep them short: each must fit the message slot (at most STATUS_LINES lines, each short
@@ -152,7 +182,7 @@ const STALL_TEXT := "Still 99%..."
 const QUIPS: Array[String] = [
 	"Loading...",
 	"Reading\nthe web...",
-	"Ignoring\ncopyright...",
+	"Stealing\nart...",
 	"Heating\nGPUs...",
 	"Drinking\na lake...",
 	"Adding\nfingers...",
@@ -160,17 +190,17 @@ const QUIPS: Array[String] = [
 	"Firing a\nhuman...",
 	"Thinking\nhard...",
 	"Boiling\nan ocean...",
-	"Blaming\nthe intern...",
+	"Blaming\nthe\nintern...",
 	"Generating\nvibes...",
 ]
 
 # STATS: the results shown one at a time, after DONE_TEXT, once the job is finished. Same format as
 # the quips: short lines, at most STATUS_LINES of them.
 const STATS: Array[String] = [
-	"Water used:\n69,000\ngallons",
-	"Power used:\n420 MWh",
+	"Water:\n69,000\ngallons",
+	"Power:\n420 MWh",
 	"Artists\nfired: 12",
-	"Fingers:\n11 per hand",
+	"Fingers:\n11/hand",
 	"Quality:\njust slop",
 ]
 
@@ -198,6 +228,9 @@ var _amp_target := 0.6
 var _scope_timer := 0.0
 var _tok := 12000
 var _tok_timer := 0.0
+var _bar_levels := PackedFloat32Array()
+var _bar_targets := PackedFloat32Array()
+var _bar_timers := PackedFloat32Array()
 
 # terminal
 var _job := Job.LOADING
@@ -225,6 +258,8 @@ func setup(screen_kind: Kind, screen_size: Vector2, seed_value: int) -> void:
 			_samples.fill(0.5)
 		Kind.TERMINAL:
 			_restart_job()
+		Kind.BARS:
+			_setup_bars()
 
 
 ## Show a gate computer's screen as locked (red) or unlocked (green).
@@ -266,7 +301,7 @@ func caption_text() -> String:
 		Kind.GRAPH:
 			return GRAPH_CAPTIONS[_caption]
 		Kind.SCOPE:
-			return "%d t/s" % _tok
+			return "%dt/s" % _tok
 	return ""
 
 
@@ -286,13 +321,13 @@ func scope_phase() -> float:
 func layout_rects() -> Dictionary:
 	var inner := Rect2(PADDING, PADDING, size.x - 2.0 * PADDING, size.y - 2.0 * PADDING)
 	if kind == Kind.LOCK:
-		var label_h := _font.get_height(FONT_BODY) * 2.0
+		var label_h := _line_height(FONT_BODY) * 2.0
 		return {
 			"icon": Rect2(inner.position, Vector2(inner.size.x, inner.size.y - label_h - BLOCK_GAP)),
 			"label": Rect2(inner.position.x, inner.end.y - label_h, inner.size.x, label_h),
 		}
 	if kind == Kind.TERMINAL:
-		var status_h := _font.get_height(FONT_BODY) * STATUS_LINES
+		var status_h := _line_height(FONT_BODY) * STATUS_LINES
 		return {
 			"status": Rect2(inner.position, Vector2(inner.size.x, status_h)),
 			"bar": Rect2(inner.position.x, inner.end.y - BAR_H, inner.size.x, BAR_H),
@@ -310,12 +345,31 @@ func layout_rects() -> Dictionary:
 ## text from spilling out of a screen.
 func fitted_font_size(text: String, wanted: int, width: float, max_height: float) -> int:
 	var s := wanted
-	while s > MIN_FONT_SIZE:
-		var box := _font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, s)
-		if box.x <= width + 0.01 and box.y <= max_height + 0.01:
-			break
+	while s > MIN_FONT_SIZE and not _fits(text, s, width, max_height):
 		s -= 1
 	return s
+
+
+## The height of one line of text at size `s`, with the gap between lines.
+func _line_height(s: int) -> float:
+	return _font.get_height(s) + LINE_GAP
+
+
+## True if every line of `text` (lines are only broken where the text has a newline) is at most `width` wide and all of them are at most `max_height` tall.
+func _fits(text: String, s: int, width: float, max_height: float) -> bool:
+	var lines := text.split("\n")
+	for line in lines:
+		if _font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x > width + 0.01:
+			return false
+	return _line_height(s) * lines.size() - LINE_GAP <= max_height + 0.01
+
+
+## Draw `text` line by line in `area` (top first), each line left aligned or centred, with LINE_GAP between lines.
+func _draw_lines(area: Rect2, text: String, s: int, color: Color, align: HorizontalAlignment) -> void:
+	var y := area.position.y + _font.get_ascent(s)
+	for line in text.split("\n"):
+		draw_string(_font, Vector2(area.position.x, y), line, align, area.size.x, s, color)
+		y += _line_height(s)
 
 
 # ---------- animation ----------
@@ -327,9 +381,43 @@ func _process(delta: float) -> void:
 			_update_graph(delta)
 		Kind.SCOPE:
 			_update_scope(delta)
+		Kind.BARS:
+			_update_bars(delta)
 		Kind.TERMINAL:
 			_update_terminal(delta)
 	queue_redraw()
+
+
+## How many bars fit across the screen.
+func bar_count() -> int:
+	return maxi(1, int((size.x - 2.0 * BAR_MARGIN + (BAR_PITCH - BAR_WIDTH)) / BAR_PITCH))
+
+
+## The current height of every bar, 0 to 1 of the full height (the row's left to right).
+func bar_levels() -> PackedFloat32Array:
+	return _bar_levels
+
+
+func _setup_bars() -> void:
+	var n := bar_count()
+	_bar_levels.resize(n)
+	_bar_targets.resize(n)
+	_bar_timers.resize(n)
+	for i in n:
+		_bar_levels[i] = _rng.randf_range(BAR_MIN_LEVEL, 1.0)
+		_bar_targets[i] = _bar_levels[i]
+		_bar_timers[i] = _rng.randf_range(0.0, BAR_RETARGET_MAX)
+
+
+## Each bar glides to its own random target and picks a new one after its own random time.
+func _update_bars(delta: float) -> void:
+	var glide := 1.0 - exp(-BAR_SMOOTHING * delta)
+	for i in _bar_levels.size():
+		_bar_timers[i] -= delta
+		if _bar_timers[i] <= 0.0:
+			_bar_timers[i] = _rng.randf_range(BAR_RETARGET_MIN, BAR_RETARGET_MAX)
+			_bar_targets[i] = _rng.randf_range(BAR_MIN_LEVEL, 1.0)
+		_bar_levels[i] = lerpf(_bar_levels[i], _bar_targets[i], glide)
 
 
 func _update_graph(delta: float) -> void:
@@ -414,7 +502,8 @@ func _next_quip() -> void:
 # ---------- drawing ----------
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), BG)
+	if kind != Kind.BARS:      # (the bars are drawn straight onto the machine's own dark display and grid lines)
+		draw_rect(Rect2(Vector2.ZERO, size), BG)
 	var rects := layout_rects()
 	match kind:
 		Kind.GRAPH:
@@ -425,13 +514,13 @@ func _draw() -> void:
 			_draw_terminal(rects)
 		Kind.LOCK:
 			_draw_lock(rects)
+		Kind.BARS:
+			_draw_bars()
 
 
 ## Draw text inside `area`, top-left aligned, shrunk if needed so it never leaves the area.
 func _text_in(area: Rect2, text: String, wanted: int, color: Color) -> void:
-	var s := fitted_font_size(text, wanted, area.size.x, area.size.y)
-	var at := Vector2(area.position.x, area.position.y + _font.get_ascent(s))
-	draw_multiline_string(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, area.size.x, s, -1, color)
+	_draw_lines(area, text, fitted_font_size(text, wanted, area.size.x, area.size.y), color, HORIZONTAL_ALIGNMENT_LEFT)
 
 
 func _draw_graph(rects: Dictionary) -> void:
@@ -465,15 +554,22 @@ func _draw_terminal(rects: Dictionary) -> void:
 	draw_rect(bar, Color(0.08, 0.13, 0.22))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * _progress / 100.0, bar.size.y)), GREEN if done else CYAN)
 	draw_rect(bar, Color(DIM, 0.8), false, 1.0)
-	# the percentage, centred inside the bar (placed by its baseline so it sits in the middle)
+	# the percentage, right aligned just above the bar (on the dark background it stays readable at every fill level)
 	var label := "%d%%" % int(_progress)
-	var label_w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
-	var baseline := bar.position.y + bar.size.y / 2.0 + FONT_SMALL * 0.36
-	# light text with a dark outline, so it stays readable whether it sits on the bright fill, the dark
-	# track, or straddles the edge between them
-	var label_at := Vector2(bar.position.x + (bar.size.x - label_w) / 2.0, baseline)
-	draw_string_outline(_font, label_at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, 3, Color(0.02, 0.05, 0.1))
-	draw_string(_font, label_at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Color.WHITE)
+	var baseline := bar.position.y - BLOCK_GAP
+	draw_string(_font, Vector2(bar.position.x, baseline), label, HORIZONTAL_ALIGNMENT_RIGHT, bar.size.x, FONT_SMALL, GREEN if done else CYAN)
+
+
+func _draw_bars() -> void:
+	var base := size.y - BAR_FLOOR
+	var full := base - BAR_MARGIN
+	for i in _bar_levels.size():
+		var level := _bar_levels[i]
+		var x := BAR_MARGIN + i * BAR_PITCH
+		var top := base - full * level
+		draw_rect(Rect2(x, top, BAR_WIDTH, base - top), BAR_LOW.lerp(BAR_HIGH, level))
+		if level > BAR_PEAK:
+			draw_rect(Rect2(x, top, BAR_WIDTH, BAR_CAP), Color(ORANGE))
 
 
 func _draw_lock(rects: Dictionary) -> void:
@@ -506,6 +602,4 @@ func _draw_lock(rects: Dictionary) -> void:
 
 ## Like _text_in but each line is centred horizontally.
 func _text_in_centered(area: Rect2, text: String, wanted: int, color: Color) -> void:
-	var s := fitted_font_size(text, wanted, area.size.x, area.size.y)
-	var at := Vector2(area.position.x, area.position.y + _font.get_ascent(s))
-	draw_multiline_string(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, s, -1, color)
+	_draw_lines(area, text, fitted_font_size(text, wanted, area.size.x, area.size.y), color, HORIZONTAL_ALIGNMENT_CENTER)

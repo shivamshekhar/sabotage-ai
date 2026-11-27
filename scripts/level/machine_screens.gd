@@ -4,6 +4,11 @@ extends RefCounted
 ## Screens on machines whose content is drawn live by the game (see monitor_screen.gd), as
 ## rectangles in pixels from the top-left corner of the machine sprite.
 
+# SUPERCOMPUTER: screens of the sprite "machine_supercomputer", by position (left, center, right).
+const SUPERCOMPUTER: Dictionary = {
+	"bars": Rect2(13.5, 13.5, 183.0, 45.0),
+}
+
 # MONITORING_STATION: screens of the sprite "machine_monitoring_station", by position (left, center, right).
 const MONITORING_STATION: Dictionary = {
 	"left": Rect2(10.0, 50.0, 70.0, 72.0),
@@ -20,6 +25,8 @@ const LOCK_TERMINAL: Dictionary = {
 ## Screen rectangles for a machine sprite name (empty if it has no live screens).
 static func rects(sprite_name: String) -> Dictionary:
 	match sprite_name:
+		"machine_supercomputer":
+			return SUPERCOMPUTER
 		"machine_monitoring_station":
 			return MONITORING_STATION
 		"machine_lock_terminal":

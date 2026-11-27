@@ -23,7 +23,7 @@ const TILE_SIZE := 128
 const TILE_GAP := 8
 
 # RIDDLE_FONT_SIZE: the size of the riddle's text (it is a sentence or two, so it is smaller than the other puzzles' prompts).
-const RIDDLE_FONT_SIZE := 26
+const RIDDLE_FONT_SIZE := 17
 
 # MANIFEST_PATH: the list of riddles and picture files, and PICTURE_DIR the folder of the pictures.
 const MANIFEST_PATH := AssetPaths.CAPTCHA_MANIFEST
@@ -81,7 +81,7 @@ func _ready() -> void:
 	side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	side.add_theme_constant_override("separation", 14)
 	row.add_child(side)
-	_status = _make_label("", 24)
+	_status = _make_label("", STATUS_SIZE)
 	_status.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	side.add_child(_status)
@@ -90,7 +90,7 @@ func _ready() -> void:
 	side.add_child(_prompt)
 	_verify = _make_button("VERIFY", Color(0.2, 0.45, 0.3))
 	_verify.custom_minimum_size = Vector2(0, 70)
-	_verify.add_theme_font_size_override("font_size", 32)
+	_verify.add_theme_font_size_override("font_size", 22)
 	_verify.pressed.connect(_on_verify)
 	side.add_child(_verify)
 	begin()

@@ -166,7 +166,7 @@ func _run() -> void:
 	# ---------------- face buttons
 	for i in 4:
 		await _touch(0, touch.face_center(i), true)
-		_check("tap %s -> %s only" % [["A", "B", "C", "D"][i], FACE_ACTIONS[i]], _only([FACE_ACTIONS[i]]), str(_pressed()))
+		_check("tap %s -> %s only" % [["B", "Y", "A", "X"][i], FACE_ACTIONS[i]], _only([FACE_ACTIONS[i]]), str(_pressed()))
 		await _touch(0, touch.face_center(i), false)
 		_check("  ...and lifting releases it", _only([]), str(_pressed()))
 

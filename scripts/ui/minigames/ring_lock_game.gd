@@ -55,7 +55,7 @@ func _ready() -> void:
 	side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	side.add_theme_constant_override("separation", 24)
 	row.add_child(side)
-	_status = _make_label("", 36)
+	_status = _make_label("", STATUS_SIZE)
 	_status.custom_minimum_size = Vector2(300, 0)
 	side.add_child(_status)
 	var lock := _make_button("LOCK", Color(0.2, 0.55, 0.9))

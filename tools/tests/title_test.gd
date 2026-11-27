@@ -74,7 +74,7 @@ func _main() -> void:
 	await _wait(10)
 	_check("it is the game's starting scene", ProjectSettings.get_setting("application/run/main_scene") == AssetPaths.TITLE_SCENE)
 	_check("the logo is there", title._logo.texture != null and title._logo.size.x > 0.0)
-	_check("the prompt says to press Enter", title._prompt.text == TitleScreen.PROMPT_KEYBOARD)
+	_check("the prompt says to press Enter", title._prompt.text == TitleScreen.PROMPT_KEYBOARD % KeyBindings.label(KeyBindings.START_KEYS[0]))
 	var buttons: Array[Button] = []
 	for c in title._menu.find_children("*", "Button", true, false):
 		buttons.append(c)

@@ -151,7 +151,7 @@ func _on_player_died(cause: String) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_font_size_override("font_size", 36)
 	label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 12)
@@ -176,7 +176,7 @@ func _on_boss_defeated() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_font_size_override("font_size", 36)
 	label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 12)
@@ -204,7 +204,7 @@ func _on_goal_reached() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_font_size_override("font_size", 36)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 12)
 	layer.add_child(label)

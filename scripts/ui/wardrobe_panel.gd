@@ -18,9 +18,9 @@ const PANEL_WIDTH := 1160.0
 # STRIP_HEIGHT: the hazard stripe along the top. HEADER_ICON: the size of the icon in the title row. TITLE_SIZE / ROW_SIZE / HINT_SIZE: font sizes.
 const STRIP_HEIGHT := 12.0
 const HEADER_ICON := Vector2(56.0, 56.0)
-const TITLE_SIZE := 38
-const ROW_SIZE := 22
-const HINT_SIZE := 16
+const TITLE_SIZE := 25
+const ROW_SIZE := 14
+const HINT_SIZE := 11
 
 # PREVIEW_SIZE: the size of the box the hero is shown in (px); PREVIEW_SCALE: how many times bigger than in the game they are drawn; PREVIEW_FEET: where their feet are in the
 # box (from the top left); PREVIEW_COLOR: the box's colour.
@@ -38,10 +38,10 @@ const PREVIEW_STATES := [
 ]
 
 # LABEL_WIDTH: the width of the slot's name; STYLE_WIDTH: of its style's name between the arrows; ARROW_SIZE: of an arrow button; SWATCH_SIZE: of a colour's swatch.
-const LABEL_WIDTH := 130.0
+const LABEL_WIDTH := 110.0
 const STYLE_WIDTH := 190.0
 const ARROW_SIZE := Vector2(46.0, 46.0)
-const SWATCH_SIZE := Vector2(36.0, 36.0)
+const SWATCH_SIZE := Vector2(30.0, 30.0)
 
 # SWATCH_BORDER: the width of a swatch's border; SWATCH_SELECTED_COLOR / SWATCH_COLOR: the border of the colour worn now / of the others.
 const SWATCH_BORDER := 4
@@ -114,7 +114,7 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and int(event.physical_keycode) == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.echo and int(event.physical_keycode) == KeyBindings.CANCEL_KEY:
 		get_viewport().set_input_as_handled()
 		_close()
 

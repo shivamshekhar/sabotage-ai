@@ -47,7 +47,7 @@ scripts/
     sprite_library.gd       Knows how a tile / machine / pose name becomes a file (folders come from AssetPaths)
   ui/
     hud.gd                  Score and level number
-    touch_controls.gd       On-screen buttons for phones (A to D)
+    touch_controls.gd       On-screen buttons for phones (X, Y, A, B)
     hack_popup.gd, hack_style.gd, minigames/   The unlock puzzle window (its look: HackStyle) and the puzzles
     pause_button.gd, pause_menu.gd   The menu button in the game's top-right corner and the pause menu it opens (resume, settings, quit to title)
     settings_panel.gd       The settings window: volumes, and the keys (PC) or the touch buttons (phone)
@@ -55,7 +55,7 @@ scripts/
     title/                  The title screen: TitleScreen (the scene), TitleBackdrop (the distant out-of-focus view, defocus.gdshader), TitleMenu, TitleBro
 levels/                     Level data only: one folder per level (level.sablevel.json) and common/ (the tile registry)
 assets/                     ALL pictures and sounds, as <category>/<feature>/: levels/ (tiles, machines, pit hazards, backgrounds), vehicles/mech/, powerups/box/,
-                            bosses/saltman/, characters/ (saboteur/, kenney_platformer/), projectiles/, effects/ (generic), ui/ (icons/, captcha/, title/), audio/ (music/, sfx/) (see art.md)
+                            bosses/saltman/, characters/ (saboteur/, kenney_platformer/), projectiles/, fonts/ (press_start_2p: the game's font), effects/ (generic), ui/ (icons/, captcha/, title/), audio/ (music/, sfx/) (see art.md)
 tools/
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
   run_tests.sh              Runs every headless test in tools/tests/ with time limits (REPEAT=n to hunt flaky tests)

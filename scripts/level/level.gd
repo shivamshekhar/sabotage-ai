@@ -101,6 +101,7 @@ const SCREEN_KINDS := {
 	"center": MonitorScreen.Kind.TERMINAL,
 	"right": MonitorScreen.Kind.SCOPE,
 	"lock": MonitorScreen.Kind.LOCK,
+	"bars": MonitorScreen.Kind.BARS,
 }
 
 # SIRENS AND LAMPS (map letters 'i' and 'l'): a soft additive halo on the lamp that pulses.
@@ -625,8 +626,8 @@ func _build_terminals() -> void:
 		var def: Dictionary = MACHINES[letter]
 		var body := Rect2(t["c"] * T, (t["r"] + 1 - int(def["h"])) * T, int(def["w"]) * T, int(def["h"]) * T)
 		var hint := Label.new()
-		hint.text = "TAP USE" if TouchControls.should_show() else "PRESS E"
-		hint.add_theme_font_size_override("font_size", 30)
+		hint.text = KeyBindings.prompt(InputActions.INTERACT)
+		hint.add_theme_font_size_override("font_size", 20)
 		hint.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
 		hint.add_theme_color_override("font_outline_color", Color.BLACK)
 		hint.add_theme_constant_override("outline_size", 8)
@@ -687,6 +688,8 @@ func _update_terminal_hints() -> void:
 		t["hint"].visible = near and laser_is_on(t["laser"])
 		# In a vehicle the prompt rides above the vehicle's energy bar (the usual spot is where the vehicle's body and bar are).
 		var hint: Label = t["hint"]
+		if hint.visible:
+			hint.text = KeyBindings.prompt(InputActions.INTERACT)      # (the player may have changed the key in the settings)
 		if near and player is Player and (player as Player).mech != null:
 			hint.position = Vector2(player.global_position.x - hint.size.x / 2.0, player.global_position.y - Mech.SIZE_IN_PLAYERS * Player.BODY_SIZE.y - 68.0)
 		else:

@@ -40,7 +40,7 @@ func _ready() -> void:
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 24)
 	add_child(box)
-	_status = _make_label("", 36)
+	_status = _make_label("", STATUS_SIZE)
 	box.add_child(_status)
 	_track = Control.new()
 	_track.custom_minimum_size = BAR_SIZE

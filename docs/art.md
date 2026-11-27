@@ -91,3 +91,5 @@ To add art: put the file in the right folder with the right name (a new kind of 
 first word added to `TILE_CATEGORIES`). `tools/tests/assets_test.gd` checks that every file is
 where the rules say and that everything loads, so a misplaced file fails `tools/run_tests.sh`.
 Godot creates the `.import` file next to each image the first time you import.
+
+**Font.** The whole game uses Press Start 2P (`assets/fonts/press_start_2p/`, SIL Open Font License 1.1), set as the project's default theme font in `project.godot` (`gui/theme/custom_font`), with anti-aliasing, hinting and sub-pixel positioning off so the pixels stay sharp. It is wide, so sizes are small (UI text 9 to 25 px); to change the font, replace the file and check every screen for overflow.

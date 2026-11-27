@@ -1,6 +1,6 @@
 extends SceneTree
 ## The settings: the volumes (and the audio buses they reach), the key bindings (the defaults, changing a key, refusing a clash or a reserved key, keeping one key per action, the
-## settings file), the block meter, and the settings window (the keys list on a PC, the touch buttons A to D on a phone). Works on a copy of the settings file, never the player's own.
+## settings file), the block meter, and the settings window (the keys list on a PC, the touch buttons X, Y, A, B on a phone). Works on a copy of the settings file, never the player's own.
 ## Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/settings_test.gd
 
@@ -128,7 +128,7 @@ func _main() -> void:
 
 	# ---- the touch buttons
 	var letters: Array = TouchControls.FACE_BUTTONS.map(func(b: Dictionary) -> String: return String(b["label"]))
-	_check("the phone's buttons are A, B, C and D", letters == ["A", "B", "C", "D"])
+	_check("the phone's buttons are B, Y, A and X (the Switch layout)", letters == ["B", "Y", "A", "X"])
 
 	# ---- the window on a PC
 	var panel := SettingsPanel.open(root, false)
@@ -162,6 +162,13 @@ func _main() -> void:
 	_check("on a phone there are no keys to change", phone._key_buttons.is_empty())
 	phone.queue_free()
 	await _wait(3)
+
+	# ---- the prompt that names a key (or a touch button)
+	if not TouchControls.should_show():
+		_check("the prompt names the use key", KeyBindings.prompt(InputActions.INTERACT) == "PRESS %s" % KeyBindings.label(KEY_E), KeyBindings.prompt(InputActions.INTERACT))
+		KeyBindings.set_key(InputActions.INTERACT, 0, KEY_R)
+		_check("and follows a changed key", KeyBindings.prompt(InputActions.INTERACT) == "PRESS %s" % KeyBindings.label(KEY_R), KeyBindings.prompt(InputActions.INTERACT))
+	_check("the touch button of the use action is Y", TouchControls.button_label(InputActions.INTERACT) == "Y")
 
 	# put everything back
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_FILE))

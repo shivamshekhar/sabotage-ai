@@ -54,7 +54,7 @@ func _main() -> void:
 	# ---- placement
 	var all := []
 	for n in level.get_children():
-		if n is MonitorScreen:
+		if n is MonitorScreen and n.kind != MonitorScreen.Kind.BARS:      # (the supercomputer's bars are tested below)
 			all.append(n)
 	_check("the monitoring station has three live screens", all.size() == 3, "%d found" % all.size())
 	var graph := _screen(MonitorScreen.Kind.GRAPH)
@@ -124,6 +124,22 @@ func _main() -> void:
 		lo = minf(lo, v)
 		hi = maxf(hi, v)
 	_check("graph values stay inside the screen (0..1)", lo >= 0.0 and hi <= 1.0, "range %.2f..%.2f" % [lo, hi])
+
+	# ---- the supercomputer's bars rise and fall
+	var bars := MonitorScreen.new()
+	root.add_child(bars)
+	var bar_rect: Rect2 = MachineScreens.rects("machine_supercomputer")["bars"]
+	bars.setup(MonitorScreen.Kind.BARS, bar_rect.size, 5)
+	var bars_before := bars.bar_levels().duplicate()
+	await _wait(30)
+	var bar_lo := 1.0
+	var bar_hi := 0.0
+	for v in bars.bar_levels():
+		bar_lo = minf(bar_lo, v)
+		bar_hi = maxf(bar_hi, v)
+	_check("the bars move (their heights change)", bars.bar_levels() != bars_before and bars.bar_levels().size() == bars.bar_count())
+	_check("bar heights stay between the lowest level and full", bar_lo >= MonitorScreen.BAR_MIN_LEVEL - 0.001 and bar_hi <= 1.0, "range %.2f..%.2f" % [bar_lo, bar_hi])
+	bars.queue_free()
 
 	# ---- the AI job, run on fast-forward by stepping the screen's own clock
 	var quips_seen := {}

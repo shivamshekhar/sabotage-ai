@@ -21,7 +21,7 @@ const ENTRIES := [
 # BUTTON_SIZE: the size of a button in pixels; ICON_SIZE: the width of its icon; FONT_SIZE: its lettering; SEPARATION: the space between two buttons.
 const BUTTON_SIZE := Vector2(268.0, 70.0)
 const ICON_SIZE := 46
-const FONT_SIZE := 27
+const FONT_SIZE := 18
 const SEPARATION := 12
 
 # READY_COLOR / SOON_COLOR: the colour of a button that works / of one that is only a place for something to come (dimmer).
@@ -30,7 +30,7 @@ const SOON_COLOR := Color(0.15, 0.23, 0.36)
 
 # SOON_TEXT / SOON_SIZE / SOON_TAG_COLOR: the small "soon" tag in the corner of a button that does not work yet.
 const SOON_TEXT := "SOON"
-const SOON_SIZE := 13
+const SOON_SIZE := 9
 const SOON_TAG_COLOR := Color(1.0, 0.72, 0.25)
 const SOON_TAG_WIDTH := 60.0
 

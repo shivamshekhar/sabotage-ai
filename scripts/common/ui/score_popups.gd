@@ -8,7 +8,7 @@ extends RefCounted
 # FLOAT_HEIGHT: how far in pixels the text drifts up while it fades. LIFE: seconds it is visible. FONT_SIZE: kept small on purpose.
 const FLOAT_HEIGHT := 46.0
 const LIFE := 1.1
-const FONT_SIZE := 18
+const FONT_SIZE := 12
 
 # FADE_START: the share of LIFE after which the text starts to fade (the first part it is fully visible).
 const FADE_START := 0.4

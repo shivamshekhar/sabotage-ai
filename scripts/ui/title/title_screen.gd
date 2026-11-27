@@ -40,15 +40,15 @@ const WALK_SPEED := 190.0
 const ARRIVE := 3.0
 
 # PROMPT_FONT / PROMPT_PERIOD / PROMPT_LOW: the "press to start" line: its font size, the seconds of one pulse, and its dimmest opacity. PROMPT_GAP: the distance (px) under the logo.
-const PROMPT_FONT := 34
+const PROMPT_FONT := 22
 const PROMPT_PERIOD := 1.1
 const PROMPT_LOW := 0.35
 const PROMPT_GAP := 18.0
-const PROMPT_KEYBOARD := "PRESS ENTER TO START"
+const PROMPT_KEYBOARD := "PRESS %s TO START"
 const PROMPT_TOUCH := "TAP ANYWHERE TO START"
 
 # SOON_FONT / SOON_TEXT / SOON_TIME: the "coming soon" note a menu button that does not work yet shows (above the menu), and the seconds it stays.
-const SOON_FONT := 24
+const SOON_FONT := 16
 const SOON_TEXT := "COMING SOON"
 const SOON_TIME := 1.4
 
@@ -136,7 +136,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _started or _settings != null or _wardrobe != null:
 		return
-	var key_start: bool = event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER)
+	var key_start: bool = event is InputEventKey and event.pressed and not event.echo and KeyBindings.START_KEYS.has(int(event.keycode))
 	var tap_start: bool = _touch and ((event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT))
 	if key_start or tap_start:
 		get_viewport().set_input_as_handled()
@@ -178,7 +178,7 @@ func _build_ui() -> void:
 	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_logo)
 	_prompt = Label.new()
-	_prompt.text = PROMPT_TOUCH if _touch else PROMPT_KEYBOARD
+	_prompt.text = PROMPT_TOUCH if _touch else PROMPT_KEYBOARD % KeyBindings.label(KeyBindings.START_KEYS[0])
 	_prompt.add_theme_font_size_override("font_size", PROMPT_FONT)
 	HackStyle.style_text(_prompt)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

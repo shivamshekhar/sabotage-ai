@@ -308,13 +308,7 @@ def supercomputer():
     R(d, 13.5, 13.5, 196.5, 58.5, (9, 14, 26, 255))
     for gy in (28, 40, 52):
         R(d, 15, gy, 195, gy + 0.6, (24, 36, 60, 255))
-    for i in range(26):
-        x = 17 + i * 6.8
-        hgt = 7 + rng.random() * 30
-        top = 56 - hgt
-        R(d, x, top, x + 4.6, 56, lerp((24, 110, 150), CYAN, hgt / 37) + (255,))
-        if hgt > 31:
-            R(d, x, top, x + 4.6, top + 2.4, ORANGE + (255,))
+    # (the bars themselves are drawn live by the game, see MonitorScreen.Kind.BARS)
     panels.append((14, 14, 196, 58, CYAN, 46))
     # Three perforated doors
     doors = [(12, 72), (75, 135), (138, 198)]
@@ -340,6 +334,7 @@ def supercomputer():
         R(d, 8, y, 202, y + 1.2, lerp(col, (160, 210, 255), 0.55) + (255,))
     save("machine_supercomputer", im)
     overlays("machine_supercomputer", (W, H), leds, panels, 17)
+    write_screen_data({"machine_supercomputer": {"bars": (13.5, 13.5, 183, 45)}})
 
 
 # ------------------------------------------------------------------ Monitoring station (210x140)

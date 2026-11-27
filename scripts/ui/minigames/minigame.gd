@@ -18,6 +18,16 @@ var instructions := ""
 # Higher: easier to hit. Lower: more room for the puzzle but fiddly on a phone.
 const BUTTON_MIN := 120.0
 
+# STATUS_SIZE / PROMPT_SIZE / BUTTON_FONT: font sizes (px) of the status line on top ("ALIGN 0 / 3"), of the prompt under it and of a puzzle button's text. The font is wide, so
+# these are small; raise one and check that the longest text of every puzzle still fits.
+const STATUS_SIZE := 22
+const PROMPT_SIZE := 18
+const BUTTON_FONT := 22
+
+# LINE_SPACING: extra pixels between two lines of a label (the pixel font needs air between lines). FRAME_MARGIN: pixels kept free above and below the puzzle's content.
+const LINE_SPACING := 8
+const FRAME_MARGIN := 12.0
+
 # RETRY_DELAY: seconds a "wrong" message stays up before the puzzle starts over.
 # Higher: more time to read the joke. Lower: back to the puzzle faster.
 const RETRY_DELAY := 0.9
@@ -68,11 +78,13 @@ func _build_frame() -> void:
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_box.add_theme_constant_override("separation", 12)
+	_box.offset_top = FRAME_MARGIN
+	_box.offset_bottom = -FRAME_MARGIN
 	add_child(_box)
-	_status = _make_label("", 32)
+	_status = _make_label("", STATUS_SIZE)
 	HackStyle.style_text(_status, HackStyle.MINT)
 	_box.add_child(_status)
-	_prompt = _make_label("", 30)
+	_prompt = _make_label("", PROMPT_SIZE)
 	HackStyle.style_text(_prompt)
 	_prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_prompt.custom_minimum_size = Vector2(840, 0)
@@ -151,7 +163,7 @@ func _make_button(text: String, color: Color) -> Button:
 	b.text = text
 	b.custom_minimum_size = Vector2(BUTTON_MIN, BUTTON_MIN)
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 40)
+	b.add_theme_font_size_override("font_size", BUTTON_FONT)
 	HackStyle.style_button(b, color)
 	return b
 
@@ -161,6 +173,7 @@ func _make_label(text: String, size: int) -> Label:
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_constant_override("line_spacing", LINE_SPACING)
 	return l
 
 

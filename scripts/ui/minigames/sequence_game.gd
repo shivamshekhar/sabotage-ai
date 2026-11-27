@@ -30,7 +30,7 @@ func _ready() -> void:
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 16)
 	add_child(box)
-	_status = _make_label("", 36)
+	_status = _make_label("", STATUS_SIZE)
 	box.add_child(_status)
 	var grid := GridContainer.new()
 	grid.columns = 4

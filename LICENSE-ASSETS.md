@@ -28,6 +28,7 @@ These keep the licence of their authors; none of it is made by this project:
 | `tools/art/sources/kenney_platformer_player/` | the original hero by [Kenney](https://kenney.nl), the base of `assets/characters/saboteur/` | CC0 |
 | `assets/levels/common/tiles/kenney_industrial/` | tile art by [Kenney](https://kenney.nl) | CC0 |
 | `assets/ui/captcha/` | Google Noto Emoji | Apache License 2.0 |
+| `assets/fonts/press_start_2p/` | the game's font, Press Start 2P by Cody "CodeMan38" Boisclair (licence text in `OFL.txt`) | SIL Open Font License 1.1 |
 | `assets/audio/music/` | music from Pixabay | Pixabay Content Licence |
 | `assets/audio/sfx/` except `ui/` (listed in [assets/audio/CREDITS.md](assets/audio/CREDITS.md)) | sound effects by [Kenney](https://kenney.nl) and others | CC0 |
 

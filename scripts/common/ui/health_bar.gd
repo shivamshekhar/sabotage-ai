@@ -21,7 +21,7 @@ const RED := Color("#e0334a")
 
 # TITLE_FONT_SIZE: height in pixels of the name written above the bar. Small on purpose, so it
 # labels without distracting. Names too wide for TITLE_MAX_WIDTH are shrunk to fit.
-const TITLE_FONT_SIZE := 14
+const TITLE_FONT_SIZE := 9
 
 # TITLE_MAX_WIDTH: the widest the name may be drawn, in pixels; about the width of the character sprite.
 # A name wider than this at TITLE_FONT_SIZE (a row of wide letters) is drawn smaller until it fits, but

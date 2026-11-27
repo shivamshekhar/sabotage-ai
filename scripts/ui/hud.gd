@@ -10,8 +10,8 @@ extends CanvasLayer
 const LAYER := 8
 
 # CAPTION_SIZE / VALUE_SIZE: the font sizes of the small label ("SCORE") and of the number under it.
-const CAPTION_SIZE := 18
-const VALUE_SIZE := 18
+const CAPTION_SIZE := 12
+const VALUE_SIZE := 12
 
 # SIDE_MARGIN / TOP_MARGIN: the space in pixels between the screen's edges and the items.
 const SIDE_MARGIN := 32
@@ -126,6 +126,6 @@ func _process(_delta: float) -> void:
 
 ## Esc opens the pause menu (while the game is running; a puzzle window that is open has paused it and takes the Esc itself).
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and int(event.physical_keycode) == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.echo and int(event.physical_keycode) == KeyBindings.CANCEL_KEY:
 		if PauseMenu.open(get_parent()) != null:
 			get_viewport().set_input_as_handled()

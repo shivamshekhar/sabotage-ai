@@ -1,7 +1,7 @@
 class_name TouchControls
 extends CanvasLayer
-## Phone controls. Left: an 8-way D-pad. Right: four buttons, A to D (jump, use, light attack,
-## heavy attack: the settings screen lists them). Each control drives an input action, so gameplay code never knows about touch.
+## Phone controls. Left: an 8-way D-pad. Right: four buttons in the Nintendo Switch layout: X at the top,
+## Y left, A right, B at the bottom (B jump, Y use, A light attack, X heavy attack: the settings screen lists them). Each control drives an input action, so gameplay code never knows about touch.
 ##
 ## Shown on phones only (see should_show()). To try it on a PC, run the game with the
 ## environment variable SABOTAGE_TOUCH=1: the overlay appears and the left mouse button acts
@@ -93,21 +93,21 @@ const FACE_HIT_PADDING := 12.0
 
 # FACE_BUTTONS: the buttons, in order (tests refer to them by index). Each entry has:
 #     action  the input action pressed while it is held (see KeyBindings)
-#     label   the letter drawn on it (A to D: the settings screen lists what each one does)
+#     label   the letter drawn on it (the Switch layout, clockwise from the left: Y, X, A, B; the settings screen lists what each one does)
 #     offset  where it sits around the cluster centre, as a direction that is multiplied by
 #             FACE_SPREAD: (0, 1) is the bottom, (-1, 0) left, (1, 0) right, (0, -1) top
 # To add a button add an entry with a free offset. To swap positions, swap offsets.
 const FACE_BUTTONS := [
-	{"action": InputActions.JUMP, "label": "A", "offset": Vector2(0, 1)},
-	{"action": InputActions.INTERACT, "label": "B", "offset": Vector2(-1, 0)},
-	{"action": InputActions.ATTACK_LIGHT, "label": "C", "offset": Vector2(1, 0)},
-	{"action": InputActions.ATTACK_HEAVY, "label": "D", "offset": Vector2(0, -1)},
+	{"action": InputActions.JUMP, "label": "B", "offset": Vector2(0, 1)},
+	{"action": InputActions.INTERACT, "label": "Y", "offset": Vector2(-1, 0)},
+	{"action": InputActions.ATTACK_LIGHT, "label": "A", "offset": Vector2(1, 0)},
+	{"action": InputActions.ATTACK_HEAVY, "label": "X", "offset": Vector2(0, -1)},
 ]
 
 # LOOK.
 
 # FACE_LABEL_SIZE: the font size of the letter on a face button.
-const FACE_LABEL_SIZE := 40
+const FACE_LABEL_SIZE := 27
 
 # ACCENT: the cyan used for the rings and the pressed glow (it matches the cyan edge-lights
 # in the level). Each use sets its own alpha. Change the colour to restyle the controls.
@@ -144,6 +144,14 @@ var _was_paused := false
 static func should_show() -> bool:
 	# A phone app, or the game running in a phone's web browser (the "web_android" / "web_ios" features).
 	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") 		or OS.get_environment("SABOTAGE_TOUCH") != ""
+
+
+## The letter on the face button that triggers `action` ("" if no button does).
+static func button_label(action: StringName) -> String:
+	for button in FACE_BUTTONS:
+		if button["action"] == action:
+			return button["label"]
+	return ""
 
 
 func _ready() -> void:

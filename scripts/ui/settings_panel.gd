@@ -2,7 +2,7 @@ class_name SettingsPanel
 extends CanvasLayer
 ## The settings window, in the game's own look (see HackStyle): how loud the music and the sound effects are (a block meter each: tap or drag), and the controls. On a PC
 ## the controls are a list of every action with its two keys: click a key, press the new one (Esc cancels, Delete empties a key, a key another action uses is refused).
-## On a phone there is nothing to change, so it lists what the touch buttons A to D do. Changes are kept at once (see Settings and KeyBindings).
+## On a phone there is nothing to change, so it lists what the touch buttons (X, Y, A, B) do. Changes are kept at once (see Settings and KeyBindings).
 ##
 ##   var panel := SettingsPanel.open(self, TouchControls.should_show())
 ##   panel.closed.connect(on_closed)
@@ -18,10 +18,10 @@ const PANEL_WIDTH := 980.0
 # STRIP_HEIGHT: the hazard stripe along the top. HEADER_ICON: the size of the cog in the title row. TITLE_SIZE / SECTION_SIZE / ROW_SIZE / HINT_SIZE: font sizes.
 const STRIP_HEIGHT := 12.0
 const HEADER_ICON := Vector2(56.0, 56.0)
-const TITLE_SIZE := 38
+const TITLE_SIZE := 25
 const SECTION_SIZE := 22
-const ROW_SIZE := 22
-const HINT_SIZE := 16
+const ROW_SIZE := 14
+const HINT_SIZE := 11
 
 # LABEL_WIDTH: the width of the name column in a row of the window; METER_SIZE: the size of a volume meter; PERCENT_WIDTH: the width of the "70%" beside it.
 const LABEL_WIDTH := 190.0
@@ -37,8 +37,9 @@ const BACK_COLOR := Color(0.2, 0.55, 0.9)
 const RESET_COLOR := Color(0.55, 0.3, 0.2)
 
 const LISTENING_TEXT := "PRESS A KEY"
-const HINT_KEYS := "CLICK A KEY, THEN PRESS THE NEW ONE.   ESC CANCELS.   DEL EMPTIES A KEY."
-const HINT_ROLES := "LIGHT ATTACK: THROW AN OBJECT, OR HOLD IT FOR THE MECH'S LASER.   HEAVY ATTACK: THE MECH'S MISSILE."
+# HINT_KEYS: %s are the cancel key and the key that empties a slot (KeyBindings.CANCEL_KEY, CLEAR_KEYS).
+const HINT_KEYS := "CLICK A KEY, THEN PRESS THE NEW ONE.   %s CANCELS.   %s EMPTIES A KEY."
+const HINT_ROLES := "LIGHT ATTACK: THROW AN OBJECT, OR HOLD IT FOR THE MECH'S LASER.   HEAVY ATTACK: THE EMP GUN (HOLD IT), OR THE MECH'S MISSILE."
 const USED_TEXT := "THAT KEY IS ALREADY USED BY  %s"
 const RESERVED_TEXT := "THAT KEY CANNOT BE USED"
 const LAST_KEY_TEXT := "AN ACTION KEEPS AT LEAST ONE KEY"
@@ -48,7 +49,7 @@ const TOUCH_ROLES := {
 	InputActions.JUMP: "JUMP",
 	InputActions.INTERACT: "USE  (A COMPUTER)",
 	InputActions.ATTACK_LIGHT: "LIGHT ATTACK  (THROW; THE MECH'S LASER)",
-	InputActions.ATTACK_HEAVY: "HEAVY ATTACK  (THE MECH'S MISSILE)",
+	InputActions.ATTACK_HEAVY: "HEAVY ATTACK  (HOLD FOR THE EMP GUN; THE MECH'S MISSILE)",
 }
 const TOUCH_PAD_TEXT := "D-PAD    MOVE, CLIMB"
 
@@ -106,7 +107,7 @@ func _ready() -> void:
 	_message = _hint("")
 	_message.add_theme_color_override("font_color", HackStyle.ORANGE)
 	if not _touch:
-		column.add_child(_hint(HINT_KEYS))
+		column.add_child(_hint(HINT_KEYS % [KeyBindings.label(KeyBindings.CANCEL_KEY), KeyBindings.label(KeyBindings.CLEAR_KEYS[0])]))
 	column.add_child(_message)
 	column.add_child(_bottom_row())
 	_refresh_keys()
@@ -118,7 +119,7 @@ func _input(event: InputEvent) -> void:
 		return
 	var key := int(event.physical_keycode)
 	if _listening == "":
-		if key == KEY_ESCAPE:       # (any other key is left to the buttons: Enter presses the one that has the focus)
+		if key == KeyBindings.CANCEL_KEY:       # (any other key is left to the buttons: Enter presses the one that has the focus)
 			get_viewport().set_input_as_handled()
 			_close()
 		return
@@ -127,9 +128,9 @@ func _input(event: InputEvent) -> void:
 	var action := StringName(parts[0])
 	var slot := int(parts[1])
 	_message.text = ""
-	if key == KEY_ESCAPE:
+	if key == KeyBindings.CANCEL_KEY:
 		pass
-	elif key == KEY_DELETE or key == KEY_BACKSPACE:
+	elif KeyBindings.CLEAR_KEYS.has(key):
 		if not KeyBindings.clear(action, slot):
 			_message.text = LAST_KEY_TEXT if KeyBindings.keys(action)[slot] != KeyBindings.NONE else ""
 	else:

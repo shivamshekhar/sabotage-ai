@@ -21,8 +21,12 @@ const CLOSE_COLOR := Color(0.62, 0.18, 0.22)
 const STRIP_HEIGHT := 12.0
 const HEADER_ICON := Vector2(68, 68)
 const HINT_ICON := Vector2(44, 44)
-const TITLE_SIZE := 40
-const SUBTITLE_SIZE := 18
+const TITLE_SIZE := 25
+const SUBTITLE_SIZE := 12
+
+# HINT_SIZE: the font size of the instructions strip. TITLE_GAP: pixels between the title and the line under it.
+const HINT_SIZE := 16
+const TITLE_GAP := 8
 
 # GRANTED_TEXT: the line under the title once the puzzle is solved.
 const GRANTED_TEXT := "ACCESS GRANTED  //  GATE %s OPEN"
@@ -170,7 +174,7 @@ func _build(chosen_name: String) -> void:
 	var titles := VBoxContainer.new()
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titles.alignment = BoxContainer.ALIGNMENT_CENTER
-	titles.add_theme_constant_override("separation", 0)
+	titles.add_theme_constant_override("separation", TITLE_GAP)
 	top.add_child(titles)
 	var title := Label.new()
 	title.text = "FIREWALL TERMINAL"
@@ -187,7 +191,7 @@ func _build(chosen_name: String) -> void:
 	close.focus_mode = Control.FOCUS_NONE
 	close.custom_minimum_size = CLOSE_SIZE
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	close.add_theme_font_size_override("font_size", 30)
+	close.add_theme_font_size_override("font_size", 20)
 	HackStyle.style_button(close, CLOSE_COLOR)
 	close.pressed.connect(close_popup)
 	top.add_child(close)
@@ -210,7 +214,9 @@ func _build(chosen_name: String) -> void:
 	hint.text = game.instructions
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.add_theme_font_size_override("font_size", 28)
+	hint.add_theme_font_size_override("font_size", HINT_SIZE)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART        # (a long instruction wraps instead of widening the window)
+	hint.add_theme_constant_override("line_spacing", Minigame.LINE_SPACING)
 	HackStyle.style_text(hint)
 	strip_row.add_child(hint)
 

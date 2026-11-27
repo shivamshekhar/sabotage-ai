@@ -34,8 +34,16 @@ const LABELS := {
 	InputActions.ATTACK_HEAVY: "HEAVY ATTACK",
 }
 
-# RESERVED: keys no action can use: Escape (it leaves a dialog) and Enter (it starts the game).
-const RESERVED := [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER]
+# CANCEL_KEY: leaves a dialog and opens the pause menu. CLEAR_KEYS: empty the key slot being set. START_KEYS: start the game on the title screen.
+# None of them can be given to an action (RESERVED).
+const CANCEL_KEY := KEY_ESCAPE
+const CLEAR_KEYS := [KEY_DELETE, KEY_BACKSPACE]
+const START_KEYS := [KEY_ENTER, KEY_KP_ENTER]
+const RESERVED := [CANCEL_KEY] + START_KEYS
+
+# PROMPT_KEYBOARD, PROMPT_TOUCH: the verb of prompt() on a keyboard and on a phone.
+const PROMPT_KEYBOARD := "PRESS"
+const PROMPT_TOUCH := "TAP"
 
 # NONE: the value of an empty slot.
 const NONE := 0
@@ -115,6 +123,16 @@ static func label(key: int) -> String:
 	if text == "":
 		text = OS.get_keycode_string(key as Key)
 	return text.to_upper()
+
+
+## What to tell the player to do for `action`: "PRESS E" (its first key now) on a keyboard, "TAP B" (the letter of its on-screen button) on a phone.
+static func prompt(action: StringName) -> String:
+	if TouchControls.should_show():
+		return "%s %s" % [PROMPT_TOUCH, TouchControls.button_label(action)]
+	for key in keys(action):
+		if key != NONE:
+			return "%s %s" % [PROMPT_KEYBOARD, label(key)]
+	return ""
 
 
 static func _store(action: StringName, current: Array[int]) -> void:

@@ -13,9 +13,9 @@ const LAYER := 32
 # of the heading and of the line under the question. STRIP_HEIGHT: the hazard stripe along the top.
 const PANEL_WIDTH := 460.0
 const BUTTON_SIZE := Vector2(380.0, 64.0)
-const FONT_SIZE := 28
-const TITLE_SIZE := 40
-const HINT_SIZE := 18
+const FONT_SIZE := 18
+const TITLE_SIZE := 25
+const HINT_SIZE := 12
 const STRIP_HEIGHT := 12.0
 
 # RESUME_COLOR / SETTINGS_COLOR / QUIT_COLOR / CANCEL_COLOR: the buttons' colours.
@@ -86,7 +86,7 @@ func _exit_tree() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.pressed or event.echo or int(event.physical_keycode) != KEY_ESCAPE:
+	if not event is InputEventKey or not event.pressed or event.echo or int(event.physical_keycode) != KeyBindings.CANCEL_KEY:
 		return
 	if _settings != null:
 		return                    # (the settings window takes the Esc)
