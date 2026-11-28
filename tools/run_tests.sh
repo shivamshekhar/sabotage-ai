@@ -13,7 +13,7 @@ set -u
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-$LOCALAPPDATA/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7.2-stable_win64_console.exe}"
-if [ ! -f "$GODOT" ]; then
+if ! command -v "$GODOT" > /dev/null; then
   echo "Godot not found at: $GODOT (set GODOT=...)" >&2
   exit 2
 fi

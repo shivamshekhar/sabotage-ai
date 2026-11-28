@@ -155,7 +155,8 @@ func _composer() -> void:
 
 
 func _sfx() -> void:
-	_check("a sound is read once and kept", Sfx.stream(Sfx.CLICK) == Sfx.stream(Sfx.CLICK) and Sfx.stream(Sfx.CLICK) != null)
+	var again := Sfx.stream(Sfx.CLICK)
+	_check("a sound is read once and kept", Sfx.stream(Sfx.CLICK) == again and again != null)
 	_check("every sound can be read in advance", Sfx.warm_up_jobs().size() == Sfx.ALL.size() and Sfx.ALL.all(func(n: StringName) -> bool: return Sfx.stream(n) != null))
 
 

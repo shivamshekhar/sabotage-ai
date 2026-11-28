@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## The sound effects: every name in Sfx is a sound file that loads (so no sound is silently missing in the game), the booster's sound is set to loop, and a SfxLoop follows set_on() (it fades out and then stops). Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/sfx_test.gd
 

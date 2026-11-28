@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Headless test of the spinning machine fans: one blade sprite per fan housing, each one turning
 ## every frame, at different speeds, and each sitting on its housing. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/fans_test.gd

@@ -56,9 +56,29 @@ map of where you can get to. To inspect a level while designing it:
 `--fixed-fps 60` makes the simulation deterministic and fast.
 
 Two traps if you write your own headless tests:
+
 - Don't put `await` inside `_process`: a coroutine's return value makes Godot quit silently with
   exit code 0 (looks like a pass, ran nothing). Start the async work from a separate function.
 - Headless has no real window, so feed simulated touches with `root.push_input(event, true)`;
   `Input.parse_input_event` delivers nothing there.
 
+## Lint and formatting
 
+`tools/lint.sh` checks the code without running the game (`tools/lint.sh --fix` also repairs the formatting):
+
+- **GDScript:** [gdlint](https://github.com/Scony/godot-gdscript-toolkit) on every `.gd` file. Install it with `python -m pip install --user gdtoolkit`. The settings are in [gdlintrc](../gdlintrc): a rule is switched off there only with a reason written next to it.
+- **Text files:** [prettier](https://prettier.io) on the docs, workflows and settings (`npm ci` installs the pinned version; settings in `.prettierrc.json`). GDScript is not formatted by it. What a tool writes itself (levels, the tile registry, generated manifests) is listed in `.prettierignore`: add a new generated file there.
+
+The same checks run in CI ([ci.yml](../.github/workflows/ci.yml)): lint, asset audit, every test, and the web, Windows, Linux and Android builds, on every push and pull request.
+
+## Before every commit (the pre-commit hook)
+
+Run `tools/install_hooks.sh` once per clone. After that git runs [tools/hooks/pre-commit](../tools/hooks/pre-commit) before every commit, and the commit is refused unless all of this passes:
+
+1. no build output is staged (`build/` is git-ignored; the hook also stops a forced `git add -f`);
+2. `tools/lint.sh`: **gdlint** on every `.gd` file (settings in [gdlintrc](../gdlintrc)) and **prettier** on the docs and settings files (settings in `.prettierrc.json`; the files tools write themselves are listed in `.prettierignore`). `tools/lint.sh --fix` fixes the formatting;
+3. `python tools/audit_assets.py` and `python tools/sync_editor.py --check`;
+4. `tools/run_tests.sh`, every test;
+5. `tools/build_all.sh`: the **web**, **Windows**, **Linux** and **Android APK** builds (presets in `export_presets.cfg`, each made by `tools/export_preset.sh`), into `build/`.
+
+It needs `pip install --user gdtoolkit`, Node (`npm ci` runs by itself) and the Godot export templates (see [android.md](android.md)). It takes a few minutes. `git commit --no-verify` skips it in an emergency.

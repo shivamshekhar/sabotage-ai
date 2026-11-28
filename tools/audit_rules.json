@@ -1,9 +1,9 @@
 {
-	"_comment": "Rules for tools/audit_assets.py: what it needs to know about files that are loaded under a name the code builds at run time.",
-	"looking_only_pattern": "(_sheet|preview|pose_[a-z]+)\\.png$",
-	"always_used": ["scripts/core/main.gd"],
-	"character_pose_pattern": "^assets/characters/[^/]+/(?P<skin>[a-z]+)/(?P=skin)_(?P<pose>[a-z0-9]+)\\.png$",
-	"character_part_pattern": "^assets/characters/[^/]+/(?P<skin>[a-z]+)/(?P<part>[a-z]+)/([a-z_]+/)?(?P=skin)_(?P<pose>[a-z0-9]+)_(?P=part)\\.png$",
-	"character_parts": ["boots", "pants", "arms", "torso", "gun", "gloves", "head", "hair", "goggles"],
-	"character_poses": ["idle", "idle1", "idle2", "idle3", "blink1", "blink2", "blink3", "look", "walk1", "walk2", "jump", "fall", "climb1", "climb2", "hurt", "action1", "action2", "shoot", "wave"]
+  "_comment": "Rules for tools/audit_assets.py: what it needs to know about files that are loaded under a name the code builds at run time.",
+  "looking_only_pattern": "(_sheet|preview|pose_[a-z]+)\\.png$",
+  "always_used": ["scripts/core/main.gd"],
+  "character_pose_pattern": "^assets/characters/[^/]+/(?P<skin>[a-z]+)/(?P=skin)_(?P<pose>[a-z0-9]+)\\.png$",
+  "character_part_pattern": "^assets/characters/[^/]+/(?P<skin>[a-z]+)/(?P<part>[a-z]+)/([a-z_]+/)?(?P=skin)_(?P<pose>[a-z0-9]+)_(?P=part)\\.png$",
+  "character_parts": ["boots", "pants", "arms", "torso", "gun", "gloves", "head", "hair", "goggles"],
+  "character_poses": ["idle", "idle1", "idle2", "idle3", "blink1", "blink2", "blink3", "look", "walk1", "walk2", "jump", "fall", "climb1", "climb2", "hurt", "action1", "action2", "shoot", "wave"]
 }

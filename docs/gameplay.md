@@ -1,14 +1,14 @@
 ﻿# Gameplay and controls
 
-| Action | Keyboard (PC, the defaults) | Phone |
-|---|---|---|
-| Move | Left / Right arrows | D-pad left / right |
-| Jump | **Space**, **W**, or Up | **B** button, or D-pad up |
-| Climb up / down a ladder | Up / Down arrows | D-pad up / down |
-| Use (a computer) | E | **Y** button |
-| Light attack: throw an object; in the mech the laser (hold) | **Q** | **A** button |
-| Heavy attack: the EMP gun on foot, the missile in the mech | **S** | **X** button |
-| Start the game (title screen) | **Enter** | tap anywhere |
+| Action                                                      | Keyboard (PC, the defaults) | Phone                     |
+| ----------------------------------------------------------- | --------------------------- | ------------------------- |
+| Move                                                        | Left / Right arrows         | D-pad left / right        |
+| Jump                                                        | **Space**, **W**, or Up     | **B** button, or D-pad up |
+| Climb up / down a ladder                                    | Up / Down arrows            | D-pad up / down           |
+| Use (a computer)                                            | E                           | **Y** button              |
+| Light attack: throw an object; in the mech the laser (hold) | **Q**                       | **A** button              |
+| Heavy attack: the EMP gun on foot, the missile in the mech  | **S**                       | **X** button              |
+| Start the game (title screen)                               | **Enter**                   | tap anywhere              |
 
 The PC keys can be changed in the settings (title screen, SETTINGS: click a key, press the new one); on a phone the settings list what the buttons (X, Y, A, B) do. Heavy attack on foot fires the **EMP gun**: the player takes the gun out (the `shoot` picture of the hero, with the gun drawn in the fist, made by `tools/art/generate_player.py` and shown by `PlayerSprite`, which also makes the figure vibrate a little with the recoil) and [`EmpGun`](../scripts/player/emp_gun.gd) keeps firing a stream of electricity
 ([`ElectricArc`](../scripts/common/effects/electric_arc.gd): a bolt of lightning made of straight, jagged pieces that strikes a new path every 0.05 s, with hard forks, a soft glow that lights the level round it and sparks where it hits; in the martial-arts outfit, which has no gun (its `wave` pose has both hands held round a ball of energy), the stream is a wide wave of energy, [`EnergyBeam`](../scripts/common/effects/energy_beam.gd), that hits what it covers) straight ahead **for as long as the button is held**, like the mech's laser: **560 px** reach, stopped by a wall,
@@ -73,12 +73,12 @@ no health bar: one thrown object destroys one, and it returns at the same spot 5
 screen is silent: only pits on screen, or within `Level.PIT_ACTIVE_BUFFER` (700 px) of its edge in any direction, are awake, so one wakes up just before you reach it; every other pit's creatures, bubbles, gas and glow are hidden and do no work at all (`tools/tests/pit_sleep_test.gd`). Enemies far from the player sleep too. Each
 pit has its own:
 
-| Pit | Creature | What it does | Hit |
-|---|---|---|---|
-| toxic waste `A` | **poisonous puffer fish** | puffs up into a spiky ball as it leaps; the pit gives off drifting poison gas | 8% of your health, then poison: 4% four times, 0.7 s apart (it never kills; you turn green) |
-| lava `F` | **fireball** | jumps straight up and down out of the lava, a glowing head with a comet of flame. Thrown objects that hit it **burn up**; it cannot be put out | 15%, then **burning**: 1% every 0.7 s for 16 ticks (a quarter of the poison's rate for four times as long; never kills; you turn orange and catch fire) and **thrown objects only go half as far** while it lasts |
-| nuclear waste `N` | **glowing eel** | a long glowing eel that swims through the air; the pit glows and pulses | 12%, then **radiation sickness**: a third of a burn's rate (1/3 of a point every 0.7 s, so 1 point every 2.1 s) for twice as long (32 ticks, about 22 s; never kills), and **every hit from an enemy does 1.5 times its damage** until it wears off (spikes are not made worse). You glow a radioactive green |
-| piranha tank `W` | **robot piranha** ([piranha.gd](../scripts/enemy/piranha.gd)) | snaps its saw-toothed jaws, open while it leaps | 10%, then **bleeding**: 1% every 0.7 s for 16 ticks (the same as a burn; never kills). Your **energy bar refills at half speed** and you flash red and drip blood |
+| Pit               | Creature                                                      | What it does                                                                                                                                   | Hit                                                                                                                                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| toxic waste `A`   | **poisonous puffer fish**                                     | puffs up into a spiky ball as it leaps; the pit gives off drifting poison gas                                                                  | 8% of your health, then poison: 4% four times, 0.7 s apart (it never kills; you turn green)                                                                                                                                                                                                                   |
+| lava `F`          | **fireball**                                                  | jumps straight up and down out of the lava, a glowing head with a comet of flame. Thrown objects that hit it **burn up**; it cannot be put out | 15%, then **burning**: 1% every 0.7 s for 16 ticks (a quarter of the poison's rate for four times as long; never kills; you turn orange and catch fire) and **thrown objects only go half as far** while it lasts                                                                                             |
+| nuclear waste `N` | **glowing eel**                                               | a long glowing eel that swims through the air; the pit glows and pulses                                                                        | 12%, then **radiation sickness**: a third of a burn's rate (1/3 of a point every 0.7 s, so 1 point every 2.1 s) for twice as long (32 ticks, about 22 s; never kills), and **every hit from an enemy does 1.5 times its damage** until it wears off (spikes are not made worse). You glow a radioactive green |
+| piranha tank `W`  | **robot piranha** ([piranha.gd](../scripts/enemy/piranha.gd)) | snaps its saw-toothed jaws, open while it leaps                                                                                                | 10%, then **bleeding**: 1% every 0.7 s for 16 ticks (the same as a burn; never kills). Your **energy bar refills at half speed** and you flash red and drip blood                                                                                                                                             |
 
 `tools/tests/piranha_test.gd` and `tools/tests/pit_creature_test.gd` check all of this. Damage numbers are fractions of
 `Player.MAX_HEALTH` (the `SPECIES` table in `pit_creature.gd`). A level file can change how many creatures a pit holds, their damage and

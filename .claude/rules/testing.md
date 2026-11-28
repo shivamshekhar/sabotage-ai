@@ -11,5 +11,6 @@
 - **Level tests are generic.** `tools/tests/level_traversal_test.gd` (checks in `tools/tests/lib/level_checks.gd`) takes any level and asks whether it can
   be played: exit reachable, no dead ends, gates have computers and really block, power-up box reachable. Do not write tests that check where a tile or an
   enemy is placed. `LEVEL=level_03` or `LEVEL_FILE=path` runs it on one level.
+- Code must pass `tools/lint.sh` (gdlint and prettier; see docs/testing.md). Fix a finding instead of switching a rule off; a rule is switched off in `gdlintrc` only with its reason.
 - Scratch tests, probes and screenshots go in `tmp/`, never in `tools/tests/` unless they are meant to stay.
 - Headless limits: no music, no real window. Do not `await` inside `_process`. After adding scripts or assets run `godot --headless --path . --import`.

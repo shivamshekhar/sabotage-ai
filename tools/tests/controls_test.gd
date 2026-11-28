@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Headless test of the keyboard bindings and the jump / climb / action rules. Exits non-zero on failure.
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/controls_test.gd
 

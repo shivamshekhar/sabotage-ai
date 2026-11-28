@@ -3,11 +3,11 @@ extends SceneTree
 ## Run: godot_console --headless --fixed-fps 60 --path . --script res://tools/tests/laser_test.gd
 
 # The test plays the first floor's tunnel gate (laser 1) and its computer. Where they are is read from the map
-# (see _find_gate_one()): NEAR_X is a spot in front of the computer, FEET_Y the floor's feet y, and
-# LASER_LEFT_EDGE the x of the left face of the gate's wall (LaserField.BEAM_WIDTH wide, centred in its column).
-var NEAR_X := 0.0
-var FEET_Y := 0.0
-var LASER_LEFT_EDGE := 0.0
+# (see _find_gate_one()): near_x is a spot in front of the computer, feet_y the floor's feet y, and
+# laser_left_edge the x of the left face of the gate's wall (LaserField.BEAM_WIDTH wide, centred in its column).
+var near_x := 0.0
+var feet_y := 0.0
+var laser_left_edge := 0.0
 
 var main: Node
 var level: Level
@@ -25,12 +25,12 @@ func _find_gate_one() -> void:
 	var rows := LevelData.map("level_01")
 	for t in LevelData.terminals("level_01"):
 		if t["laser"] == "1":
-			NEAR_X = (t["c"] + 1.0) * 70.0
-			FEET_Y = (t["r"] + 1) * 70.0
+			near_x = (t["c"] + 1.0) * 70.0
+			feet_y = (t["r"] + 1) * 70.0
 	for r in rows.size():
 		for c in rows[r].length():
 			if rows[r][c] == "1":
-				LASER_LEFT_EDGE = c * 70 + 35 - LaserField.BEAM_WIDTH / 2.0
+				laser_left_edge = c * 70 + 35 - LaserField.BEAM_WIDTH / 2.0
 
 
 func _initialize() -> void:
@@ -69,7 +69,7 @@ func _main() -> void:
 
 	# The laser is a wall.
 	_check("laser 1 starts on", level.laser_is_on("1"))
-	_tp(NEAR_X, FEET_Y)
+	_tp(near_x, feet_y)
 	await _wait(10)
 	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(120)
@@ -81,13 +81,13 @@ func _main() -> void:
 	var lr := lock_screen.layout_rects()
 	_check("the lock text fits the screen at a readable size",
 		lock_screen.fitted_font_size(lock_screen.lock_text(), MonitorScreen.FONT_BODY, lr["label"].size.x, lr["label"].size.y) >= MonitorScreen.MIN_FONT_SIZE)
-	_check("a laser that is on stops the player", player.global_position.x <= LASER_LEFT_EDGE - 30.0 + 1.0,
-		"x=%.0f, wall face at %.0f" % [player.global_position.x, LASER_LEFT_EDGE])
+	_check("a laser that is on stops the player", player.global_position.x <= laser_left_edge - 30.0 + 1.0,
+		"x=%.0f, wall face at %.0f" % [player.global_position.x, laser_left_edge])
 
 	# Using the computer asks for its puzzle; using it from far away does nothing.
-	_tp(NEAR_X - 900.0, FEET_Y)
+	_tp(near_x - 900.0, feet_y)
 	_check("far from a computer, use does nothing", not level.try_interact(player.global_position))
-	_tp(NEAR_X, FEET_Y)
+	_tp(near_x, feet_y)
 	await _wait(10)
 	Input.action_press(InputActions.INTERACT)
 	await _wait(3)
@@ -132,14 +132,14 @@ func _main() -> void:
 	for e in get_nodes_in_group(Groups.ENEMIES):   # the Bro beyond the gate would block the way (this test is about the laser)
 		e.queue_free()
 	await _wait(2)
-	_tp(NEAR_X + 90.0, FEET_Y)   # just short of the wall
+	_tp(near_x + 90.0, feet_y)   # just short of the wall
 	await _wait(10)
 	Input.action_press(InputActions.MOVE_RIGHT)
 	await _wait(30)
 	_release_all()
-	_check("with the laser off the player walks through", player.global_position.x > LASER_LEFT_EDGE + 20.0,
+	_check("with the laser off the player walks through", player.global_position.x > laser_left_edge + 20.0,
 		"x=%.0f" % player.global_position.x)
-	_check("a computer whose laser is off does nothing", not level.try_interact(Vector2(NEAR_X, FEET_Y)))
+	_check("a computer whose laser is off does nothing", not level.try_interact(Vector2(near_x, feet_y)))
 
 	# The timing puzzle on its own.
 	var timing := TimingGame.new()

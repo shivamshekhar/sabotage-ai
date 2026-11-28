@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Headless test of the phone controls: 8-way D-pad, four face buttons, multi-touch, sliding,
 ## forgiving touch areas, corner anchoring on wide screens, no stuck inputs, and that the
 ## overlay is hidden on PC. Exits non-zero on failure.

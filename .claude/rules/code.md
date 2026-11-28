@@ -9,7 +9,7 @@
 - **Constants are documented**: a comment above each says what it is, its unit, and what raising or lowering it does.
 - **Generic things are generic.** Anything another feature could use (an explosion, particles, a health bar, geometry helpers, a debris piece) lives in
   `scripts/common/` with a general name, not in the feature that first needed it.
-- **Readable first.** Short functions with a doc comment saying *why*. Types on variables and function signatures. GDScript: `:=` cannot infer from a
+- **Readable first.** Short functions with a doc comment saying _why_. Types on variables and function signatures. GDScript: `:=` cannot infer from a
   Variant (use `var x: Type =`); packed arrays are values, so assign the whole array back.
 - **No dead code.** Delete unused functions, constants, scripts and pictures instead of commenting them out. `python tools/audit_assets.py` finds unused files.
 - **Performance:** no per-frame `load()` (use `AssetPaths`, which caches); no per-frame allocations of nodes or resources in `_process`; rays and

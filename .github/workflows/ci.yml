@@ -1,0 +1,119 @@
+# The same checks as the pre-commit hook (tools/hooks/pre-commit), on every push and pull request: lint and formatting, the asset audit,
+# the tests, and the web, desktop and phone builds. A failing step fails the run.
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Must match the Godot version the project is developed with (godot --version), e.g. 4.7.2.
+  GODOT_VERSION: "4.7.2"
+  ANDROID_BUILD_TOOLS: "35.0.1"
+  ANDROID_PLATFORM: "android-35"
+
+jobs:
+  lint:
+    name: Lint and formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install gdtoolkit (gdlint)
+        run: python -m pip install gdtoolkit==4.5.0
+      - name: Lint (gdlint) and formatting (prettier)
+        run: tools/lint.sh
+      - name: Asset audit and editor sync
+        run: |
+          python tools/audit_assets.py
+          python tools/sync_editor.py --check
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mkdir -p "$HOME/bin"
+          unzip -q godot.zip -d godot_bin
+          mv "godot_bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/bin/godot"
+          chmod +x "$HOME/bin/godot"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: "Import the project twice (the second pass registers the script class names)"
+        run: |
+          godot --headless --path . --import || true
+          godot --headless --path . --import || true
+      - name: Run every test
+        run: GODOT=godot tools/run_tests.sh
+      - name: Keep the logs of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: tmp/test_logs/
+
+  builds:
+    name: Web, desktop and phone builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install the Android SDK parts Godot needs
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$sdk/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" "platforms;${ANDROID_PLATFORM}" > /dev/null
+          echo "ANDROID_SDK=$sdk" >> "$GITHUB_ENV"
+      - name: Install Godot and its export templates
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/bin"
+          unzip -q godot.zip -d godot_bin
+          mv "godot_bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/bin/godot"
+          chmod +x "$HOME/bin/godot"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q templates.tpz -d templates_tmp
+          mv templates_tmp/templates/* "$dest/"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Tell Godot where the Android SDK, Java and a debug signing key are
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -v -keystore "$HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.7.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_SDK"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^          //' "$HOME/.config/godot/editor_settings-4.7.tres"
+      - name: Build the web, Windows, Linux and Android versions
+        run: GODOT=godot tools/build_all.sh

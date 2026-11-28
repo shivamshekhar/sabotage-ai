@@ -7,9 +7,11 @@ in [export_presets.cfg](../export_presets.cfg): "Android Debug (APK)" (arm64, no
 ## 3.1 One-time setup
 
 **a) JDK 17.**
+
 ```bash
 winget install --id EclipseAdoptium.Temurin.17.JDK -e
 ```
+
 It installs to `C:\Program Files\Eclipse Adoptium\jdk-17.x.x.x-hotspot`. Note that exact path.
 
 **b) Android SDK.** You do not need Android Studio. Download the "Command line tools only"
@@ -20,6 +22,7 @@ with `<SDK>\cmdline-tools\latest\bin\sdkmanager.bat`, where `<SDK>` is, for exam
 to `latest` and put it inside `<SDK>\cmdline-tools\`.
 
 Then, in **Git Bash** (the `yes |` trick answers the licence prompts):
+
 ```bash
 export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17.0.21.9-hotspot"   # your JDK path
 SDK="$LOCALAPPDATA/Android/Sdk"
@@ -27,18 +30,21 @@ SM="$SDK/cmdline-tools/latest/bin/sdkmanager.bat"
 yes | "$SM" --sdk_root="$SDK" --licenses        # accepts Google's Android SDK licences
 "$SM" --sdk_root="$SDK" --install "platform-tools" "build-tools;35.0.1" "platforms;android-35"
 ```
+
 Running `--licenses` means you accept Google's Android SDK licence agreements. Read them first
 if you care; they are shown as they scroll by.
 
 **c) Godot export templates (4.7.2.stable).** Download
 `Godot_v4.7.2-stable_export_templates.tpz` from
 <https://github.com/godotengine/godot/releases/tag/4.7.2-stable> (about 1.2 GB) and either:
+
 - in the editor: Editor > Manage Export Templates > Install from File, or
 - by hand: a `.tpz` is a zip; copy its `templates/` contents into
   `%APPDATA%\Godot\export_templates\4.7.2.stable\` (the folder must contain
   `android_debug.apk`, `android_release.apk`, `android_source.zip`, `version.txt`...).
 
 **d) Debug signing key.** Debug builds are signed with a throwaway key. Create it once:
+
 ```bash
 mkdir -p "$APPDATA/Godot/keystores"
 "C:/Program Files/Eclipse Adoptium/jdk-17.0.21.9-hotspot/bin/keytool.exe" -genkeypair \
@@ -46,10 +52,12 @@ mkdir -p "$APPDATA/Godot/keystores"
   -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android \
   -dname "CN=Android Debug,O=Android,C=US"
 ```
+
 (This is the standard Android debug key, not your release key. see the release section below.)
 
 **e) Tell Godot where everything is.** Either use the editor (Editor > Editor Settings >
 Export > Android) or edit `%APPDATA%\Godot\editor_settings-4.7.tres` while Godot is closed and set:
+
 ```
 export/android/java_sdk_path = "C:/Program Files/Eclipse Adoptium/jdk-17.0.21.9-hotspot"
 export/android/android_sdk_path = "C:/Users/<you>/AppData/Local/Android/Sdk"
@@ -58,11 +66,12 @@ export/android/debug_keystore_user = "androiddebugkey"
 export/android/debug_keystore_pass = "android"
 export/android/shutdown_adb_on_exit = false
 ```
+
 (The environment variables `JAVA_HOME` and `ANDROID_HOME` fill in the SDK path, but Godot still
 needs `java_sdk_path` set in editor settings, or it fails with "A valid Java SDK path is required".)
 
 **`shutdown_adb_on_exit = false` is important.** In the editor this is
-Editor Settings > Export > Android > *Shutdown ADB on Exit*. With it on (the default), Godot runs
+Editor Settings > Export > Android > _Shutdown ADB on Exit_. With it on (the default), Godot runs
 `adb kill-server` as it quits, and on Windows that call can block forever. Once the Android SDK
 is configured, **every** headless Godot command (`--import`, `--export-debug`, `--script ...`)
 then hangs instead of exiting. With it off, they exit normally in a few seconds.
@@ -78,6 +87,7 @@ texture and takes noticeably longer.
 ```bash
 tools/build_apk.sh        # run in Git Bash from the repo root; writes build/sabotage-debug.apk
 ```
+
 This takes about 1 minute (longer the very first time). It runs Godot in the background, waits for
 the "export DONE" line (or an error), makes sure Godot has stopped, and prints
 `OK: build/sabotage-debug.apk (29M)` or the tail of `build/export.log`.
@@ -97,7 +107,7 @@ older phones too, switch Project Settings > Rendering > Renderer to "Compatibili
 
 ## 3.3 Install on your phone
 
-1. On the phone: Settings > About phone > tap *Build number* 7 times, then Settings > Developer
+1. On the phone: Settings > About phone > tap _Build number_ 7 times, then Settings > Developer
    options > turn on **USB debugging**. Plug it in and accept the prompt on the phone.
 2. Install:
    ```bash
@@ -145,6 +155,3 @@ Google Play requires an **Android App Bundle (.aab)**, signed with your own rele
    needed a closed test with about 12 testers for 14 days before production (check Google's
    current rules); a privacy policy URL, content rating questionnaire, screenshots and a feature
    graphic; the target API level must meet Google's current requirement.
-
-
-

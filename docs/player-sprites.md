@@ -16,16 +16,16 @@ assets/characters/saboteur/player/
 
 The parts that have styles, and the styles that exist now:
 
-| Part (slot) | Style folders |
-|-------------|---------------|
-| `hair` | `quiff` (original), `beret`, `crop`, `mohawk`, `slick`, `spiky`, `swept` |
-| `goggles` | `on_chest` (original), `glasses`, `mask_and_band`, `shades`, `visor` |
-| `torso` | `t_shirt` (original), `aloha_shirt`, `leather_vest`, `long_sleeves`, `martial_gi`, `shinobi_vest`, `sleeveless`, `smock` |
-| `gloves` | `fingerless` (original), `arm_guards`, `paint_stained`, `studded`, `wristbands` |
-| `pants` | `cargo` (original), `bandaged`, `martial_gi`, `painted`, `plain`, `ripped_jeans`, `slacks` |
-| `boots` | `sneakers` (original), `combat_boots`, `martial_boots`, `plain`, `sandals`, `work_boots` |
-| `gun` | no styles: `player_shoot_gun.png` (the EMP gun in the fist) and `player_wave_gun.png` (a ball of energy between both hands) |
-| `head`, `arms` | no styles: the pictures are directly in the part folder |
+| Part (slot)    | Style folders                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `hair`         | `quiff` (original), `beret`, `crop`, `mohawk`, `slick`, `spiky`, `swept`                                                    |
+| `goggles`      | `on_chest` (original), `glasses`, `mask_and_band`, `shades`, `visor`                                                        |
+| `torso`        | `t_shirt` (original), `aloha_shirt`, `leather_vest`, `long_sleeves`, `martial_gi`, `shinobi_vest`, `sleeveless`, `smock`    |
+| `gloves`       | `fingerless` (original), `arm_guards`, `paint_stained`, `studded`, `wristbands`                                             |
+| `pants`        | `cargo` (original), `bandaged`, `martial_gi`, `painted`, `plain`, `ripped_jeans`, `slacks`                                  |
+| `boots`        | `sneakers` (original), `combat_boots`, `martial_boots`, `plain`, `sandals`, `work_boots`                                    |
+| `gun`          | no styles: `player_shoot_gun.png` (the EMP gun in the fist) and `player_wave_gun.png` (a ball of energy between both hands) |
+| `head`, `arms` | no styles: the pictures are directly in the part folder                                                                     |
 
 Example: `hair/crop/player_walk2_hair.png`, `head/player_walk2_head.png`.
 

@@ -68,7 +68,7 @@ static func run(id: String, campaign := true) -> Array[Dictionary]:
 	out.append(_result(tag + "one start, and %s" % ("no exit (the boss ends it)" if is_boss else "one exit"),
 			_count(rows, "P") == 1 and _count(rows, "E") == (0 if is_boss else 1)))
 	if campaign:
-		out.append_array(_box_checks(id, rows))
+		out.append_array(_box_checks(id))
 	out.append_array(_gate_seal_checks(id, rows))
 	out.append(_sign_check(id, rows))
 	if is_boss:
@@ -207,7 +207,7 @@ static func _sign_check(id: String, rows: Array[String]) -> Dictionary:
 
 
 ## One power-up box, and a player can reach it (the solver finds a spot to jump onto it from).
-static func _box_checks(id: String, rows: Array[String]) -> Array[Dictionary]:
+static func _box_checks(id: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var found := boxes(id)
 	out.append(_result("%s: exactly one power-up box" % id, found.size() == 1, str(found)))

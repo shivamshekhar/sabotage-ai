@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Headless test of the live monitor screens: the three monitors exist and sit on the machine's blank
 ## screens, the graph and oscilloscope keep moving, and the terminal runs its whole "AI job": funny
 ## quips, a progress bar that goes 0 to 100 (stalling at 99), the results page with the water
@@ -157,7 +157,8 @@ func _main() -> void:
 		last_progress = terminal.progress()
 		if terminal.job_state() == MonitorScreen.Job.STALLED:
 			stalled_seen = true
-			_check("while stalled the bar is stuck at the stall point", is_equal_approx(terminal.progress(), MonitorScreen.JOB_STALL_AT)) if not quips_seen.has("__stall_checked") else null
+			if not quips_seen.has("__stall_checked"):
+				_check("while stalled the bar is stuck at the stall point", is_equal_approx(terminal.progress(), MonitorScreen.JOB_STALL_AT))
 			quips_seen["__stall_checked"] = true
 	_check("the job starts in the loading state", started_loading)
 	_check("the first message is 'Loading...'", MonitorScreen.QUIPS[0] == "Loading...")

@@ -2,16 +2,16 @@
 
 ## Requirements
 
-| What | Version used | Needed for | How to get it (Windows) |
-|---|---|---|---|
-| Git | any recent | cloning, version control | `winget install --id Git.Git -e` |
-| Godot (standard build, **not** .NET) | **4.7.2 stable** | running and exporting the game | `winget install --id GodotEngine.GodotEngine -e` |
-| VS Code + the **godot-tools** extension | optional | editing GDScript | `winget install --id Microsoft.VisualStudioCode -e` |
-| JDK | **17** (Eclipse Temurin 17.0.x) | Android export | `winget install --id EclipseAdoptium.Temurin.17.JDK -e` |
-| Android SDK | cmdline-tools, `platform-tools`, `build-tools;35.0.1`, `platforms;android-35` | Android export | see [Android](android.md)(android.md) |
-| Godot export templates | **4.7.2.stable** (about 1.2 GB download) | Android export | see [Android](android.md)(android.md) |
-| Python 3 + Pillow | Python 3.12, Pillow 13 | regenerating art only | `pip install pillow` |
-| GitHub CLI | optional | working with the GitHub repo | `winget install --id GitHub.cli -e` |
+| What                                    | Version used                                                                  | Needed for                     | How to get it (Windows)                                 |
+| --------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------- |
+| Git                                     | any recent                                                                    | cloning, version control       | `winget install --id Git.Git -e`                        |
+| Godot (standard build, **not** .NET)    | **4.7.2 stable**                                                              | running and exporting the game | `winget install --id GodotEngine.GodotEngine -e`        |
+| VS Code + the **godot-tools** extension | optional                                                                      | editing GDScript               | `winget install --id Microsoft.VisualStudioCode -e`     |
+| JDK                                     | **17** (Eclipse Temurin 17.0.x)                                               | Android export                 | `winget install --id EclipseAdoptium.Temurin.17.JDK -e` |
+| Android SDK                             | cmdline-tools, `platform-tools`, `build-tools;35.0.1`, `platforms;android-35` | Android export                 | see [Android](android.md)(android.md)                   |
+| Godot export templates                  | **4.7.2.stable** (about 1.2 GB download)                                      | Android export                 | see [Android](android.md)(android.md)                   |
+| Python 3 + Pillow                       | Python 3.12, Pillow 13                                                        | regenerating art only          | `pip install pillow`                                    |
+| GitHub CLI                              | optional                                                                      | working with the GitHub repo   | `winget install --id GitHub.cli -e`                     |
 
 You do **not** need Python, the JDK or the Android SDK just to play or edit the game on
 desktop. Godot alone is enough for that.
@@ -56,15 +56,10 @@ Stick to Godot 4.7.x. The project files and the export templates must be the sam
 ### Editing in VS Code (optional)
 
 1. Install the **godot-tools** extension.
-2. In Godot: Editor > Editor Settings > Text Editor > External. Turn on *Use External Editor*,
-   set *Exec Path* to your `Code.exe` (for example
-   `C:\Users\<you>\AppData\Local\Programs\Microsoft VS Code\Code.exe`) and *Exec Flags* to
+2. In Godot: Editor > Editor Settings > Text Editor > External. Turn on _Use External Editor_,
+   set _Exec Path_ to your `Code.exe` (for example
+   `C:\Users\<you>\AppData\Local\Programs\Microsoft VS Code\Code.exe`) and _Exec Flags_ to
    `{project} --goto {file}:{line}:{col}`.
 3. Keep the Godot editor open while you edit; godot-tools talks to its language server.
 
 The repo's [.vscode/settings.json](../.vscode/settings.json) makes Git Bash the default terminal.
-
-
-
-
-

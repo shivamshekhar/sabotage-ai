@@ -1,0 +1,25 @@
+# Prettier checks what people write by hand: the docs, the workflows, the settings files.
+# Everything below is written by a tool in its own format, so a formatter would only fight it.
+.godot/
+build/
+tmp/
+node_modules/
+package-lock.json
+
+# levels and the tile registry: written by the level editor / sync_editor.py
+levels/
+tools/tests/fixtures/
+tools/level_editor/catalog.json
+
+# written by the art generators
+tools/art/player_pictures.json
+assets/
+
+# the user's own editor settings
+.vscode/
+
+# Godot's own files
+*.import
+*.tres
+*.tscn
+*.cfg

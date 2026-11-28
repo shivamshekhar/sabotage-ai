@@ -563,7 +563,7 @@ func _step_legs(delta: float, grounded: bool) -> void:
 		# by what the body walks while the foot is in the air
 		var swing_time := GAIT_SWING * GAIT_STRIDE / maxf(speed, GAIT_SLOW_SPEED)
 		var heading := signf(p.velocity.x) if moving else 0.0
-		var to_x := _landing_x(i, stance_x, speed, heading, swing_time)
+		var to_x := _landing_x(stance_x, speed, heading, swing_time)
 		var floor_y := _ground_y(to_x)
 		if is_nan(floor_y):
 			# no floor under this foot's stance (a narrow ledge, an edge): it cannot stand, it curls up
@@ -582,7 +582,7 @@ func _step_legs(delta: float, grounded: bool) -> void:
 		var rhythm_step := in_rhythm and not emergency
 		var duration := swing_time if rhythm_step else STEP_TIME
 		if not rhythm_step:
-			to_x = _landing_x(i, stance_x, speed, heading, STEP_TIME)
+			to_x = _landing_x(stance_x, speed, heading, STEP_TIME)
 			floor_y = _ground_y(to_x, floor_y)
 		_step_from[i] = feet[i]
 		_step_to[i] = Vector2(to_x, floor_y)
@@ -604,8 +604,8 @@ func _step_legs(delta: float, grounded: bool) -> void:
 
 ## Where a foot that steps now, and is in the air for `air_time` seconds, comes down: ahead of its stance in the direction of travel (`heading`, 0 when
 ## standing) by half of what the body walks while a foot stands, and further by what it walks meanwhile, so the foot is where the stance is by then.
-func _landing_x(i: int, stance_x: float, speed: float, heading: float, air_time: float) -> float:
-	return _stance_x_toward(i, stance_x + heading * (GAIT_STRIDE * (1.0 - GAIT_SWING) * 0.5 + speed * air_time))
+func _landing_x(stance_x: float, speed: float, heading: float, air_time: float) -> float:
+	return _stance_x_toward(stance_x + heading * (GAIT_STRIDE * (1.0 - GAIT_SWING) * 0.5 + speed * air_time))
 
 
 ## True if leg `i` starts its step in the air in this step of the cycle (the cycle was at `before`, it is at _gait now). One pair starts as the cycle
@@ -626,10 +626,10 @@ func _other_pair_stepping(i: int) -> bool:
 ## Where leg `i`'s foot likes to stand: its stance beside the mech, but never inside a wall: a wall beside the mech makes the leg fold in and
 ## stand in front of it.
 func _stance_x(i: int) -> float:
-	return _stance_x_toward(i, mech.player.global_position.x + STANCE[i])
+	return _stance_x_toward(mech.player.global_position.x + STANCE[i])
 
 
-func _stance_x_toward(i: int, want: float) -> float:
+func _stance_x_toward(want: float) -> float:
 	var p := mech.player
 	var from := Vector2(p.global_position.x, p.global_position.y - 20.0)
 	var query := PhysicsRayQueryParameters2D.create(from, Vector2(want, from.y), PhysicsLayers.WORLD)

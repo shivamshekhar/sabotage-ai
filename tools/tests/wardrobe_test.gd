@@ -300,7 +300,7 @@ func _wearers() -> void:
 	Wardrobe.change(&"hair", &"crop", &"pink")
 	sprite.update_pose(&"jump", 1, 0.0)
 	_check("and changes it when the outfit changes", sprite.texture != first and sprite.texture == SpriteLibrary.character_pose("player", "jump"))
-	_check("the zombie wears no outfit", SpriteLibrary.character_pose("zombie", "idle") == SpriteLibrary.character_pose("zombie", "idle") and SpriteLibrary.character_pose("zombie", "idle").get_width() == 80)
+	_check("the zombie wears no outfit", SpriteLibrary.character_pose("zombie", "idle").get_width() == 80)
 	sprite.queue_free()
 	Wardrobe.reset()
 	await _wait(1)

@@ -17,10 +17,10 @@ assets/levels/                the art, the same shape (see art.md)
   level_02/ ...
 ```
 
-| Way to make a level | Use it for | Docs |
-|---|---|---|
-| **Level editor** (a Godot window: palette, drag and drop, inspectors) | making a level by hand | [tools/level_editor/README.md](../tools/level_editor/README.md) |
-| **Level CLI** (`tools/level_cli.sh`) | scripts and AI assistants making and checking levels | [tools/level_editor/CLI.md](../tools/level_editor/CLI.md) |
+| Way to make a level                                                   | Use it for                                           | Docs                                                            |
+| --------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| **Level editor** (a Godot window: palette, drag and drop, inspectors) | making a level by hand                               | [tools/level_editor/README.md](../tools/level_editor/README.md) |
+| **Level CLI** (`tools/level_cli.sh`)                                  | scripts and AI assistants making and checking levels | [tools/level_editor/CLI.md](../tools/level_editor/CLI.md)       |
 
 The map's `E` is the level's **exit door** (see gameplay.md): the door is 2 tiles wide and 3 tall and stands on the `E` tile, so the tiles above it and beside it must be free
 (`level_traversal_test.gd` checks it for every level).
@@ -33,14 +33,14 @@ The file format is described in [tools/level_editor/FORMAT.md](../tools/level_ed
 The ids are the folder names. The game starts on `level_01`; finishing a level loads the one named in its `meta.next`, and after
 the last one it starts again.
 
-| Id | Title | Theme |
-|---|---|---|
-| `level_01` | SERVER HALL | toxic waste, a first Bro, a ladder climb, a first laser gate |
-| `level_02` | COOLING PLANT | robotic-piranha tanks, a ledge climb, a gallery of ledges |
-| `level_03` | THE FOUNDRY | lava, a stepped pyramid, stepping stones, a gauntlet |
-| `level_04` | REACTOR CORE | nuclear waste, a tall ladder, two laser gates |
-| `level_05` | THE MAINFRAME | everything, three laser gates and a final arena with a boss Bro |
-| `test` | TEST LEVEL | a sandbox built in code (`LevelData.test_level()`) that the automated tests rely on; do not change it |
+| Id         | Title         | Theme                                                                                                 |
+| ---------- | ------------- | ----------------------------------------------------------------------------------------------------- |
+| `level_01` | SERVER HALL   | toxic waste, a first Bro, a ladder climb, a first laser gate                                          |
+| `level_02` | COOLING PLANT | robotic-piranha tanks, a ledge climb, a gallery of ledges                                             |
+| `level_03` | THE FOUNDRY   | lava, a stepped pyramid, stepping stones, a gauntlet                                                  |
+| `level_04` | REACTOR CORE  | nuclear waste, a tall ladder, two laser gates                                                         |
+| `level_05` | THE MAINFRAME | everything, three laser gates and a final arena with a boss Bro                                       |
+| `test`     | TEST LEVEL    | a sandbox built in code (`LevelData.test_level()`) that the automated tests rely on; do not change it |
 
 Pick one with `SABOTAGE_LEVEL=<id>` (for example `SABOTAGE_LEVEL=level_03 godot --path .`). `tools/level_cli.sh list` shows them all.
 
@@ -106,7 +106,7 @@ turning arc and a still marker), a safe cracker (`safe_cracker`: nested rings lo
 block onto a tower), "don't press the red button", "press the button that SAYS green" (three buttons), "wrong answers only" (3
 questions), button mashing (tap a small red arcade button 4 times while it hops around) and a riddle captcha (a funny riddle told by the thing itself, such as "I have 88 keys but
 cannot open a single door. What am I?", and six cartoon pictures with one right answer; a stockpile of 28 riddles and 48 cartoon emoji
-pictures in `assets/ui/captcha/`). The captcha is *resting*: it is not in the "random" choice (`HackPopup.RESTING`) but can still be
+pictures in `assets/ui/captcha/`). The captcha is _resting_: it is not in the "random" choice (`HackPopup.RESTING`) but can still be
 asked for by name. To add a puzzle, subclass `Minigame` (or `QuizGame` for multiple choice), give it `auto_solve()` / `auto_fail()` test
 hooks and register it in `HackPopup` (`GAME_NAMES`, `_make_game`) and in `tools/level_editor/catalog.json`;
 `tools/tests/minigame_test.gd` then checks it. Always put a computer where the player can reach it before its laser.

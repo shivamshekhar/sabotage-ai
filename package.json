@@ -1,0 +1,12 @@
+{
+  "name": "sabotage-ai-tools",
+  "private": true,
+  "description": "Development tools only (formatting checks). The game itself is a Godot project: nothing here ships.",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.3.3"
+  }
+}

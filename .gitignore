@@ -22,3 +22,6 @@ tmp/
 
 # Local settings of AI tools (the shared rules in .claude/ are committed)
 .claude/settings.local.json
+
+# Node tools (prettier)
+node_modules/

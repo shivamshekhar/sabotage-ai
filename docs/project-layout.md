@@ -57,6 +57,11 @@ levels/                     Level data only: one folder per level (level.sableve
 assets/                     ALL pictures and sounds, as <category>/<feature>/: levels/ (tiles, machines, pit hazards, backgrounds), vehicles/mech/, powerups/box/,
                             bosses/saltman/, characters/ (saboteur/, kenney_platformer/), projectiles/, fonts/ (press_start_2p: the game's font), effects/ (generic), ui/ (icons/, captcha/, title/), audio/ (music/, sfx/) (see art.md)
 tools/
+  lint.sh                   gdlint (GDScript, gdlintrc) and prettier (docs, settings); --fix repairs the formatting
+  install_hooks.sh          Turns on the pre-commit hook (tools/hooks/pre-commit)
+  hooks/                    The git hooks: pre-commit runs lint, tests and every build
+  export_preset.sh          Exports one preset and checks the file was made (works around Godot's hanging headless export)
+  build_all.sh              Builds web, Windows, Linux and the Android APK into build/ (git-ignored)
   build_apk.sh              Builds build/sabotage-debug.apk (works around Godot's hanging headless export)
   run_tests.sh              Runs every headless test in tools/tests/ with time limits (REPEAT=n to hunt flaky tests)
   audit_assets.py           Lists assets and scripts nothing uses (dead files); rules in audit_rules.json
@@ -70,5 +75,3 @@ build/                      Export output (git-ignored): APK, AAB, export.log
 tmp/                        Scratch space for temporary scripts, screenshots, logs and art previews (git-ignored; created on demand by the scripts that use it)
 .claude/                    Rules for AI agents working on the project (CLAUDE.md and rules/)
 ```
-
-

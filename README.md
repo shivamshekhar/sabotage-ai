@@ -15,23 +15,24 @@ capitalists replacing humans with AI.
    godot --headless --path . --import    # run twice
    ```
 3. Play: `godot --path .`
+4. Contributing? Run `tools/install_hooks.sh` once: it turns on the pre-commit hook (lint, formatting, tests, web, desktop and phone builds). Check the code by hand with `tools/lint.sh` (see [docs/testing.md](docs/testing.md#lint-and-formatting)).
 
 Keyboard (change it in SETTINGS): arrows move, Space jumps, E uses computers, Q throws (in the mech: the laser), S heavy attack (in the mech: the missile), Enter starts the game. More in [docs/gameplay.md](docs/gameplay.md).
 
 ## Docs
 
-| | |
-|---|---|
-| [Setup](docs/setup.md) | requirements, running on desktop, VS Code |
-| [Gameplay and controls](docs/gameplay.md) | controls, combat, enemies, phone layout |
-| [Designing levels](docs/level-design.md) | the levels, the level editor, the level CLI |
-| [Android](docs/android.md) | debug APK and Google Play release builds |
-| [Web](docs/web.md) | the browser build and GitHub Pages |
-| [Art](docs/art.md) | regenerating the art, asset layout |
-| [Player sprites](docs/player-sprites.md) | the hero's part folders, style folders and file names |
-| [Tests](docs/testing.md) | `tools/run_tests.sh` and the headless tests |
-| [Project layout](docs/project-layout.md) | what lives where |
-| [Troubleshooting](docs/troubleshooting.md) | common problems and fixes |
+|                                            |                                                       |
+| ------------------------------------------ | ----------------------------------------------------- |
+| [Setup](docs/setup.md)                     | requirements, running on desktop, VS Code             |
+| [Gameplay and controls](docs/gameplay.md)  | controls, combat, enemies, phone layout               |
+| [Designing levels](docs/level-design.md)   | the levels, the level editor, the level CLI           |
+| [Android](docs/android.md)                 | debug APK and Google Play release builds              |
+| [Web](docs/web.md)                         | the browser build and GitHub Pages                    |
+| [Art](docs/art.md)                         | regenerating the art, asset layout                    |
+| [Player sprites](docs/player-sprites.md)   | the hero's part folders, style folders and file names |
+| [Tests](docs/testing.md)                   | `tools/run_tests.sh` and the headless tests           |
+| [Project layout](docs/project-layout.md)   | what lives where                                      |
+| [Troubleshooting](docs/troubleshooting.md) | common problems and fixes                             |
 
 ## License and credits
 

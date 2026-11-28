@@ -4,13 +4,13 @@ How the game is kept smooth, what was measured, and how to measure it again. The
 
 ## What the game does about it
 
-| Problem (measured) | What the game does | Where |
-|--------------------|--------------------|-------|
-| The first time a pose of the hero was shown (jump, throw, shoot) its picture was made: pictures read, recoloured, blended: 10-20 ms each on a PC, far more on a phone. | Every pose of the outfit worn is made **in advance, a little at a time** when a level starts and while the wardrobe is open. Recoloured parts are kept (changing one piece of an outfit recolours only that piece). | `OutfitComposer.warm_up()`, `WarmUp` |
-| The first explosion, bolt, energy wave, thrown object and sound each cost a few frames when first needed (pictures read, materials set up). | `EffectWarmUp` makes each effect once, nearly invisible, in the middle of the screen, and reads the throwable pictures and every sound, a little at a time at the start of a level. Sounds are kept (`Sfx.stream` used to read the file at every play). | `EffectWarmUp`, `Sfx` |
-| A level was 1,300 to 2,300 `Sprite2D` nodes (every tile; the solid ones twice, with their shadow): slow to build (about 110 ms of a level's 200 ms on a PC) and heavy to keep. | The still tiles are **batched**: one `MultiMeshInstance2D` for all the pictures that share a texture, a depth and a tint. The same pixels, 85% fewer nodes. Tiles that need to be nodes (lamps, sirens, pulsing lights) still are. | `SpriteBatch`, `Level._place()` |
-| Live screens, pulsing lights and laser fields redrew every frame wherever the camera was. | An `OffscreenSleeper` in each level puts them to sleep (no `_process`) while they are further than 320 px from the screen and wakes them before they are seen. | `OffscreenSleeper`, `Level.sleeper` |
-| Losing to the boss loaded the whole level again. | The boss fight is taken down and started again in the same level (`BossFight.clear()`, `Main._restart_fight()`). Dying elsewhere already respawns at the checkpoint without loading anything; finishing a level still builds the next one. | `Main` |
+| Problem (measured)                                                                                                                                                             | What the game does                                                                                                                                                                                                                                      | Where                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| The first time a pose of the hero was shown (jump, throw, shoot) its picture was made: pictures read, recoloured, blended: 10-20 ms each on a PC, far more on a phone.         | Every pose of the outfit worn is made **in advance, a little at a time** when a level starts and while the wardrobe is open. Recoloured parts are kept (changing one piece of an outfit recolours only that piece).                                     | `OutfitComposer.warm_up()`, `WarmUp` |
+| The first explosion, bolt, energy wave, thrown object and sound each cost a few frames when first needed (pictures read, materials set up).                                    | `EffectWarmUp` makes each effect once, nearly invisible, in the middle of the screen, and reads the throwable pictures and every sound, a little at a time at the start of a level. Sounds are kept (`Sfx.stream` used to read the file at every play). | `EffectWarmUp`, `Sfx`                |
+| A level was 1,300 to 2,300 `Sprite2D` nodes (every tile; the solid ones twice, with their shadow): slow to build (about 110 ms of a level's 200 ms on a PC) and heavy to keep. | The still tiles are **batched**: one `MultiMeshInstance2D` for all the pictures that share a texture, a depth and a tint. The same pixels, 85% fewer nodes. Tiles that need to be nodes (lamps, sirens, pulsing lights) still are.                      | `SpriteBatch`, `Level._place()`      |
+| Live screens, pulsing lights and laser fields redrew every frame wherever the camera was.                                                                                      | An `OffscreenSleeper` in each level puts them to sleep (no `_process`) while they are further than 320 px from the screen and wakes them before they are seen.                                                                                          | `OffscreenSleeper`, `Level.sleeper`  |
+| Losing to the boss loaded the whole level again.                                                                                                                               | The boss fight is taken down and started again in the same level (`BossFight.clear()`, `Main._restart_fight()`). Dying elsewhere already respawns at the checkpoint without loading anything; finishing a level still builds the next one.              | `Main`                               |
 
 `WarmUp` is the shared tool: it does a list of jobs a few a frame (3 ms of each frame at most, and at least one job) and removes itself. A new thing that costs a stutter the first time can be made ready the same way.
 
@@ -22,12 +22,12 @@ How the game is kept smooth, what was measured, and how to measure it again. The
 
 ## Measured (a PC with a mid-range laptop GPU; a phone is several times slower)
 
-| | Before | After |
-|-|--------|-------|
-| Nodes in level 3 / level 5 | 1,784 / 2,348 | 279 / 305 |
-| Frames over 12 ms after the first half second (scripted run: run, jump, throw, heavy attack; 14 s) | 8-9 | 0 |
-| Average frame | 1.5-1.8 ms | 1.2-1.3 ms |
-| Worst frame after the first half second | 24-43 ms | none over 12 ms (only the first two frames of a scene start are long) |
+|                                                                                                    | Before        | After                                                                 |
+| -------------------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------- |
+| Nodes in level 3 / level 5                                                                         | 1,784 / 2,348 | 279 / 305                                                             |
+| Frames over 12 ms after the first half second (scripted run: run, jump, throw, heavy attack; 14 s) | 8-9           | 0                                                                     |
+| Average frame                                                                                      | 1.5-1.8 ms    | 1.2-1.3 ms                                                            |
+| Worst frame after the first half second                                                            | 24-43 ms      | none over 12 ms (only the first two frames of a scene start are long) |
 
 ## Ideas not done yet
 

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Pre-commit hook: nothing is committed unless the code is clean, every test passes and the web, desktop and phone builds work.
+# Installed by tools/install_hooks.sh (git's core.hooksPath points at this folder). Takes a few minutes: the tests and the builds are real.
+# Skip it for one commit only in an emergency: git commit --no-verify (CI does not skip anything).
+cd "$(git rev-parse --show-toplevel)" || exit 2
+
+step() { echo; echo "==== pre-commit: $1 ===="; }
+stop() { echo; echo "pre-commit FAILED at: $1. Nothing was committed." >&2; exit 1; }
+
+# ARTIFACTS: file names that are build output, never source. build/ is git-ignored; this stops a forced `git add -f`.
+ARTIFACTS='(^|/)build/|\.(apk|aab|idsig|exe|pck|x86_64|wasm)$'
+step "no build output in the commit"
+if git diff --cached --name-only --diff-filter=ACM | grep -E "$ARTIFACTS"; then
+  stop "build output is staged (see above); unstage it with git restore --staged <file>"
+fi
+
+step "lint and formatting"
+tools/lint.sh || stop "lint (fix the formatting with tools/lint.sh --fix)"
+
+step "assets, editor, tests"
+python tools/audit_assets.py || stop "asset audit"
+python tools/sync_editor.py --check || stop "editor sync (run python tools/sync_editor.py)"
+tools/run_tests.sh || stop "tests (logs in tmp/test_logs/)"
+
+step "builds: web, desktop, phone"
+tools/build_all.sh || stop "builds (logs next to the files in build/)"
+
+echo; echo "pre-commit: everything passed."

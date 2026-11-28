@@ -1,0 +1,12 @@
+# Settings for gdlint (GDScript linter, pip package "gdtoolkit"). Run through tools/lint.sh.
+# Switched off, because the project's own style (see .claude/rules/code.md) differs on purpose:
+#   max-line-length:        comments explain why, in full sentences, on one line
+#   class-definitions-order: constants, then variables next to the functions that use them
+#   max-file-lines:         the level editor's canvas and document classes are long (a split is a refactor of its own)
+#   max-returns, max-public-methods: a state machine and the player class are long by nature
+disable:
+  - max-line-length
+  - class-definitions-order
+  - max-file-lines
+  - max-returns
+  - max-public-methods

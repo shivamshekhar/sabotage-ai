@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Headless test (phone mode): the player is never hidden behind the on-screen controls. At the
 ## spawn, in the middle, near the exit and at both ends of the level it checks that the player's
 ## body doesn't overlap the D-pad or any of the four buttons. Exits non-zero on failure.
