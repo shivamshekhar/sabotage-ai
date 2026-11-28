@@ -46,6 +46,21 @@ var _bros := {-1: null, 1: null}          # the Bro on each side (-1 left, 1 rig
 var _bro_cooldown := {-1: 0.0, 1: 0.0}    # seconds until that side may send another
 
 
+## The fight is over for now (the player was lost): nothing more happens in it.
+func _on_player_died(_cause: String) -> void:
+	_over = true
+
+
+## Take the fight down: the boss, the Bros it sent, the hardware it sprayed and the camera go. Main starts a new fight in its place when the player loses (the level stays).
+func clear() -> void:
+	for side in _bros:
+		if is_instance_valid(_bros[side]):
+			_bros[side].queue_free()
+	for bullet in get_tree().get_nodes_in_group(Groups.BOSS_BULLETS):
+		bullet.queue_free()
+	queue_free()
+
+
 ## The boss a level has ("" = none).
 static func boss_of(level_id: String) -> String:
 	var name := str(LevelFile.value(LevelData.data_for(level_id), "meta", "boss", ""))
@@ -64,7 +79,7 @@ func setup(the_level: Level, the_player: Player) -> void:
 	boss.defeated.connect(func() -> void:
 		_over = true
 		defeated.emit())
-	player.died.connect(func(_cause: String) -> void: _over = true)
+	player.died.connect(_on_player_died)
 
 	camera = Camera2D.new()
 	camera.zoom = Vector2(CAMERA_ZOOM, CAMERA_ZOOM)

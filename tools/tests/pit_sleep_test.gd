@@ -66,11 +66,7 @@ func _main() -> void:
 				var cell_r := roundi(rect.position.y / Level.T) + yy
 				if not level._is_solid(cell_c, cell_r):
 					continue
-				var found := false
-				for n in level.get_children():
-					if n is Sprite2D and (n as Sprite2D).z_index == PitHazard.LIQUID_Z and (n as Sprite2D).position == Vector2(cell_c * Level.T, cell_r * Level.T):
-						found = true
-				if not found:
+				if not level._batch.drawn_at(Vector2(cell_c * Level.T, cell_r * Level.T), PitHazard.LIQUID_Z):
 					uncovered.append(Vector2i(cell_c, cell_r))
 	for pit in pits:   # and the floor under it (and the corners)
 		var rect2 := pit.liquid_rect()
@@ -79,10 +75,7 @@ func _main() -> void:
 			var cc := roundi(rect2.position.x / Level.T) + xx
 			if not level._is_solid(cc, floor_r):
 				continue
-			var found2 := false
-			for n in level.get_children():
-				if n is Sprite2D and (n as Sprite2D).z_index == PitHazard.LIQUID_Z and (n as Sprite2D).position == Vector2(cc * Level.T, floor_r * Level.T):
-					found2 = true
+			var found2: bool = level._batch.drawn_at(Vector2(cc * Level.T, floor_r * Level.T), PitHazard.LIQUID_Z)
 			if not found2:
 				uncovered.append(Vector2i(cc, floor_r))
 	_check("the tile walls and floor around every pit are drawn in front of the player and the creatures", uncovered.is_empty(), str(uncovered))

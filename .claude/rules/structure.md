@@ -5,9 +5,9 @@ scripts/
   common/                 reusable, feature-independent pieces
     constants/            Groups, InputActions, PhysicsLayers, AssetPaths
     audio/                AudioBuses, Sfx (the sound groups and one-shot effects)
-    effects/              Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset (anything that makes a visual effect)
+    effects/              Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset, EffectWarmUp (anything that makes a visual effect)
     ui/                   HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines, SegmentedMeter, ScreenFlash (generic UI)
-    util/                 Sprites, Blend, Geom (small helpers)
+    util/                 Sprites, Blend, Geom, WarmUp, SpriteBatch, OffscreenSleeper (small helpers; the last three keep the game smooth, see docs/performance.md)
   core/                   startup, input, settings and key bindings, music, running totals (GameStats)
   player/ enemy/ boss/ vehicle/ powerup/ level/ ui/     one folder per kind of thing in the game (ui/title/ is the title screen)
 assets/                   ALL pictures and sounds, grouped as <category>/<feature>/ (same rule everywhere: a category folder, then the feature's own folder)

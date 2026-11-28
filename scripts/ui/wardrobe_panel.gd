@@ -311,6 +311,7 @@ func _show_state(state: StringName) -> void:
 ## Show what is worn now: every slot's style, which swatch is the one worn, which way the hero is shown.
 func _refresh() -> void:
 	var outfit := Wardrobe.outfit()
+	OutfitComposer.warm_up(self, outfit)       # (the other poses are made while the player looks at this one, so walking, jumping and shooting show at once)
 	var preset := WardrobeCatalog.outfit_preset(outfit.preset_id())
 	_outfit_label.text = String(preset["label"]) if not preset.is_empty() else CUSTOM_OUTFIT
 	for slot in WardrobeCatalog.SLOTS:

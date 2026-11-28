@@ -137,10 +137,7 @@ func _main() -> void:
 		elif n is Level:
 			level_node = n
 	_check("the player stands on a floor made of a registry-only solid kind", player != null and player.is_on_floor(), "y=%.0f" % player.global_position.y)
-	var pictures := 0
-	for n in level_node.get_children():
-		if n is Sprite2D and (n as Sprite2D).position == Vector2(8 * Level.T, 10 * Level.T):
-			pictures += 1
+	var pictures: int = level_node._batch.count_at(Vector2(8 * Level.T, 10 * Level.T))
 	_check("and the decor kind is drawn where it was placed", pictures == 1, str(pictures))
 	main.queue_free()
 	await _wait(5)

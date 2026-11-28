@@ -10,9 +10,9 @@ scripts/
   common/                   Reusable pieces any feature can use
     constants/              Groups, InputActions, PhysicsLayers, AssetPaths: the names, layers and paths (no other script writes them as strings)
     audio/                  AudioBuses (the Music and SFX buses), Sfx (one-shot sound effects)
-    effects/                Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset, GlowPulse, WhiteFlash, GroundShadow: anything that makes a visual effect
+    effects/                Explosion, Debris, HeldEffect (ElectricArc, EnergyBeam), ParticlePreset, GlowPulse, WhiteFlash, GroundShadow, EffectWarmUp: anything that makes a visual effect
     ui/                     HealthBar, ScorePopups, Vignette, HazardStrip, Scanlines, SegmentedMeter, ScreenFlash: generic interface pieces
-    util/                   Sprites, Blend, Geom, Energy: small helpers (sprite settings, blend materials, segment/rectangle geometry, an energy tank)
+    util/                   Sprites, Blend, Geom, Energy, WarmUp, SpriteBatch, OffscreenSleeper: small helpers (sprite settings, blend materials, segment/rectangle geometry, an energy tank, jobs done a few a frame, many tiles in a few nodes, things that sleep off screen)
   core/
     main.gd                 Wires level, player, camera, touch UI, vignette, win banner
     input_setup.gd          Registers the input actions (touch uses the same ones) and loads the settings

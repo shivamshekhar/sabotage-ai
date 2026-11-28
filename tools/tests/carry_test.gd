@@ -256,7 +256,8 @@ func _main() -> void:
 	chaser.state = AIBro.State.CHASE
 	await _wait(240)
 	var gap := absf(chaser.global_position.x - player.global_position.x)
-	var closest_allowed := AIBro.HIT_RANGE * AIBro.STANDOFF_MIN + (Mech.CHASSIS_SIZE.x - Player.BODY_SIZE.x) / 2.0 - 4.0     # (each Bro picks its own stopping distance, at least STANDOFF_MIN of its reach)
+	var overshoot := AIBro.CHASE_SPEED * AIBro.CHASE_SPEED / (2.0 * AIBro.WALK_ACCELERATION) + AIBro.CHASE_SPEED / 60.0      # (a Bro that sees it is close enough slides on while it brakes, and has walked a step past its line)
+	var closest_allowed := AIBro.HIT_RANGE * AIBro.STANDOFF_MIN + (Mech.CHASSIS_SIZE.x - Player.BODY_SIZE.x) / 2.0 - overshoot     # (each Bro picks its own stopping distance, at least STANDOFF_MIN of its reach)
 	_check("a chasing Bro stops at the edge of the mech's body (%.0f px from its middle at least), not inside it" % closest_allowed, gap >= closest_allowed, "%.0f px apart" % gap)
 
 	main.queue_free()

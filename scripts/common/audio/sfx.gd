@@ -17,9 +17,25 @@ const MISSILE_LAUNCH := &"weapons/missile_launch.ogg"          # a missile leave
 
 
 
-## The sound `sfx_name` (one of the names above) as a stream.
+# ALL: every sound above, so they can be read in advance (warm_up_jobs()).
+const ALL: Array[StringName] = [CLICK, CONFIRM, DOOR_OPEN, DOOR_CLOSE, MECH_BOOSTER, MISSILE_LAUNCH]
+
+static var _streams := {}       # name -> its stream, kept: a stream that nothing holds would be read from the file again at the next play
+
+
+## The sound `sfx_name` (one of the names above) as a stream (read once, then kept).
 static func stream(sfx_name: StringName) -> AudioStream:
-	return load(AssetPaths.SFX + String(sfx_name)) as AudioStream
+	if not _streams.has(sfx_name):
+		_streams[sfx_name] = load(AssetPaths.SFX + String(sfx_name)) as AudioStream
+	return _streams[sfx_name]
+
+
+## Jobs for WarmUp that read every sound now, so the first time one is played it does not wait for the disk.
+static func warm_up_jobs() -> Array[Callable]:
+	var jobs: Array[Callable] = []
+	for sfx_name in ALL:
+		jobs.append(func() -> void: stream(sfx_name))
+	return jobs
 
 
 ## Play the effect `sfx_name` once, `volume_db` decibels louder (negative: quieter) than the file.

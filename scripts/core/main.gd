@@ -22,6 +22,7 @@ var _level_id := ""
 
 # fight: the boss fight, in a level that has a boss (null otherwise).
 var fight: BossFight
+var _level: Level
 
 # _player: the player of this level (what is carried to the next level is read from it, see GameStats.save_player()).
 var _player: Player
@@ -40,6 +41,7 @@ func _ready() -> void:
 		# D-pad (left) or the buttons (right) near the level's edges.
 		level.side_padding = TOUCH_SIDE_PADDING
 	add_child(level)
+	_level = level
 	Hud.add_to(self, LevelData.stage_label(_level_id))
 
 	var player := Player.new()
@@ -55,6 +57,8 @@ func _ready() -> void:
 		player.position = Vector2((float(start_at[0]) + 0.5) * Level.T, (float(start_at[1]) + 1.0) * Level.T)
 		player.spawn = player.position
 	add_child(player)
+	_warm_up()
+	PerfOverlay.add_to(self)
 	GameStats.apply_to(player)    # the health and the vehicle (in the state it was in) from the last level; nothing in a new game
 
 	if boss_name != "":
@@ -139,6 +143,15 @@ func _setup_camera(level: Level, player: Player) -> void:
 	cam.make_current()
 
 
+## Get what the first jump, throw or shot needs ready while the player is only starting: every pose of the hero in the outfit worn, the effects and the sounds, made a little at a time
+## (WarmUp), so that none of them makes the game stop when it is first needed. Not in a headless run (no graphics, nothing to prepare, and the tests would wait for it).
+func _warm_up() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	OutfitComposer.warm_up(self, Wardrobe.outfit())
+	WarmUp.run(self, EffectWarmUp.jobs(self))
+
+
 # GAME_OVER_TIME: seconds the "GAME OVER" banner stays up after the player dies, while they
 # respawn at the last checkpoint. Higher: a longer pause to take it in. Lower: back in the action sooner.
 const GAME_OVER_TIME := 1.6
@@ -159,10 +172,18 @@ func _on_player_died(cause: String) -> void:
 	add_child(layer)
 	get_tree().create_timer(GAME_OVER_TIME).timeout.connect(layer.queue_free)
 	if fight != null:
-		# Losing to a boss starts the fight again from the beginning (the boss gets all its health back).
+		# Losing to a boss starts the fight again from the beginning (the boss gets all its health back); the level is not built again.
 		await get_tree().create_timer(GAME_OVER_TIME).timeout
-		LevelData.selected_id = _level_id
-		get_tree().reload_current_scene()
+		_restart_fight()
+
+
+## A new boss fight in the same level: the old one (the boss, its Bros and bullets, its camera) is taken down first. The player has already come back at the start with a full bar.
+func _restart_fight() -> void:
+	fight.clear()
+	fight = BossFight.new()
+	add_child(fight)
+	fight.setup(_level, _player)
+	fight.defeated.connect(_on_boss_defeated)
 
 
 # BOSS_DOWN_TIME: seconds the "boss defeated" message shows before the level is finished.

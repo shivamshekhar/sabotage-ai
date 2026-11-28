@@ -191,6 +191,11 @@ var _pits: Array[PitHazard] = []
 var _player_node: Node2D
 var _lasers := {}      # id -> LaserField
 var _screens_at := {}  # Vector2i(column, row of a machine's letter) -> its MonitorScreens
+var _batch := SpriteBatch.new()       # the still tiles, drawn with a few nodes (see SpriteBatch); made at the end of _ready()
+var sleeper := OffscreenSleeper.new() # puts the live screens, pulsing lights and laser fields to sleep while they are far from the camera
+
+# GLOW_SLEEP_REACH: a pulsing light is kept awake while its glow (this many times its diameter, for the halo) is near the screen.
+const GLOW_SLEEP_REACH := 3.0
 var _lock_screens := {}   # laser id -> the gate computer's MonitorScreens
 var _terminals: Array[Dictionary] = []   # {"rect": Rect2 (where to stand), "laser": id, "game": String, "hint": Label}
 var _map: Array[String] = []    # the physics view of the level (see TileRegistry.physics_rows())
@@ -219,6 +224,7 @@ func _ready() -> void:
 	world_w = cols * T
 	world_h = _map.size() * T
 
+	add_child(sleeper)
 	_build_backdrop()
 	_build_side_padding()
 	_build_tiles()
@@ -229,6 +235,7 @@ func _ready() -> void:
 	_build_lasers()
 	_build_terminals()
 	_build_pits()
+	_batch.flush(self)
 
 
 # ---------- map helpers ----------
@@ -243,7 +250,13 @@ func _is_solid(c: int, r: int) -> bool:
 	return SOLID.contains(_cell(c, r))
 
 
-func _place(sprite_name: String, c: int, r: int, z: int = 0) -> Sprite2D:
+## A still picture of a tile (it is not a node: SpriteBatch draws it with all the others that look the same).
+func _place(sprite_name: String, c: int, r: int, z: int = 0, tint: Color = Color.WHITE) -> void:
+	_batch.add(SpriteLibrary.tile(sprite_name), Vector2(c * T, r * T), z, tint)
+
+
+## The picture of a tile as a node of its own, for the things that need one (a lamp has a glow of its own, a decor tile may have pulsing lights on it).
+func _place_node(sprite_name: String, c: int, r: int, z: int = 0) -> Sprite2D:
 	var s := Sprite2D.new()
 	s.texture = SpriteLibrary.tile(sprite_name)
 	s.centered = false
@@ -254,21 +267,15 @@ func _place(sprite_name: String, c: int, r: int, z: int = 0) -> Sprite2D:
 
 
 ## A solid thing you can stand on (ground edge, ledge, block): place it and give it a soft shadow on what is behind it.
-func _place_solid(sprite_name: String, c: int, r: int) -> Sprite2D:
-	var s := _place(sprite_name, c, r)
+func _place_solid(sprite_name: String, c: int, r: int) -> void:
+	_place(sprite_name, c, r)
 	if FOREGROUND_SHADOW_COLOR.a > 0.0:
-		var shadow := Sprite2D.new()
-		shadow.texture = s.texture
-		shadow.centered = false
-		shadow.position = s.position + FOREGROUND_SHADOW_OFFSET
-		shadow.modulate = FOREGROUND_SHADOW_COLOR
-		shadow.z_index = -1   # over the scenery, under the solid tile and the player
-		add_child(shadow)
-	return s
+		_batch.add(SpriteLibrary.tile(sprite_name), Vector2(c * T, r * T) + FOREGROUND_SHADOW_OFFSET, -1, FOREGROUND_SHADOW_COLOR)   # (over the scenery, under the solid tile and the player)
 
 
+## A decor tile as a node (the siren and the lamp have lights on them, a decor tile of the registry may have pulsing ones).
 func _decor(sprite_name: String, c: int, r: int, z: int = -5, tint: Color = Color(0.78, 0.82, 0.95)) -> Sprite2D:
-	var s := _place(sprite_name, c, r, z)
+	var s := _place_node(sprite_name, c, r, z)
 	s.modulate = tint
 	return s
 
@@ -328,7 +335,7 @@ func _build_tiles() -> void:
 					add_child(SpikeTrap.new(c, r, false))
 				"k": _decor(_run_name("panel_controls", "k", c, r, false), c, r)
 				"w": _decor(_run_name("panel_dark", "w", c, r, false), c, r)
-				"r": _decor(_run_name("rail_thin", "r", c, r, false), c, r, -4, Color.WHITE)
+				"r": _place(_run_name("rail_thin", "r", c, r, false), c, r, -4)
 				"m": _decor("monitor_text", c, r)
 				"t": _decor("monitor_tv_text", c, r)
 				"g": _decor("gear_full", c, r, -6)
@@ -363,10 +370,17 @@ func _build_generic(kind: Dictionary, c: int, r: int) -> void:
 			if kind.has("tint"):
 				var t: Array = kind["tint"]
 				tint = Color(float(t[0]), float(t[1]), float(t[2]))
+			var glows: Array = kind.get("glows", [])
+			if glows.is_empty():
+				_place(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
+				return
 			var decor := _decor(str(sprite.get("tile", "")), c, r, int(kind.get("z", -5)), tint)
-			for glow: Dictionary in kind.get("glows", []):   # lights on the tile that glow and dim (a pit's warning sign has two, one bright while the other is dim)
+			for glow: Dictionary in glows:   # lights on the tile that glow and dim (a pit's warning sign has two, one bright while the other is dim)
 				var colour: Array = glow["color"]
-				decor.add_child(GlowPulse.make(Vector2(float(glow["at"][0]), float(glow["at"][1])), Color(float(colour[0]), float(colour[1]), float(colour[2])), float(glow["size"]), float(glow["phase"])))
+				var pulse := GlowPulse.make(Vector2(float(glow["at"][0]), float(glow["at"][1])), Color(float(colour[0]), float(colour[1]), float(colour[2])), float(glow["size"]), float(glow["phase"]))
+				decor.add_child(pulse)
+				var reach := float(glow["size"]) * GLOW_SLEEP_REACH
+				sleeper.watch(pulse, Rect2(decor.position + pulse.position - Vector2(reach, reach) / 2.0, Vector2(reach, reach)))
 		"barrier":   # an invisible wall: the collider comes from the '|' in the physics map; nothing is drawn
 			pass
 		"powerup":   # a floating box: jump on it for a vehicle (not solid, so nothing in the physics map)
@@ -469,6 +483,7 @@ func _build_machine(def: Dictionary, c: int, r: int) -> void:
 	for key in screens:
 		var rect: Rect2 = screens[key]
 		var screen := _add_screen(SCREEN_KINDS[key], pos + rect.position, rect.size, tint)
+		sleeper.watch(screen, Rect2(pos + rect.position, rect.size))
 		if not _screens_at.has(Vector2i(c, r)):
 			_screens_at[Vector2i(c, r)] = []
 		_screens_at[Vector2i(c, r)].append(screen)
@@ -612,7 +627,9 @@ func _build_lasers() -> void:
 		var s: Array = spans[id]
 		var field := LaserField.new()
 		add_child(field)
-		field.setup(id, Rect2(s[0] * T, s[1] * T, T, (s[2] - s[1] + 1) * T))
+		var area := Rect2(s[0] * T, s[1] * T, T, (s[2] - s[1] + 1) * T)
+		field.setup(id, area)
+		sleeper.watch(field, area)
 		_lasers[id] = field
 
 

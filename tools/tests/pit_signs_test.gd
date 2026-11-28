@@ -124,6 +124,9 @@ func _main() -> void:
 	_check("every sign has two red lights", lights.size() == 2 * signs_in_level and signs_in_level > 0, "%d lights, %d signs" % [lights.size(), signs_in_level])
 	var first := lights[0]
 	var second := lights[1]
+	for n in main.get_children():
+		if n is Level:
+			(n as Level).sleeper.wake_all()       # (the lights sleep while they are far from the camera: here they are watched at work)
 	_check("they sit on the two top corners of the board, one on each side", first.position.x < Level.T / 2.0 and second.position.x > Level.T / 2.0 and absf(first.position.y - second.position.y) < 0.01 and first.position.y < 6.0)
 	_check("and are red", first.self_modulate.r > 0.9 and first.self_modulate.g < 0.3 and first.self_modulate.b < 0.3)
 	var alternate := 0

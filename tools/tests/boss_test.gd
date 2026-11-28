@@ -188,5 +188,25 @@ func _main() -> void:
 	_check("and has the dead face", visual.expression == "dead")
 	main.queue_free()
 	await _wait(3)
+
+	# losing: the fight starts again in the same level, without loading it again
+	LevelData.selected_id = "level_06"
+	var again = load(AssetPaths.MAIN_SCENE).instantiate()
+	root.add_child(again)
+	await _wait(3)
+	LevelData.selected_id = ""
+	var first: BossFight = again.fight
+	var level_before: Level = again._level
+	first.boss.take_hit(Projectile.DAMAGE)
+	first.player.die("health")
+	await _wait(int((again.GAME_OVER_TIME + 0.5) * 60.0))
+	_check("losing starts the fight again in the same game scene", again.is_inside_tree() and again.fight != null and again.fight != first)
+	_check("the old fight is gone and the level is the same one", not is_instance_valid(first) and again._level == level_before and is_instance_valid(level_before))
+	_check("the new boss has all its health back", again.fight.boss.health == SaltShakerBoss.MAX_HEALTH and again.fight.boss.state == SaltShakerBoss.State.HOVER)
+	_check("the player is back with a full bar and the camera follows the new fight", again.fight.player.health == again.fight.player.max_health and again.fight.camera.is_current())
+	again.fight.boss.take_hit(Projectile.DAMAGE)
+	_check("and the new boss can be hurt", again.fight.boss.health < SaltShakerBoss.MAX_HEALTH)
+	again.queue_free()
+	await _wait(3)
 	print("ALL PASS" if ok else "SOME FAILED")
 	quit(0 if ok else 1)

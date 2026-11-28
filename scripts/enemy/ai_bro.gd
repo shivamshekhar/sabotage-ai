@@ -27,6 +27,10 @@ const CONTACT_DAMAGE_FRACTION := 0.1
 const PATROL_SPEED := 90.0
 const CHASE_SPEED := 170.0
 
+# WALK_ACCELERATION: how fast (px per second, every second) a Bro speeds up and slows down on the ground. Higher: it starts and stops sharply; lower: it slides a longer way before it
+# stops (it stops v * v / (2 * WALK_ACCELERATION) px after it decides to: 8 px from CHASE_SPEED).
+const WALK_ACCELERATION := 1800.0
+
 # JUMP_VELOCITY: upward speed of a Bro's jump (negative = up, like Player.JUMP_VELOCITY).
 #     jump height = JUMP_VELOCITY^2 / (2 * GRAVITY)
 # A Bro only jumps at obstacles lower than that height. Higher: it climbs taller steps.
@@ -403,7 +407,7 @@ func _jump() -> void:
 
 func _walk(speed: float) -> void:
 	speed += _separation * SEPARATION_SPEED   # drift away from close neighbours
-	velocity.x = move_toward(velocity.x, speed, 1800.0 * get_physics_process_delta_time())
+	velocity.x = move_toward(velocity.x, speed, WALK_ACCELERATION * get_physics_process_delta_time())
 
 
 ## The box the Bro strikes inside, in world pixels: STRIKE_HEIGHT tall from its feet, and wide enough that a normal player's body touches it when their middle is hit_range
