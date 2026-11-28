@@ -51,6 +51,26 @@ static func reset() -> void:
 	_changed()
 
 
+## Put on a preset outfit (see Outfit.wear()). False if there is no such preset.
+static func wear(id: StringName) -> bool:
+	_ensure_loaded()
+	var done := _outfit.wear(id)
+	_changed()
+	return done
+
+
+## The next (step 1) or previous (step -1) preset outfit, going round; from an outfit that is none of them, the first or the last.
+static func step_preset(step: int) -> void:
+	_ensure_loaded()
+	var presets := WardrobeCatalog.OUTFITS
+	var index := -1
+	for i in presets.size():
+		if presets[i]["id"] == _outfit.preset_id():
+			index = i
+	var next := posmod(index + step, presets.size()) if index >= 0 else (0 if step > 0 else presets.size() - 1)
+	wear(presets[next]["id"])
+
+
 ## Put on an outfit made up at random.
 static func shuffle(rng: RandomNumberGenerator) -> void:
 	_ensure_loaded()

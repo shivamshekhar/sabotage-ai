@@ -54,6 +54,7 @@ func _main() -> void:
 	_catalog()
 	_pictures()
 	_outfit()
+	_presets()
 	_composer()
 	_store()
 	await _wearers()
@@ -134,9 +135,7 @@ func _outfit() -> void:
 			for style in table[slot]:
 				_check("%s %s: the style and the colour it comes with exist" % [slot, style], not WardrobeCatalog.style_entry(slot, style).is_empty() and not WardrobeCatalog.color_entry(slot, table[slot][style]).is_empty())
 	outfit.reset()
-	for slot in WardrobeCatalog.FIXED_COLORS:
-		for style in WardrobeCatalog.FIXED_COLORS[slot]:
-			outfit.set_style(slot, style)
+	outfit.wear(&"martial_arts")
 	_check("the martial-arts pieces keep their own colours (orange outfit, blue sash, boots and wristbands)", outfit.color_id(&"torso") == &"orange" and outfit.color_id(&"pants") == &"orange" and outfit.color_id(&"boots") == &"blue" and outfit.color_id(&"gloves") == &"blue")
 	_check("and no other colour can be chosen for them", not outfit.set_color(&"torso", &"red") and not outfit.set_color(&"boots", &"white") and outfit.color_id(&"torso") == &"orange" and outfit.to_dict()["torso"]["color"] == "orange")
 	_check("in the martial-arts top the shooting pose is the energy wave's (both hands, no gun); nothing else changes", WardrobeCatalog.pose_for(&"martial_gi", "shoot") == "wave" and WardrobeCatalog.pose_for(&"t_shirt", "shoot") == "shoot" and WardrobeCatalog.pose_for(&"martial_gi", "walk1") == "walk1")
@@ -162,8 +161,53 @@ func _outfit() -> void:
 	var loaded := Outfit.new()
 	loaded.load_dict(outfit.to_dict())
 	_check("an outfit survives being saved as data and read back", loaded.signature() == outfit.signature())
-	loaded.load_dict({"hair": {"style": "mohawk", "color": "chrome"}, "cape": {"style": "x"}})
+	loaded.load_dict({"hair": {"style": "pompadour", "color": "chrome"}, "cape": {"style": "x"}})
 	_check("what the catalog does not know (an old file) is left out", loaded.signature() == outfit.signature())
+
+
+## The whole outfits (WardrobeCatalog.OUTFITS): they only use what the catalog has, put every piece on, are told apart from a mix of the player's own, and make a hero in every pose.
+func _presets() -> void:
+	var valid := true
+	var detail := []
+	for preset: Dictionary in WardrobeCatalog.OUTFITS:
+		for slot: StringName in preset["slots"]:
+			var entry: Array = preset["slots"][slot]
+			var style_ok: bool = not WardrobeCatalog.style_entry(slot, entry[0]).is_empty()
+			var color_ok: bool = entry[1] == &"" or not WardrobeCatalog.color_entry(slot, entry[1]).is_empty()
+			if not (style_ok and color_ok):
+				valid = false
+				detail.append("%s %s %s" % [preset["id"], slot, entry])
+	_check("every outfit only uses styles and colours the catalog has", valid, str(detail))
+	var outfit := Outfit.new()
+	_check("the first outfit is the original look", WardrobeCatalog.OUTFITS[0]["id"] == &"original" and outfit.wear(&"original") and outfit.signature() == Outfit.new().signature())
+	_check("an outfit that does not exist is refused", not outfit.wear(&"clown"))
+	for preset: Dictionary in WardrobeCatalog.OUTFITS:
+		outfit.wear(preset["id"])
+		_check("outfit %s: every piece is on and it is recognised" % preset["id"], outfit.preset_id() == preset["id"])
+	outfit.wear(&"painter")
+	_check("the painter wears a red beret, a smock, painted trousers and work boots", outfit.style(&"hair") == &"beret" and outfit.color_id(&"hair") == &"red" and outfit.style(&"torso") == &"smock"
+			and outfit.style(&"pants") == &"painted" and outfit.style(&"boots") == &"work_boots")
+	_check("the rocker has a pink mohawk, the ninja a mask and a headband", (func() -> bool:
+		var other := Outfit.new()
+		other.wear(&"rocker")
+		var mohawk: bool = other.style(&"hair") == &"mohawk" and other.color_id(&"hair") == &"pink"
+		other.wear(&"masked_ninja")
+		return mohawk and other.style(&"goggles") == &"mask_and_band").call())
+	outfit.set_style(&"boots", &"plain")
+	_check("a changed piece makes it a custom outfit", outfit.preset_id() == &"")
+	var thin := []
+	for preset: Dictionary in WardrobeCatalog.OUTFITS:
+		outfit.wear(preset["id"])
+		for pose in ["idle1", "walk1", "jump", "hurt", "action2", "climb1", "shoot"]:
+			var pixels := _opaque(OutfitComposer.compose(outfit, pose))
+			if pixels < 1500:
+				thin.append("%s %s: %d px" % [preset["id"], pose, pixels])
+	_check("every outfit makes a whole hero in every pose", thin.is_empty(), str(thin))
+	var painter := Outfit.new()
+	painter.wear(&"painter")
+	var rocker := Outfit.new()
+	rocker.wear(&"rocker")
+	_check("the outfits do not look alike", _differing(OutfitComposer.compose(painter, "idle1"), OutfitComposer.compose(rocker, "idle1")) > 1000)
 
 
 func _composer() -> void:
@@ -234,6 +278,15 @@ func _store() -> void:
 	Wardrobe.reset()
 	Wardrobe.forget()
 	_check("put back to the original look, that is kept too", Wardrobe.outfit().signature() == Outfit.new().signature())
+	Wardrobe.step_preset(1)
+	_check("the next outfit from the original look is the one after it", Wardrobe.outfit().preset_id() == WardrobeCatalog.OUTFITS[1]["id"])
+	Wardrobe.step_preset(-1)
+	Wardrobe.step_preset(-1)
+	_check("the previous one goes round to the last", Wardrobe.outfit().preset_id() == WardrobeCatalog.OUTFITS[WardrobeCatalog.OUTFITS.size() - 1]["id"])
+	Wardrobe.change(&"boots", &"plain")
+	Wardrobe.step_preset(1)
+	_check("from a custom outfit the next one is the first", Wardrobe.outfit().preset_id() == WardrobeCatalog.OUTFITS[0]["id"])
+	Wardrobe.reset()
 
 
 ## The things that wear the outfit: the hero's sprite and the library, and the zombie that does not.
@@ -268,8 +321,16 @@ func _panel() -> void:
 		expected += WardrobeCatalog.palette(slot).size()
 	_check("the window has a row for every slot and a swatch for every colour", slots_shown and swatches == expected, "%d swatches" % swatches)
 	_check("it says the style worn now", (panel._style_labels[&"hair"] as Label).text == "QUIFF")
+	_check("and the outfit worn", panel._outfit_label.text == "ORIGINAL")
+	panel._step_outfit(1)
+	_check("the outfit arrows put on a whole outfit", Wardrobe.outfit().preset_id() == WardrobeCatalog.OUTFITS[1]["id"] and panel._outfit_label.text == WardrobeCatalog.OUTFITS[1]["label"])
 	panel._step(&"hair", 1)
-	_check("an arrow puts on the next style", Wardrobe.outfit().style(&"hair") == &"crop" and (panel._style_labels[&"hair"] as Label).text == "CROP")
+	_check("a piece changed by hand makes the outfit CUSTOM", panel._outfit_label.text == WardrobePanel.CUSTOM_OUTFIT)
+	Wardrobe.reset()
+	panel._refresh()
+	panel._step(&"hair", 1)
+	var second: Dictionary = WardrobeCatalog.styles(&"hair")[1]
+	_check("an arrow puts on the next style", Wardrobe.outfit().style(&"hair") == second["id"] and (panel._style_labels[&"hair"] as Label).text == second["label"])
 	panel._step(&"hair", -1)
 	_check("and the other one the previous", Wardrobe.outfit().style(&"hair") == &"quiff")
 	panel._pick_color(&"torso", &"orange")

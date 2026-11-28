@@ -57,11 +57,16 @@ const STATE_SELECTED_COLOR := Color(0.85, 0.5, 0.12)
 const BACK_COLOR := Color(0.2, 0.55, 0.9)
 const RESET_COLOR := Color(0.55, 0.3, 0.2)
 
-const HINT := "PICK A STYLE WITH THE ARROWS AND A COLOUR WITH THE SWATCHES. WHAT YOU WEAR IS KEPT."
+const HINT := "PICK A WHOLE OUTFIT, OR A STYLE FOR EACH PIECE, AND A COLOUR WITH THE SWATCHES. WHAT YOU WEAR IS KEPT."
+
+# OUTFIT_LABEL: the name of the row that picks a whole outfit; CUSTOM_OUTFIT: what it says when the hero wears a mix of the player's own.
+const OUTFIT_LABEL := "OUTFIT"
+const CUSTOM_OUTFIT := "CUSTOM"
 
 var _sprite: PlayerSprite
 var _state: StringName = &"idle"
 var _style_labels := {}       # slot -> the label between its arrows
+var _outfit_label: Label      # the name of the outfit worn (the label between the arrows of the OUTFIT row)
 var _swatches := {}           # slot -> {colour id -> its button}
 var _state_buttons := {}      # state -> its button
 var _back: Button
@@ -188,19 +193,20 @@ func _preview_column() -> Control:
 func _slot_column() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
+	column.add_child(_outfit_row())
 	for slot in WardrobeCatalog.SLOTS:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var name_label := _label(String(WardrobeCatalog.LABELS[slot]), ROW_SIZE, HackStyle.CYAN)
 		name_label.custom_minimum_size = Vector2(LABEL_WIDTH, 0.0)
 		row.add_child(name_label)
-		row.add_child(_arrow("<", slot, -1))
+		row.add_child(_arrow("<", _step.bind(slot, -1)))
 		var style_label := _label("", ROW_SIZE)
 		style_label.custom_minimum_size = Vector2(STYLE_WIDTH, 0.0)
 		style_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(style_label)
 		_style_labels[slot] = style_label
-		row.add_child(_arrow(">", slot, 1))
+		row.add_child(_arrow(">", _step.bind(slot, 1)))
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(14.0, 0.0)
 		row.add_child(gap)
@@ -216,13 +222,30 @@ func _slot_column() -> Control:
 	return column
 
 
-func _arrow(text: String, slot: StringName, step: int) -> Button:
+## The OUTFIT row: its arrows put on the next whole outfit (WardrobeCatalog.OUTFITS), and the label says which one is worn ("CUSTOM" for a mix of the player's own).
+func _outfit_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var name_label := _label(OUTFIT_LABEL, ROW_SIZE, HackStyle.CYAN)
+	name_label.custom_minimum_size = Vector2(LABEL_WIDTH, 0.0)
+	row.add_child(name_label)
+	row.add_child(_arrow("<", _step_outfit.bind(-1)))
+	_outfit_label = _label("", ROW_SIZE)
+	_outfit_label.custom_minimum_size = Vector2(STYLE_WIDTH, 0.0)
+	_outfit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(_outfit_label)
+	row.add_child(_arrow(">", _step_outfit.bind(1)))
+	return row
+
+
+## An arrow button that calls `action` when pressed.
+func _arrow(text: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = ARROW_SIZE
 	button.add_theme_font_size_override("font_size", ROW_SIZE + 4)
 	HackStyle.style_button(button, ARROW_COLOR)
-	button.pressed.connect(_step.bind(slot, step))
+	button.pressed.connect(action)
 	return button
 
 
@@ -267,6 +290,12 @@ func _step(slot: StringName, step: int) -> void:
 	_refresh()
 
 
+func _step_outfit(step: int) -> void:
+	Sfx.play(get_tree(), Sfx.CLICK)
+	Wardrobe.step_preset(step)
+	_refresh()
+
+
 func _pick_color(slot: StringName, id: StringName) -> void:
 	Sfx.play(get_tree(), Sfx.CLICK)
 	Wardrobe.change(slot, &"", id)
@@ -282,6 +311,8 @@ func _show_state(state: StringName) -> void:
 ## Show what is worn now: every slot's style, which swatch is the one worn, which way the hero is shown.
 func _refresh() -> void:
 	var outfit := Wardrobe.outfit()
+	var preset := WardrobeCatalog.outfit_preset(outfit.preset_id())
+	_outfit_label.text = String(preset["label"]) if not preset.is_empty() else CUSTOM_OUTFIT
 	for slot in WardrobeCatalog.SLOTS:
 		(_style_labels[slot] as Label).text = String(WardrobeCatalog.style_entry(slot, outfit.style(slot))["label"])
 		var fixed := WardrobeCatalog.fixed_color(slot, outfit.style(slot)) != &""      # (a style with a colour of its own has no swatches)

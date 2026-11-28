@@ -27,6 +27,32 @@ func color_id(slot: StringName) -> StringName:
 	return fixed if fixed != &"" else _colors[slot]
 
 
+## Put on a preset outfit (see WardrobeCatalog.OUTFITS): the original look with the preset's styles and colours on top. False if the preset is not known (nothing changes).
+func wear(id: StringName) -> bool:
+	var preset := WardrobeCatalog.outfit_preset(id)
+	if preset.is_empty():
+		return false
+	reset()
+	var slots: Dictionary = preset["slots"]
+	for slot: StringName in slots:
+		var entry: Array = slots[slot]
+		set_style(slot, entry[0])
+		var color_id: StringName = entry[1]
+		if color_id != &"":
+			set_color(slot, color_id)
+	return true
+
+
+## The id of the preset this outfit is exactly (what the OUTFIT row of the wardrobe shows), or an empty id if it is a mix of the player's own.
+func preset_id() -> StringName:
+	for preset: Dictionary in WardrobeCatalog.OUTFITS:
+		var other := Outfit.new()
+		other.wear(preset["id"])
+		if other.signature() == signature():
+			return preset["id"]
+	return &""
+
+
 ## The colour a slot is, as a Color.
 func color(slot: StringName) -> Color:
 	return WardrobeCatalog.color_entry(slot, color_id(slot))["color"]

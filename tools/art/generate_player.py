@@ -6,7 +6,7 @@ in the middle, room at the sides for the gun; feet on the bottom edge; facing ri
 with) and  player_<pose>_<part>_<style>.png  (another style of that part):
     boots  pants  arms  torso  gun  gloves  head  hair  goggles     from the bottom up: the order they are drawn in. head (the face, the neck) and arms (bare, hands too)
     are the body, which does not change; the gun is only in the shooting pose. A part with nothing to show in a frame has no file (the back of the head has no goggles).
-Styles: hair crop (bald and the rest: no picture), goggles glasses visor, torso tank long, pants plain, boots plain. The game recolours the parts (see WardrobeCatalog).
+Styles: see STYLE_FOLDERS (the themed outfits' pieces are drawn by player_styles.py). The game recolours the parts (see WardrobeCatalog).
 The details are found in each frame automatically (the face, eyes, neck, belt, hands, shoes, found by colour) and drawn at 4 times the size: strands and a highlight in the hair,
 glints in the eyes, goggles on a cord round the neck, a belt with a power-button buckle, fingerless gloves with glowing wristbands, cargo pockets, laces and soles, and the
 outlines (each part is outlined all round: strong where nothing is under it, fine where it lies on another part, strong under the flat jaw).
@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import art_lib  # noqa: E402
 from art_lib import S, mk, poly, ell, rr, line, solid, inside, blur  # noqa: E402
+import player_styles  # noqa: E402
 
 SRC = os.path.join(HERE, "sources", "kenney_platformer_player")
 OUT = os.path.join(art_lib.ROOT, "assets", "characters", "saboteur", "player")
@@ -759,7 +760,7 @@ def build(up, stern=True, gun=None, blink=False):
     scalp = cranium(p) & (p.hair_mask | grow(p.hair_mask, 1.2))       # (a little beyond the hair too: its soft edge pixels are a brown that must not show on a bald head)
     put(content["head"], to_l(scalp), SKIN)
     if not p.face_mask.any():                                        # seen from behind: the whole head is where the hair is, bare under it
-        put(content["head"], to_l(p.hair_mask), SKIN)
+        put(content["head"], to_l(player_styles.back_head(p)), SKIN)
     if blink:
         content["head"] = eyes_shut(content["head"], p)
     detail_hair(content["hair"], p)
@@ -796,6 +797,7 @@ def build(up, stern=True, gun=None, blink=False):
     detail_belt(plain_pants, p)
     others["pants"]["plain"] = plain_pants
     others["boots"]["plain"] = cut(up, masks["boots"])
+    player_styles.add_styles(others, p, up, masks, content)
     if gun == "wave":                                                # (the martial-arts shooting pose: the arm behind is gone, the ball is held in both hands)
         keep = to_l(~rear_arm(p))
         for part in content:
@@ -930,12 +932,12 @@ def contact_sheet(images, cols=7):
 # styles by looking at these folders (WardrobeCatalog), so the folder name is what the player's screen shows (upper case, "_" as a space). A part with no styles (head, arms,
 # gun) has its pictures straight in its folder.
 STYLE_FOLDERS = {
-    "hair": {None: "quiff", "crop": "crop", "spiky": "spiky"},
-    "goggles": {None: "on_chest", "glasses": "glasses", "visor": "visor"},
-    "torso": {None: "t_shirt", "long": "long_sleeves", "tank": "sleeveless", "gi": "martial_gi"},
-    "gloves": {None: "fingerless", "wristbands": "wristbands"},
-    "pants": {None: "cargo", "plain": "plain", "gi": "martial_gi"},
-    "boots": {None: "sneakers", "plain": "plain", "gi": "martial_boots"},
+    "hair": {None: "quiff", "crop": "crop", "spiky": "spiky", "mohawk": "mohawk", "beret": "beret", "slick": "slick", "swept": "swept"},
+    "goggles": {None: "on_chest", "glasses": "glasses", "visor": "visor", "shades": "shades", "mask_band": "mask_and_band"},
+    "torso": {None: "t_shirt", "long": "long_sleeves", "tank": "sleeveless", "gi": "martial_gi", "smock": "smock", "vest": "leather_vest", "aloha": "aloha_shirt", "shinobi": "shinobi_vest"},
+    "gloves": {None: "fingerless", "wristbands": "wristbands", "stained": "paint_stained", "studded": "studded", "guards": "arm_guards"},
+    "pants": {None: "cargo", "plain": "plain", "gi": "martial_gi", "splattered": "painted", "ripped": "ripped_jeans", "slacks": "slacks", "wrapped": "bandaged"},
+    "boots": {None: "sneakers", "plain": "plain", "gi": "martial_boots", "work": "work_boots", "combat": "combat_boots", "sandals": "sandals"},
 }
 
 
@@ -975,6 +977,7 @@ def file_name(pose, part, style):
 
 def main():
     global REF
+    player_styles.bind(sys.modules[__name__])
     REF = Parts(widen(source("idle")))
     REF.shirt_main = components(REF.shirt, 30)[0]
     global SPIKY_REF

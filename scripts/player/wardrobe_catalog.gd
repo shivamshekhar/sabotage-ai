@@ -20,13 +20,35 @@ const ORIGINAL_STYLES := {&"hair": &"quiff", &"goggles": &"on_chest", &"torso": 
 
 # STYLE_COLORS: a style that comes with a colour (its picture is drawn in the slot's original colour and shown in this one when the style is put on: the spiky hair is golden).
 # The player can still pick another colour afterwards. slot -> {style: colour id}.
-const STYLE_COLORS := {&"hair": {&"spiky": &"yellow"}}
+const STYLE_COLORS := {&"hair": {&"spiky": &"yellow", &"beret": &"red", &"mohawk": &"pink", &"slick": &"brown", &"swept": &"white"}}
 
 # FIXED_COLORS: a style whose colour is part of the style, so the wardrobe offers no colours for it (the martial-arts outfit is orange, with a blue sash, blue boots and blue
 # wristbands, as it is). slot -> {style: colour id}.
 const FIXED_COLORS := {
-	&"torso": {&"martial_gi": &"orange"}, &"pants": {&"martial_gi": &"orange"}, &"boots": {&"martial_boots": &"blue"}, &"gloves": {&"wristbands": &"blue"},
+	&"torso": {&"martial_gi": &"orange"}, &"pants": {&"martial_gi": &"orange"}, &"boots": {&"martial_boots": &"blue"}, &"gloves": {&"wristbands": &"blue", &"paint_stained": &"slate"},
+	&"goggles": {&"mask_and_band": &"black"},
 }
+
+# OUTFITS: whole looks the wardrobe puts on at once (its OUTFIT row steps through them, the first is the original look). "slots" is slot -> [style id, colour id] for the slots the outfit
+# sets (an empty colour id keeps the style's own: see STYLE_COLORS); a slot it does not mention is the original. Every id must be one the catalog has (wardrobe_test checks it).
+const OUTFITS := [
+	{"id": &"original", "label": "ORIGINAL", "slots": {}},
+	{"id": &"martial_arts", "label": "MARTIAL ARTS", "slots": {
+		&"hair": [&"spiky", &"yellow"], &"goggles": [&"none", &""], &"torso": [&"martial_gi", &""], &"gloves": [&"wristbands", &""], &"pants": [&"martial_gi", &""],
+		&"boots": [&"martial_boots", &""]}},
+	{"id": &"painter", "label": "PAINTER", "slots": {
+		&"hair": [&"beret", &"red"], &"goggles": [&"glasses", &"black"], &"torso": [&"smock", &"white"], &"gloves": [&"paint_stained", &""], &"pants": [&"painted", &"blue"],
+		&"boots": [&"work_boots", &"brown"]}},
+	{"id": &"rocker", "label": "ROCKER", "slots": {
+		&"hair": [&"mohawk", &"pink"], &"goggles": [&"shades", &"black"], &"torso": [&"leather_vest", &"black"], &"gloves": [&"studded", &"black"], &"pants": [&"ripped_jeans", &"black"],
+		&"boots": [&"combat_boots", &"black"]}},
+	{"id": &"tropical", "label": "TROPICAL", "slots": {
+		&"hair": [&"slick", &"brown"], &"goggles": [&"none", &""], &"torso": [&"aloha_shirt", &"sky"], &"gloves": [&"none", &""], &"pants": [&"slacks", &"white"],
+		&"boots": [&"sneakers", &"white"]}},
+	{"id": &"masked_ninja", "label": "MASKED NINJA", "slots": {
+		&"hair": [&"swept", &"white"], &"goggles": [&"mask_and_band", &""], &"torso": [&"shinobi_vest", &"navy"], &"gloves": [&"arm_guards", &"black"], &"pants": [&"bandaged", &"navy"],
+		&"boots": [&"sandals", &"navy"]}},
+]
 
 # WAVE_TORSO: the torso style whose heavy attack is the energy wave (see EmpGun) and not the EMP gun, and WAVE_POSE: the picture of the shooting pose then (the whole figure with both hands
 # held round a ball of energy and no gun: files player_wave_<part>.png).
@@ -56,6 +78,7 @@ const PALETTES := {
 		{"id": &"blue", "label": "BLUE", "color": Color("#3b7fe0")}, {"id": &"black", "label": "BLACK", "color": Color("#2e3038")},
 		{"id": &"white", "label": "WHITE", "color": Color("#e8eaf0")}, {"id": &"orange", "label": "ORANGE", "color": Color("#f08a24")},
 		{"id": &"purple", "label": "PURPLE", "color": Color("#8d5fd0")}, {"id": &"grey", "label": "GREY", "color": Color("#8890a0")},
+		{"id": &"sky", "label": "SKY", "color": Color("#79c2ea")}, {"id": &"navy", "label": "NAVY", "color": Color("#2a3c78")},
 	],
 	&"gloves": [
 		{"id": &"slate", "label": "SLATE", "color": Color("#626a82")}, {"id": &"black", "label": "BLACK", "color": Color("#2c2e3a")},
@@ -66,12 +89,14 @@ const PALETTES := {
 		{"id": &"blue", "label": "BLUE", "color": Color("#3498db")}, {"id": &"black", "label": "BLACK", "color": Color("#2c3038")},
 		{"id": &"khaki", "label": "KHAKI", "color": Color("#b8a46a")}, {"id": &"grey", "label": "GREY", "color": Color("#7a808e")},
 		{"id": &"green", "label": "GREEN", "color": Color("#3a8a56")}, {"id": &"red", "label": "RED", "color": Color("#b4404a")},
-		{"id": &"orange", "label": "ORANGE", "color": Color("#f08a24")},
+		{"id": &"orange", "label": "ORANGE", "color": Color("#f08a24")}, {"id": &"white", "label": "WHITE", "color": Color("#ece9df")},
+		{"id": &"navy", "label": "NAVY", "color": Color("#2a3c78")},
 	],
 	&"boots": [
 		{"id": &"brown", "label": "BROWN", "color": Color("#c48a51")}, {"id": &"black", "label": "BLACK", "color": Color("#2e2a30")},
 		{"id": &"white", "label": "WHITE", "color": Color("#e6e8ef")}, {"id": &"red", "label": "RED", "color": Color("#c0392b")},
 		{"id": &"blue", "label": "BLUE", "color": Color("#3a6fd1")}, {"id": &"green", "label": "GREEN", "color": Color("#3fae6b")},
+		{"id": &"navy", "label": "NAVY", "color": Color("#2a3c78")},
 	],
 }
 
@@ -117,6 +142,14 @@ static func palette(slot: StringName) -> Array:
 ## The colour a style has no choice about (see FIXED_COLORS), or &"" if the style can be any colour.
 static func fixed_color(slot: StringName, style: StringName) -> StringName:
 	return FIXED_COLORS.get(slot, {}).get(style, &"")
+
+
+## The outfit preset with this id (see OUTFITS), or an empty dictionary.
+static func outfit_preset(id: StringName) -> Dictionary:
+	for preset: Dictionary in OUTFITS:
+		if preset["id"] == id:
+			return preset
+	return {}
 
 
 ## The pose picture to show for `pose` when the torso is `torso_style` (the shooting pose is the energy wave's in the martial-arts top).
